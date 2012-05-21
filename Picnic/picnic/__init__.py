@@ -11,5 +11,7 @@ def main(global_config, **settings):
     config.add_route('inst', '/{accesstype}/{access}/',view='picnic.views.redirect_day')
     config.add_route('home', '/')#,view='picnic.views.redirect_month')#fixme this should provide a website selector
     config.add_route('date','/{accesstype}/{access}/{year}/{month}/{day}/{ampm}/')
+    config.add_route('select_month','/selectmonth')
+    config.add_route('select_day','/selectday')
     config.scan()
     return config.make_wsgi_app()

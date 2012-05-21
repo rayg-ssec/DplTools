@@ -10,97 +10,6 @@ import plistlib
 
 staticresources={};
 
-def redirect_month(request):
-    methodtype=request.matchdict['accesstype']
-    methodkey=request.matchdict['access']
-    subtypekey=request.matchdict['thumbtype']
-    if 'year' in request.matchdict:
-        yearno=int(request.matchdict['year'])
-    else:
-        yearno=datetime.utcnow().year
-    if 'month' in request.matchdict:
-        monthno=int(request.matchdict['month'])
-    else:
-        monthno=datetime.utcnow().month
-    besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,1,0,0,0))
-    return HTTPTemporaryRedirect(location='/%s/%s/%s/%04i/%02i/' % (methodtype,methodkey,subtypekey,besttime.year,besttime.month))
-
-def redirect_day(request):
-    methodtype=request.matchdict['accesstype']
-    methodkey=request.matchdict['access']
-    if 'year' in request.matchdict:
-        yearno=int(request.matchdict['year'])
-    else:
-        yearno=datetime.utcnow().year
-    if 'month' in request.matchdict:
-        monthno=int(request.matchdict['month'])
-    else:
-        monthno=datetime.utcnow().month
-    if 'day' in request.matchdict:
-        dayno=int(request.matchdict['day'])
-    else:
-        dayno=datetime.utcnow().day
-    if 'ampm' in request.matchdict:
-        ampm=request.matchdict['ampm']
-        if ampm=='am':
-            hourno=0
-        else:
-            hourno=12
-    else:
-        hourno=datetime.utcnow().hour
-    besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,hourno,0,0))
-    if besttime.hour<12:
-        ampm='am'
-    else:
-        ampm='pm'
-    return HTTPTemporaryRedirect(location='/%s/%s/%04i/%02i/%02i/%s/' % (methodtype,methodkey,besttime.year,besttime.month,besttime.day,ampm))
-
-@view_config(route_name='image_request')
-def image_request(request):
-    #print request
-    #print request.matchdict
-    k=request.matchdict['statickey'];
-    if k in staticresources:
-        f=open(staticresources[k]['filename'])
-        if f:
-            mt=staticresources[k]['mimetype']
-            return Response(content_type=mt,app_iter=f)
-        staticresources.erase(k);
-    return HTTPNotFound("Image doesn't exist in request cache")
-
-def imageurlfor(req,inst,date,fname,fullfile):
-    hashname=fname
-    if date!=None:
-        hashname='%s_%04i%02i%02i_' % (inst,date.year,date.month,date.day) + hashname
-    if hashname not in staticresources:
-        b={}
-        b['filename']=fullfile
-        b['mimetype']='image/jpeg'
-        staticresources[hashname]=b
-    return '/statichash/'+ hashname #req.static_url(fname)
-
-def dayurlfor(req,inst,date):
-    returl='/%s/%s/%04i/%02i/%02i/' % (req.matchdict['accesstype'],req.matchdict['access'],date.year,date.month,date.day)
-    if date.hour<12:
-        returl+='am/'
-    else:
-        returl+='pm/'
-    return returl
-
-def makecalendar(req,gen):
-    entryvec=[]
-    for i in gen:
-        dayurl=None
-        if i==None:
-            imageurl=None
-        else:
-            if not i[3]: #is not a custom missing image
-                dayurl=dayurlfor(req,i[0],i[1])
-            imageurl=imageurlfor(req,i[0],i[1],i[2],i[4])
-            #print i[4]
-        entryvec.append({'dayurl':dayurl,'imageurl':imageurl})
-    return entryvec
-
 def validdate(yearno,monthno,dayno=1,hourno=0):
     while hourno>23:
         hourno-=24
@@ -130,6 +39,124 @@ def validdate(yearno,monthno,dayno=1,hourno=0):
         (dummy,daysinmonth)=calendar.monthrange(yearno,monthno)
         dayno+=daysinmonth
     return datetime(yearno,monthno,dayno,hourno,0,0)
+
+def monthurlfor(atype,access,imtype,date):
+    return '/%s/%s/%s/%04i/%02i/' % (atype,access,imtype,date.year,date.month)
+
+@view_config(route_name='select_month')
+def select_month(request):
+    if not ('accessto' in request.params and 'accessby' in request.params and 'type' in request.params):
+        return HTTPTemporaryRedirect(location='/')
+    if not ('year' in request.params and 'month' in request.params):
+        return HTTPTemporaryRedirect(location='/%s/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'),request.params.getone('type')))
+    selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')))
+    return HTTPTemporaryRedirect(location=monthurlfor(request.params.getone('accessby'),
+                                                      request.params.getone('accessto'),
+                                                      request.params.getone('type'),
+                                                      selected))
+
+def redirect_month(request):
+    methodtype=request.matchdict['accesstype']
+    methodkey=request.matchdict['access']
+    subtypekey=request.matchdict['thumbtype']
+    if 'year' in request.matchdict:
+        yearno=int(request.matchdict['year'])
+    else:
+        yearno=datetime.utcnow().year
+    if 'month' in request.matchdict:
+        monthno=int(request.matchdict['month'])
+    else:
+        monthno=datetime.utcnow().month
+    besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,1,0,0,0))
+    return HTTPTemporaryRedirect(location=monthurlfor(methodtype,methodkey,subtypekey,besttime))
+
+
+def dayurlfor(atype,access,date):
+    returl='/%s/%s/%04i/%02i/%02i/' % (atype,access,date.year,date.month,date.day)
+    if date.hour<12:
+        returl+='am/'
+    else:
+        returl+='pm/'
+    return returl
+
+@view_config(route_name='select_day')
+def select_day(request):
+    if not ('accessto' in request.params and 'accessby' in request.params):
+        return HTTPTemporaryRedirect(location='/')
+    if not ('year' in request.params and 'month' in request.params and 'day' in request.params and 'hour' in request.params):
+        return HTTPTemporaryRedirect(location='/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto')))
+    selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')),int(request.params.getone('day')),int(request.params.getone('hour')))
+    return HTTPTemporaryRedirect(location=monthurlfor(request.params.getone('accessby'),
+                                                      request.params.getone('accessto'),
+                                                      selected))
+def redirect_day(request):
+    methodtype=request.matchdict['accesstype']
+    methodkey=request.matchdict['access']
+    if 'year' in request.matchdict:
+        yearno=int(request.matchdict['year'])
+    else:
+        yearno=datetime.utcnow().year
+    if 'month' in request.matchdict:
+        monthno=int(request.matchdict['month'])
+    else:
+        monthno=datetime.utcnow().month
+    if 'day' in request.matchdict:
+        dayno=int(request.matchdict['day'])
+    else:
+        dayno=datetime.utcnow().day
+    if 'ampm' in request.matchdict:
+        ampm=request.matchdict['ampm']
+        if ampm=='am':
+            hourno=0
+        else:
+            hourno=12
+    else:
+        hourno=datetime.utcnow().hour
+    besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,hourno,0,0))
+    #if besttime.hour<12:
+    #    ampm='am'
+    #else:
+    #    ampm='pm'
+    return HTTPTemporaryRedirect(location=dayurlfor(methodtype,methodkey,besttime))
+    #'/%s/%s/%04i/%02i/%02i/%s/' % (methodtype,methodkey,besttime.year,besttime.month,besttime.day,ampm))
+
+@view_config(route_name='image_request')
+def image_request(request):
+    #print request
+    #print request.matchdict
+    k=request.matchdict['statickey'];
+    if k in staticresources:
+        f=open(staticresources[k]['filename'])
+        if f:
+            mt=staticresources[k]['mimetype']
+            return Response(content_type=mt,app_iter=f)
+        staticresources.erase(k);
+    return HTTPNotFound("Image doesn't exist in request cache")
+
+def imageurlfor(inst,date,fname,fullfile):
+    hashname=fname
+    if date!=None:
+        hashname='%s_%04i%02i%02i_' % (inst,date.year,date.month,date.day) + hashname
+    if hashname not in staticresources:
+        b={}
+        b['filename']=fullfile
+        b['mimetype']='image/jpeg'
+        staticresources[hashname]=b
+    return '/statichash/'+ hashname #req.static_url(fname)
+
+def makecalendar(req,gen):
+    entryvec=[]
+    for i in gen:
+        dayurl=None
+        if i==None:
+            imageurl=None
+        else:
+            if not i[3]: #is not a custom missing image
+                dayurl=dayurlfor(req.matchdict['accesstype'],req.matchdict['access'],i[1])
+            imageurl=imageurlfor(i[0],i[1],i[2],i[4])
+            #print i[4]
+        entryvec.append({'dayurl':dayurl,'imageurl':imageurl})
+    return entryvec
 
 @view_config(route_name='home',renderer='templates/portaltemplate.pt')
 def portal_view(request):
@@ -214,11 +241,6 @@ def portal_view(request):
         'pagename':'HSRL Data Portal'
         }
 
-def get_ampm(date):
-    if date.hour<12:
-        return 'am'
-    return 'pm'
-
 @view_config(route_name='date',renderer='templates/datetemplate.pt')
 def date_view(request):
     methodtype=request.matchdict['accesstype']
@@ -272,21 +294,21 @@ def date_view(request):
         except KeyError:
             return HTTPNotFound("%s doesn't resolve using method %s" % (methodkey,request.matchdict['accesstype']))
         if img:
-            calurl="/%s/%s/%s/%i/%02i/" % (request.matchdict['accesstype'],methodkey,hightothumb[i],selectdate.year,selectdate.month)
-            imageurl=imageurlfor(request,img[0],img[1],img[2],img[4])
+            calurl=monthurlfor(request.matchdict['accesstype'],methodkey,hightothumb[i],selectdate)
+            imageurl=imageurlfor(img[0],img[1],img[2],img[4])
             entries.append({'calurl':calurl,'imageurl':imageurl})
     nextlink=None
     prevlink=None
     if datetime.utcnow()>nextdate and nextlinkdate:
-        nextlink='/%s/%s/%04i/%02i/%02i/%s/' % (request.matchdict['accesstype'],methodkey,nextlinkdate.year,nextlinkdate.month,nextlinkdate.day,get_ampm(nextlinkdate))
+        nextlink=dayurlfor(request.matchdict['accesstype'],methodkey,nextlinkdate)
     if priorlinkdate:
-        prevlink='/%s/%s/%04i/%02i/%02i/%s/' % (request.matchdict['accesstype'],methodkey,priorlinkdate.year,priorlinkdate.month,priorlinkdate.day,get_ampm(priorlinkdate))
+        prevlink=dayurlfor(request.matchdict['accesstype'],methodkey,priorlinkdate)
     return { 
         'entries':entries,
         'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
 @view_config(route_name='month',renderer='templates/monthtemplate.pt')
-def my_view(request):
+def month_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     subtypekey=request.matchdict['thumbtype']
@@ -314,9 +336,11 @@ def my_view(request):
     if datetime.utcnow()<=nextmonth:
         endthismonth=datetime.utcnow()
     elif nextlinkdate:
-        nextlink='/%s/%s/%s/%04i/%02i/' % (request.matchdict['accesstype'],methodkey,subtypekey,nextlinkdate.year,nextlinkdate.month)
+        nextlink=monthurlfor(request.matchdict['accesstype'],methodkey,subtypekey,nextlinkdate)
     if priorlinkdate:
-        prevlink='/%s/%s/%s/%04i/%02i/' % (request.matchdict['accesstype'],methodkey,subtypekey,priorlinkdate.year,priorlinkdate.month)
+        prevlink=monthurlfor(request.matchdict['accesstype'],methodkey,subtypekey,priorlinkdate)
+
+    caltypes=[]
 
     try:
         usewindowstart=validLaterTime(methodtype,methodkey,thismonth)
@@ -329,12 +353,18 @@ def my_view(request):
             datasetdesc=gen.SiteName
         if hasattr(gen,'ImageName'):
             imagedesc=gen.ImageName
+        if hasattr(gen,'availableThumbPrefixes'):
+            caltypes=gen.availableThumbPrefixes
     except KeyError:
         return HTTPNotFound("%s doesn't resolve using method %s" % (methodkey,request.matchdict['accesstype']))
     pagename='%s - %s' % (datasetdesc,imagedesc)
     arr=makecalendar(request,gen)
     return {'project':'Picnic',
-            'entries':arr,
-            'missingimageurl':imageurlfor(request,None,None,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
-            'blankimageurl':imageurlfor(request,None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
+            'entries':arr,'newmonthform':"/selectmonth",'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
+            'firsttime':validLaterTime(methodtype,methodkey,datetime(1990, 1, 1, 0, 0, 0)),
+            'thistime':thismonth,
+            'lasttime':validPriorTime(methodtype,methodkey,datetime.utcnow()),
+            'caltypes':caltypes,'monthnames':calendar.month_name,
+            'missingimageurl':imageurlfor(None,None,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
+            'blankimageurl':imageurlfor(None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}

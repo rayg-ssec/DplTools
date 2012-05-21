@@ -37,11 +37,11 @@ def validClosestTime(method,instrument,atime):
 
 class dpl_hsrl_imagearchive(object):
     def _findThumbPrefixes(self,insts,instrumentlist):
-        ret={}
+        ret=[]
         for i in instrumentlist:
             if i in insts:
                 for j in insts[i].thumbsets:
-                    ret[j.name]=j.prefix
+                    ret.append({'name':'%s %s' % (i,j.name),'prefix':j.prefix})
         return ret
 
     def _findImagePrefixes(self,insts,instrumentlist):
@@ -87,7 +87,7 @@ class dpl_hsrl_imagearchive(object):
                     if is_thumb:
                         for thumbd in insts[i].thumbsets:
                             if prefix==thumbd.prefix:
-                                self.ImageName=thumbd.name
+                                self.ImageName='%s %s' % (i,thumbd.name)
                     else:
                         for imaged in insts[i].imagesets:
                             if prefix==imaged:

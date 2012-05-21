@@ -5,6 +5,24 @@
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
   <meta name="keywords" content="python web application" />
   <meta name="description" content="pyramid web application" />
+<SCRIPT language="JavaScript">
+<!--
+
+function checkViewType() {
+  itemlist = document.forms[0];
+  idx=itemlist['type'].selectedIndex;
+
+  daybutton = document.getElementById('daybutton');
+  
+  if (idx==0)
+    daybutton.style.display="";
+  else
+    daybutton.style.display="none";
+}
+
+//-->
+</SCRIPT>
+
 </head>
 <body>
 <div id="wrap">
@@ -14,6 +32,41 @@
       <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
       <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next Month</a></td>
     </tr>
+    <tr><td></td><td align="center">
+      <form name="newmonth" action="${newmonthform}">
+      <table>
+        <tbody>
+          <tr>
+            <td align="center">
+              <select name=type>
+                <option tal:repeat="thumbtype caltypes" tal:content="thumbtype.name" tal:attributes="value thumbtype.prefix;selected thumbtype.prefix==selectedtype" />
+              </select>
+          </td>
+            <td align="center">
+              <span id="daybutton">
+              </span>
+            </td>
+            <td align="center">
+              <select name=month>
+                <option tal:condition="lasttime.year!=firsttime.year" tal:repeat="damonth range(1,13)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
+                <option tal:condition="lasttime.year==firsttime.year" tal:repeat="damonth range(firsttime.month,lasttime.month+1)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
+             </select>
+            </td>
+            <td>
+              <select name=year>
+                <option tal:repeat="dayear range(lasttime.year,firsttime.year-1,-1)" tal:content="dayear" tal:attributes="value dayear;selected dayear==thistime.year"/>
+              </select>
+            </td>
+            <td valign="bottom" align="center">
+              <input type="hidden" name="accessby" value="${methodtype}">
+              <input type="hidden" name="accessto" value="${methodkey}">
+              <input type="submit" value="   Update   "/>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      </form>
+    </td></tr>
     <tr><td></td><td align="center"><a href="/">Return to Portal</a></td></tr>
     <tr><td colspan=3>
        <table cellspacing="3">
