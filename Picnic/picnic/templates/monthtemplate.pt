@@ -1,0 +1,36 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+  <title>${pagename} -- Full Month view</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+  <meta name="keywords" content="python web application" />
+  <meta name="description" content="pyramid web application" />
+</head>
+<body>
+<div id="wrap">
+  <table><tbody>
+    <tr>
+      <td align="left" width="150"><a href="${prevlink}" tal:condition="prevlink">Previous Month</a></td>
+      <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
+      <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next Month</a></td>
+    </tr>
+    <tr><td></td><td align="center"><a href="/">Return to Portal</a></td></tr>
+    <tr><td colspan=3>
+       <table cellspacing="3">
+        <tbody tal:define="customfillerimageurl None">
+          <tr tal:repeat="i range((len(entries)+7)/8)">
+            <td tal:repeat="j range(8*i,min(8*(i+1),len(entries)))">
+              <img tal:attributes="src entries[j].imageurl" tal:condition="not entries[j].dayurl and entries[j].imageurl" tal:define="global customfillerimageurl entries[j].imageurl or customfillerimageurl">
+              <a tal:attributes="href entries[j].dayurl" tal:condition="entries[j].dayurl and entries[j].imageurl"><img tal:attributes="src entries[j].imageurl" tal:define="global customfillerimageurl None"></a>
+              <img tal:attributes="src missingimageurl" tal:condition="not entries[j].imageurl and (j==(i*8) or entries[j-1].imageurl) and not customfillerimageurl">
+              <img tal:attributes="src customfillerimageurl" tal:condition="not entries[j].imageurl and j==(i*8) and customfillerimageurl">
+              <img tal:attributes="src blankimageurl" tal:condition="not entries[j].imageurl and not j==(i*8) and (not entries[j-1].imageurl or customfillerimageurl)">
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </td></tr>
+  </tbody></table>
+</div>
+</body>
+</html>

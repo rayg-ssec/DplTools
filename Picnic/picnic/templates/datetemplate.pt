@@ -1,0 +1,31 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+  <title>${pagename} -- Full Month view</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+  <meta name="keywords" content="python web application" />
+  <meta name="description" content="pyramid web application" />
+</head>
+<body>
+<div id="wrap">
+  <table><tbody>
+    <tr>
+      <td align="left" width="150"><a href="${prevlink}" tal:condition="prevlink">Previous</a></td>
+      <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
+      <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next</a></td>
+    </tr>
+    <tr><td colspan=3>
+      <table cellspacing="3">
+        <tbody>
+          <tr tal:repeat="entry entries">
+            <td>
+              <a tal:attributes="href entry.calurl"><img tal:attributes="src entry.imageurl"></a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </td></tr>
+  </tbody></table>
+</div>
+</body>
+</html>
