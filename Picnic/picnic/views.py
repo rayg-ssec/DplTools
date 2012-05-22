@@ -40,17 +40,19 @@ def validdate(yearno,monthno,dayno=1,hourno=0):
         dayno+=daysinmonth
     return datetime(yearno,monthno,dayno,hourno,0,0)
 
-def monthurlfor(atype,access,imtype,date):
-    return '/%s/%s/%s/%04i/%02i/' % (atype,access,imtype,date.year,date.month)
+def monthurlfor(req,atype,access,imtype,date):
+    return req.relative_url('/%s/%s/%s/%04i/%02i/' % (atype,access,imtype,date.year,date.month),
+                            to_application=True)
 
 @view_config(route_name='select_month')
 def select_month(request):
     if not ('accessto' in request.params and 'accessby' in request.params and 'type' in request.params):
-        return HTTPTemporaryRedirect(location='/')
+        return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))
     if not ('year' in request.params and 'month' in request.params):
-        return HTTPTemporaryRedirect(location='/%s/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'),request.params.getone('type')))
+        return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'),request.params.getone('type')),to_application=True))
     selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')))
-    return HTTPTemporaryRedirect(location=monthurlfor(request.params.getone('accessby'),
+    return HTTPTemporaryRedirect(location=monthurlfor(request,
+                                                      request.params.getone('accessby'),
                                                       request.params.getone('accessto'),
                                                       request.params.getone('type'),
                                                       selected))
@@ -68,25 +70,26 @@ def redirect_month(request):
     else:
         monthno=datetime.utcnow().month
     besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,1,0,0,0))
-    return HTTPTemporaryRedirect(location=monthurlfor(methodtype,methodkey,subtypekey,besttime))
+    return HTTPTemporaryRedirect(location=monthurlfor(request,methodtype,methodkey,subtypekey,besttime))
 
 
-def dayurlfor(atype,access,date):
+def dayurlfor(req,atype,access,date):
     returl='/%s/%s/%04i/%02i/%02i/' % (atype,access,date.year,date.month,date.day)
     if date.hour<12:
         returl+='am/'
     else:
         returl+='pm/'
-    return returl
+    return req.relative_url(returl,to_application=True)
 
 @view_config(route_name='select_day')
 def select_day(request):
     if not ('accessto' in request.params and 'accessby' in request.params):
-        return HTTPTemporaryRedirect(location='/')
+        return HTTPTemporaryRedirect(location=request.relative_url('/'))
     if not ('year' in request.params and 'month' in request.params and 'day' in request.params and 'hour' in request.params):
-        return HTTPTemporaryRedirect(location='/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto')))
+        return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'))))
     selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')),int(request.params.getone('day')),int(request.params.getone('hour')))
-    return HTTPTemporaryRedirect(location=monthurlfor(request.params.getone('accessby'),
+    return HTTPTemporaryRedirect(location=monthurlfor(request,
+                                                      request.params.getone('accessby'),
                                                       request.params.getone('accessto'),
                                                       selected))
 def redirect_day(request):
@@ -117,7 +120,7 @@ def redirect_day(request):
     #    ampm='am'
     #else:
     #    ampm='pm'
-    return HTTPTemporaryRedirect(location=dayurlfor(methodtype,methodkey,besttime))
+    return HTTPTemporaryRedirect(location=dayurlfor(request,methodtype,methodkey,besttime))
     #'/%s/%s/%04i/%02i/%02i/%s/' % (methodtype,methodkey,besttime.year,besttime.month,besttime.day,ampm))
 
 @view_config(route_name='image_request')
@@ -133,7 +136,7 @@ def image_request(request):
         staticresources.erase(k);
     return HTTPNotFound("Image doesn't exist in request cache")
 
-def imageurlfor(inst,date,fname,fullfile):
+def imageurlfor(req,inst,date,fname,fullfile):
     hashname=fname
     if date!=None:
         hashname='%s_%04i%02i%02i_' % (inst,date.year,date.month,date.day) + hashname
@@ -142,7 +145,7 @@ def imageurlfor(inst,date,fname,fullfile):
         b['filename']=fullfile
         b['mimetype']='image/jpeg'
         staticresources[hashname]=b
-    return '/statichash/'+ hashname #req.static_url(fname)
+    return req.relative_url('/statichash/'+ hashname,to_application=True) #req.static_url(fname)
 
 def makecalendar(req,gen):
     entryvec=[]
@@ -152,8 +155,8 @@ def makecalendar(req,gen):
             imageurl=None
         else:
             if not i[3]: #is not a custom missing image
-                dayurl=dayurlfor(req.matchdict['accesstype'],req.matchdict['access'],i[1])
-            imageurl=imageurlfor(i[0],i[1],i[2],i[4])
+                dayurl=dayurlfor(req,req.matchdict['accesstype'],req.matchdict['access'],i[1])
+            imageurl=imageurlfor(req,i[0],i[1],i[2],i[4])
             #print i[4]
         entryvec.append({'dayurl':dayurl,'imageurl':imageurl})
     return entryvec
@@ -294,15 +297,15 @@ def date_view(request):
         except KeyError:
             return HTTPNotFound("%s doesn't resolve using method %s" % (methodkey,request.matchdict['accesstype']))
         if img:
-            calurl=monthurlfor(request.matchdict['accesstype'],methodkey,hightothumb[i],selectdate)
-            imageurl=imageurlfor(img[0],img[1],img[2],img[4])
+            calurl=monthurlfor(request,request.matchdict['accesstype'],methodkey,hightothumb[i],selectdate)
+            imageurl=imageurlfor(request,img[0],img[1],img[2],img[4])
             entries.append({'calurl':calurl,'imageurl':imageurl})
     nextlink=None
     prevlink=None
     if datetime.utcnow()>nextdate and nextlinkdate:
-        nextlink=dayurlfor(request.matchdict['accesstype'],methodkey,nextlinkdate)
+        nextlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,nextlinkdate)
     if priorlinkdate:
-        prevlink=dayurlfor(request.matchdict['accesstype'],methodkey,priorlinkdate)
+        prevlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,priorlinkdate)
     return { 
         'entries':entries,
         'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
@@ -336,9 +339,9 @@ def month_view(request):
     if datetime.utcnow()<=nextmonth:
         endthismonth=datetime.utcnow()
     elif nextlinkdate:
-        nextlink=monthurlfor(request.matchdict['accesstype'],methodkey,subtypekey,nextlinkdate)
+        nextlink=monthurlfor(request,request.matchdict['accesstype'],methodkey,subtypekey,nextlinkdate)
     if priorlinkdate:
-        prevlink=monthurlfor(request.matchdict['accesstype'],methodkey,subtypekey,priorlinkdate)
+        prevlink=monthurlfor(request,request.matchdict['accesstype'],methodkey,subtypekey,priorlinkdate)
 
     caltypes=[]
 
@@ -365,6 +368,6 @@ def month_view(request):
             'thistime':thismonth,
             'lasttime':validPriorTime(methodtype,methodkey,datetime.utcnow()),
             'caltypes':caltypes,'monthnames':calendar.month_name,
-            'missingimageurl':imageurlfor(None,None,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
-            'blankimageurl':imageurlfor(None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
+            'missingimageurl':imageurlfor(request,None,None,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
+            'blankimageurl':imageurlfor(request,None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}

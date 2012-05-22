@@ -21,7 +21,7 @@
       <LI tal:repeat="linksec site.linkarray">
       <span tal:repeat="entry linksec" tal:define="lastlink None">
       <span tal:condition="entry!=linksec[0] and lastlink"> - </span>
-        <a tal:attributes="href entry.link" tal:condition="entry.link" tal:define="lastlink None">${entry.name}</a>
+        <a tal:attributes="href entry.link" tal:condition="entry.link" tal:define="global lastlink entry.link">${entry.name}</a>
         <span tal:condition="not entry.link">${entry.name}</span>
       </span>
       </LI>
