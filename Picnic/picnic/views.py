@@ -46,32 +46,38 @@ def monthurlfor(req,atype,access,imtype,date):
 
 @view_config(route_name='select_month')
 def select_month(request):
-    if not ('accessto' in request.params and 'accessby' in request.params and 'type' in request.params):
+    try:
+        if not ('year' in request.params and 'month' in request.params):
+            return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/%s/' % (request.params.getone('accessby'),
+                                                                                       request.params.getone('accessto'),
+                                                                                       request.params.getone('type')),
+                                                                       to_application=True))
+        selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')))
+        return HTTPTemporaryRedirect(location=monthurlfor(request,
+                                                          request.params.getone('accessby'),
+                                                          request.params.getone('accessto'),
+                                                          request.params.getone('type'),
+                                                          selected))
+    except:
         return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))
-    if not ('year' in request.params and 'month' in request.params):
-        return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'),request.params.getone('type')),to_application=True))
-    selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')))
-    return HTTPTemporaryRedirect(location=monthurlfor(request,
-                                                      request.params.getone('accessby'),
-                                                      request.params.getone('accessto'),
-                                                      request.params.getone('type'),
-                                                      selected))
 
 def redirect_month(request):
-    methodtype=request.matchdict['accesstype']
-    methodkey=request.matchdict['access']
-    subtypekey=request.matchdict['thumbtype']
-    if 'year' in request.matchdict:
-        yearno=int(request.matchdict['year'])
-    else:
-        yearno=datetime.utcnow().year
-    if 'month' in request.matchdict:
-        monthno=int(request.matchdict['month'])
-    else:
-        monthno=datetime.utcnow().month
-    besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,1,0,0,0))
-    return HTTPTemporaryRedirect(location=monthurlfor(request,methodtype,methodkey,subtypekey,besttime))
-
+    try:
+        methodtype=request.matchdict['accesstype']
+        methodkey=request.matchdict['access']
+        subtypekey=request.matchdict['thumbtype']
+        if 'year' in request.matchdict:
+            yearno=int(request.matchdict['year'])
+        else:
+            yearno=datetime.utcnow().year
+        if 'month' in request.matchdict:
+            monthno=int(request.matchdict['month'])
+        else:
+            monthno=datetime.utcnow().month
+        besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,1,0,0,0))
+        return HTTPTemporaryRedirect(location=monthurlfor(request,methodtype,methodkey,subtypekey,besttime))
+    except:
+        return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))        
 
 def dayurlfor(req,atype,access,date):
     returl='/%s/%s/%04i/%02i/%02i/' % (atype,access,date.year,date.month,date.day)
@@ -83,45 +89,45 @@ def dayurlfor(req,atype,access,date):
 
 @view_config(route_name='select_day')
 def select_day(request):
-    if not ('accessto' in request.params and 'accessby' in request.params):
-        return HTTPTemporaryRedirect(location=request.relative_url('/'))
-    if not ('year' in request.params and 'month' in request.params and 'day' in request.params and 'hour' in request.params):
-        return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'))))
-    selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')),int(request.params.getone('day')),int(request.params.getone('hour')))
-    return HTTPTemporaryRedirect(location=monthurlfor(request,
-                                                      request.params.getone('accessby'),
-                                                      request.params.getone('accessto'),
-                                                      selected))
+    try:
+        if not ('year' in request.params and 'month' in request.params and 'day' in request.params and 'hour' in request.params):
+            return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'))))
+        selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')),int(request.params.getone('day')),int(request.params.getone('hour')))
+        return HTTPTemporaryRedirect(location=monthurlfor(request,
+                                                          request.params.getone('accessby'),
+                                                          request.params.getone('accessto'),
+                                                          selected))
+    except:
+        return HTTPTemporaryRedirect(location=request.relative_url('/',to_application=True))
+
 def redirect_day(request):
-    methodtype=request.matchdict['accesstype']
-    methodkey=request.matchdict['access']
-    if 'year' in request.matchdict:
-        yearno=int(request.matchdict['year'])
-    else:
-        yearno=datetime.utcnow().year
-    if 'month' in request.matchdict:
-        monthno=int(request.matchdict['month'])
-    else:
-        monthno=datetime.utcnow().month
-    if 'day' in request.matchdict:
-        dayno=int(request.matchdict['day'])
-    else:
-        dayno=datetime.utcnow().day
-    if 'ampm' in request.matchdict:
-        ampm=request.matchdict['ampm']
-        if ampm=='am':
-            hourno=0
+    try:
+        methodtype=request.matchdict['accesstype']
+        methodkey=request.matchdict['access']
+        if 'year' in request.matchdict:
+            yearno=int(request.matchdict['year'])
         else:
-            hourno=12
-    else:
-        hourno=datetime.utcnow().hour
-    besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,hourno,0,0))
-    #if besttime.hour<12:
-    #    ampm='am'
-    #else:
-    #    ampm='pm'
-    return HTTPTemporaryRedirect(location=dayurlfor(request,methodtype,methodkey,besttime))
-    #'/%s/%s/%04i/%02i/%02i/%s/' % (methodtype,methodkey,besttime.year,besttime.month,besttime.day,ampm))
+            yearno=datetime.utcnow().year
+        if 'month' in request.matchdict:
+            monthno=int(request.matchdict['month'])
+        else:
+            monthno=datetime.utcnow().month
+        if 'day' in request.matchdict:
+            dayno=int(request.matchdict['day'])
+        else:
+            dayno=datetime.utcnow().day
+        if 'ampm' in request.matchdict:
+            ampm=request.matchdict['ampm']
+            if ampm=='am':
+                hourno=0
+            else:
+                hourno=12
+        else:
+            hourno=datetime.utcnow().hour
+        besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,hourno,0,0))
+        return HTTPTemporaryRedirect(location=dayurlfor(request,methodtype,methodkey,besttime))
+    except:
+        return HTTPTemporaryRedirect(location=request.relative_url('/',to_application=True))
 
 @view_config(route_name='image_request')
 def image_request(request):
@@ -154,9 +160,9 @@ def makecalendar(req,gen):
         if i==None:
             imageurl=None
         else:
-            if not i[3]: #is not a custom missing image
-                dayurl=dayurlfor(req,req.matchdict['accesstype'],req.matchdict['access'],i[1])
-            imageurl=imageurlfor(req,i[0],i[1],i[2],i[4])
+            if i['is_valid']: #is not a custom missing image
+                dayurl=dayurlfor(req,req.matchdict['accesstype'],req.matchdict['access'],i['time'])
+            imageurl=imageurlfor(req,i['instrument'],i['time'],i['filename'],i['path'])
             #print i[4]
         entryvec.append({'dayurl':dayurl,'imageurl':imageurl})
     return entryvec
@@ -263,7 +269,11 @@ def date_view(request):
     selectdate=validdate(yearno,monthno,dayno,hourno)
     priordate=validdate(selectdate.year,selectdate.month,selectdate.day,selectdate.hour-12)
     nextdate=validdate(selectdate.year,selectdate.month,selectdate.day,selectdate.hour+12)
-    vdate=validClosestTime(methodtype,methodkey,selectdate)
+    vdate=None
+    try:
+        vdate=validClosestTime(methodtype,methodkey,selectdate)
+    except:
+        pass
     if vdate==None or vdate<selectdate or vdate>=nextdate:
         return redirect_day(request)
     priorlinkdate=validLaterTime(methodtype,methodkey,priordate)
@@ -294,11 +304,11 @@ def date_view(request):
                 hightothumb[i]=None
             for newimg in gen:
                 img=newimg
-        except KeyError:
-            return HTTPNotFound("%s doesn't resolve using method %s" % (methodkey,request.matchdict['accesstype']))
+        except KeyError as e:
+            return HTTPNotFound(e)
         if img:
             calurl=monthurlfor(request,request.matchdict['accesstype'],methodkey,hightothumb[i],selectdate)
-            imageurl=imageurlfor(request,img[0],img[1],img[2],img[4])
+            imageurl=imageurlfor(request,img['instrument'],img['time'],img['filename'],img['path'])
             entries.append({'calurl':calurl,'imageurl':imageurl})
     nextlink=None
     prevlink=None
@@ -322,7 +332,11 @@ def month_view(request):
     thismonth=validdate(yearno,monthno)
     nextmonth=validdate(thismonth.year,thismonth.month+1)
     prevmonth=validdate(thismonth.year,thismonth.month-1)
-    vdate=validClosestTime(methodtype,methodkey,thismonth)
+    vdate=None
+    try:
+        vdate=validClosestTime(methodtype,methodkey,thismonth)
+    except:
+        pass
     if vdate==None or vdate<thismonth or vdate>=nextmonth:
         return redirect_month(request)
     priorlinkdate=validLaterTime(methodtype,methodkey,prevmonth)
@@ -358,8 +372,8 @@ def month_view(request):
             imagedesc=gen.ImageName
         if hasattr(gen,'availableThumbPrefixes'):
             caltypes=gen.availableThumbPrefixes
-    except KeyError:
-        return HTTPNotFound("%s doesn't resolve using method %s" % (methodkey,request.matchdict['accesstype']))
+    except KeyError as e:
+        return HTTPNotFound(e)
     pagename='%s - %s' % (datasetdesc,imagedesc)
     arr=makecalendar(request,gen)
     return {'project':'Picnic',

@@ -82,16 +82,25 @@ class dpl_hsrl_imagearchive(object):
         self.availableThumbPrefixes=self._findThumbPrefixes(insts,dataarchive.Instruments)
         self.availableImagePrefixes=self._findImagePrefixes(insts,dataarchive.Instruments)
         if prefix!=None:
-            for i in dataarchive.Instruments:
-                if i in insts:
-                    if is_thumb:
+            if is_thumb:
+                self.ImageName=None
+                for i in dataarchive.Instruments:
+                    if i in insts:
                         for thumbd in insts[i].thumbsets:
                             if prefix==thumbd.prefix:
                                 self.ImageName='%s %s' % (i,thumbd.name)
-                    else:
+                if self.ImageName==None:
+                    raise KeyError('unknown thumbnail prefix %s for site id %i (%s)' % (prefix,sitenumber,self.SiteName))
+            else:
+                self.lowresform=None
+                for i in dataarchive.Instruments:
+                    if i in insts:
                         for imaged in insts[i].imagesets:
                             if prefix==imaged:
                                 self.lowresform=insts[i].thumbsets[0].prefix
+                if self.lowresform==None:
+                    #print 'Not found %s, prefix %s\n' % (i,prefix)
+                    raise KeyError('unknown image prefix %s for site id %i (%s)' % (prefix,sitenumber,self.SiteName))
         return (dataarchive.Path,dataarchive.Windows)
 
     def _getpathfor_systemplist_dataset_idx(self,datasetidx,prefix=None,is_thumb=False):
@@ -99,15 +108,18 @@ class dpl_hsrl_imagearchive(object):
         dirs=pl.Datasets
         insts=pl.Instruments
         try:
-            dataarchive=dirs[sitenumber]
+            dataarchive=dirs[datasetidx]
         except:
             raise KeyError('invalid dataset number %i' % datasetidx)
         #self.SiteName=dataarchive.Name
         if prefix!=None and dataarchive.Name in insts:
             if is_thumb:
+                self.ImageName=None
                 for thumbd in insts[dataarchive.Name].thumbsets:
                     if prefix==thumbd.prefix:
                         self.ImageName=thumbd.name
+                if self.ImageName==None:
+                    raise KeyError('invalid thumbnail image prefix %s for dataset idx %i (%s)' % (prefix,datasetidx,dataarchive.Name))
             else:
                 self.lowresform=insts[dataarchive.Name].thumbsets[0].prefix
         self.availableThumbPrefixes=self._findThumbPrefixes(insts,list(dataarchive.Name))
@@ -127,9 +139,12 @@ class dpl_hsrl_imagearchive(object):
             raise KeyError('invalid dataset name %s' % instname)
         if prefix!=None and dataarchive.Name in insts:
             if is_thumb:
+                self.ImageName=None
                 for thumbd in insts[dataarchive.Name].thumbsets:
                     if prefix==thumbd.prefix:
                         self.ImageName=thumbd.name
+                if self.ImageName==None:
+                    raise KeyError('unknown thumbnail prefix %s for dataset %s' % (prefix,instname))
             else:
                 self.lowresform=insts[dataarchive.Name].thumbsets[0].prefix
         self.availableThumbPrefixes=self._findThumbPrefixes(insts,list(dataarchive.Name))
@@ -239,7 +254,7 @@ class dpl_hsrl_imagearchive(object):
 
         if fn:
             self.currentfilename=os.path.join(pdate,fn);
-            return (self.inst,self.currenttime,fn,placeholder,self.currentfilename)
+            return {'instrument':self.inst,'time':self.currenttime,'filename':fn,'is_valid':not placeholder,'path':self.currentfilename}
         else:
             self.currentfilename=fn;
             return None
