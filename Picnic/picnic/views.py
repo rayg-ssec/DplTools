@@ -290,6 +290,9 @@ def date_view(request):
     tgen=dpl_hsrl_imagearchive(methodtype,methodkey,None,False,selectdate,nextdate)
     if hasattr(tgen,'availableImagePrefixes'):
         highimage=tgen.availableImagePrefixes
+    caltypes=None
+    if hasattr(tgen,'availableThumbPrefixes'):
+        caltypes=tgen.availableThumbPrefixes
     currenttime=datetime.utcnow();
     entries=[]
     for i in highimage:
@@ -317,7 +320,9 @@ def date_view(request):
     if priorlinkdate:
         prevlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,priorlinkdate)
     return { 
-        'entries':entries,
+        'entries':entries,'caltypes':caltypes,
+        'newmonthform':request.relative_url("/selectmonth",True),'methodtype':methodtype,'methodkey':methodkey,
+        'thistime':selectdate,
         'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
 @view_config(route_name='month',renderer='templates/monthtemplate.pt')
@@ -377,7 +382,7 @@ def month_view(request):
     pagename='%s - %s' % (datasetdesc,imagedesc)
     arr=makecalendar(request,gen)
     return {'project':'Picnic',
-            'entries':arr,'newmonthform':"/selectmonth",'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
+            'entries':arr,'newmonthform':request.relative_url("/selectmonth",True),'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
             'firsttime':validLaterTime(methodtype,methodkey,datetime(1990, 1, 1, 0, 0, 0)),
             'thistime':thismonth,
             'lasttime':validPriorTime(methodtype,methodkey,datetime.utcnow()),

@@ -14,6 +14,29 @@
       <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
       <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next</a></td>
     </tr>
+    <tr>
+      <td></td>
+      <td align="center">
+        <table><tbody>
+          <tr>
+            <td>
+              Entire Month:
+            </td>
+            <td tal:repeat="cal caltypes">
+              <form name="${cal.name}" action="${newmonthform}">
+              <input type="hidden" name="type" value="${cal.prefix}"/>
+              <input type="hidden" name="day" value="${thistime.day}"/>
+              <input type="hidden" name="month" value="${thistime.month}"/>
+              <input type="hidden" name="year" value="${thistime.year}"/>
+              <input type="hidden" name="accessby" value="${methodtype}"/>
+              <input type="hidden" name="accessto" value="${methodkey}"/>
+              <input type="submit" value="${cal.name}"/>
+              </form>
+            </td>
+          </tr>
+        </tbody></table>
+      </td>
+    </tr>
     <tr><td colspan=3>
       <table cellspacing="3">
         <tbody>
