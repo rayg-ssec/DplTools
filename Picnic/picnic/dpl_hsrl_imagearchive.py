@@ -35,6 +35,29 @@ def validClosestTime(method,instrument,atime):
         return p
     return n
 
+def dpl_hsrllore_datasetForSite(siteid):
+    pl=plistlib.readPlist('/etc/dataarchive.plist')
+    sites=pl.Sites
+    datasets=pl.Datasets
+    site=sites[siteid]
+    for i in site.Instruments:
+        dataset=0
+        for d in datasets:
+            if d.Name==i:
+                return dataset
+            dataset+=1
+    return -1
+
+def dpl_hsrllore_simpleThumbPrefixes(siteid):
+    pl=plistlib.readPlist('/etc/dataarchive.plist')
+    site=pl.Sites[siteid]
+    insts=pl.Instruments
+    ret=[]
+    for i in site.Instruments:
+        for t in insts[i].thumbsets:
+            ret.append(t.prefix)
+    return ret
+
 class dpl_hsrl_imagearchive(object):
     def _findThumbPrefixes(self,insts,instrumentlist):
         ret=[]

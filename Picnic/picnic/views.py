@@ -10,6 +10,22 @@ import plistlib
 
 staticresources={};
 
+def makeformbutton(label,cgiurl,bdate,edate):
+    return {'submit':label,'url':cgiurl,
+            'inputs':[
+                {'name':'byr','value':'%i' % bdate.year},
+                {'name':'bmo','value':'%i' % bdate.month},
+                {'name':'bdy','value':'%i' % bdate.day},
+                {'name':'bhr','value':'%i' % bdate.hour},
+                {'name':'bmn','value':'%i' % bdate.minute},
+                {'name':'eyr','value':'%i' % edate.year},
+                {'name':'emo','value':'%i' % edate.month},
+                {'name':'edy','value':'%i' % edate.day},
+                {'name':'ehr','value':'%i' % edate.hour},
+                {'name':'emn','value':'%i' % edate.minute}
+                ]
+            }
+
 def validdate(yearno,monthno,dayno=1,hourno=0):
     while hourno>23:
         hourno-=24
@@ -41,8 +57,10 @@ def validdate(yearno,monthno,dayno=1,hourno=0):
     return datetime(yearno,monthno,dayno,hourno,0,0)
 
 def monthurlfor(req,atype,access,imtype,date):
-    return req.relative_url('/%s/%s/%s/%04i/%02i/' % (atype,access,imtype,date.year,date.month),
-                            to_application=True)
+    URL='/%s/%s/%s/%04i/%02i/' % (atype,access,imtype,date.year,date.month)
+    if imtype=='all':
+        URL+='%02i/' % (date.day)
+    return req.relative_url(URL,to_application=True)
 
 @view_config(route_name='select_month')
 def select_month(request):
@@ -74,7 +92,13 @@ def redirect_month(request):
             monthno=int(request.matchdict['month'])
         else:
             monthno=datetime.utcnow().month
-        besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,1,0,0,0))
+        if 'day' in request.matchdict:
+            dayno=int(request.matchdict['month'])
+        elif monthno==datetime.utcnow().month and yearno==datetime.utcnow().year:
+            dayno=datetime.utcnow().day-3
+        else:
+            dayno=1
+        besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,0,0,0))
         return HTTPTemporaryRedirect(location=monthurlfor(request,methodtype,methodkey,subtypekey,besttime))
     except:
         return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))        
@@ -192,7 +216,7 @@ def portal_view(request):
         linkset=[]
         linkarr=[]
         linkset.append({'name':"Archive:",'link':None})
-        #linkset.append({'link':"/cgi-bin/archive/month?site=%i&type=all" % siteid,'name':'Multi-View'})
+        linkset.append({'link':"/by_site/%i/all/" % siteid,'name':'Multi-View'})
 
         ins=n.Instruments
         for i in ins:
@@ -224,7 +248,7 @@ def portal_view(request):
         linkset=[]
         linkarr=[]
         linkset.append({'name':"Archive:",'link':None})
-        #linkset.append({'link':"/cgi-bin/archive/month?site=%i&type=all" % siteid,'name':'Multi-View'})
+        linkset.append({'link':"/by_site/%i/all/" % siteid,'name':'Multi-View'})
 
         ins=n.Instruments
         for i in ins:
@@ -319,24 +343,56 @@ def date_view(request):
         nextlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,nextlinkdate)
     if priorlinkdate:
         prevlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,priorlinkdate)
+    redirectbuttons=[]
+    redirectbuttons.append(makeformbutton("Customize Image","http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi",selectdate,nextdate))
+    redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
+    redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
+    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})
+    redirectbuttons.append(makeformbutton("Generate NetCDF","http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi",selectdate,nextdate))
+    redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
+    redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
+    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})
+    redirectbuttons.append(makeformbutton("Show LogBook","http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi",selectdate,nextdate))
+    redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
+    redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
+    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})
+    redirectbuttons[-1]['inputs'].append({'name':'dataset','value':'%i' % dpl_hsrllore_datasetForSite(int(methodkey))})
     return { 
         'entries':entries,'caltypes':caltypes,
         'newmonthform':request.relative_url("/selectmonth",True),'methodtype':methodtype,'methodkey':methodkey,
-        'thistime':selectdate,
+        'thistime':selectdate,'redirectbuttons':redirectbuttons,
         'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
 @view_config(route_name='month',renderer='templates/monthtemplate.pt')
+@view_config(route_name='multiview',renderer='templates/monthtemplate.pt')
 def month_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
-    subtypekey=request.matchdict['thumbtype']
+    if 'thumbtype' in request.matchdict:
+        subtypekey=request.matchdict['thumbtype']
+    else:
+        subtypekey='all'
+    isMulti=(subtypekey=='all')
     yearno=int(request.matchdict['year'])
     monthno=int(request.matchdict['month'])
+    dayno=1
+    if 'day' in request.matchdict:
+        if not isMulti:
+            return redirect_month(request)
+        dayno=int(request.matchdict['day'])
+    elif isMulti:
+        return redirect_month(request)
     datasetdesc=methodkey
     imagedesc=subtypekey
-    thismonth=validdate(yearno,monthno)
-    nextmonth=validdate(thismonth.year,thismonth.month+1)
-    prevmonth=validdate(thismonth.year,thismonth.month-1)
+    thismonth=validdate(yearno,monthno,dayno)
+    if isMulti:
+        pagedesc=thismonth.strftime('%D %B %Y')
+        nextmonth=validdate(thismonth.year,thismonth.month,thismonth.day+4)
+        prevmonth=validdate(thismonth.year,thismonth.month,thismonth.day-4)
+    else:
+        pagedesc=thismonth.strftime('%B %Y')
+        nextmonth=validdate(thismonth.year,thismonth.month+1)
+        prevmonth=validdate(thismonth.year,thismonth.month-1)
     vdate=None
     try:
         vdate=validClosestTime(methodtype,methodkey,thismonth)
@@ -350,7 +406,6 @@ def month_view(request):
     nextlinkdate=validLaterTime(methodtype,methodkey,nextmonth)
     #    currenttime=datetime.utcnow();
     endthismonth=nextmonth
-    pagedesc=thismonth.strftime('%B %Y')
     if subtypekey=='depol' or subtypekey=='bscat':
         pagedesc+=' 0-15km'
     nextlink=None
@@ -363,26 +418,36 @@ def month_view(request):
         prevlink=monthurlfor(request,request.matchdict['accesstype'],methodkey,subtypekey,priorlinkdate)
 
     caltypes=[]
+    arr=[]
+    entrynames=[]
+    if isMulti:
+        thumbs=dpl_hsrllore_simpleThumbPrefixes(int(methodkey))
+    else:
+        thumbs=(subtypekey,)
 
-    try:
+    for thumbtype in thumbs:
+      try:
         usewindowstart=validLaterTime(methodtype,methodkey,thismonth)
         usewindowend=validPriorTime(methodtype,methodkey,endthismonth)
         #print 'range'
         #print usewindowstart
         #print usewindowend
-        gen=dpl_hsrl_imagearchive(methodtype,methodkey,subtypekey,True,usewindowstart,usewindowend)
+        gen=dpl_hsrl_imagearchive(methodtype,methodkey,thumbtype,True,usewindowstart,usewindowend)
         if hasattr(gen,'SiteName'):
             datasetdesc=gen.SiteName
         if hasattr(gen,'ImageName'):
             imagedesc=gen.ImageName
         if hasattr(gen,'availableThumbPrefixes'):
             caltypes=gen.availableThumbPrefixes
-    except KeyError as e:
+      except KeyError as e:
         return HTTPNotFound(e)
-    pagename='%s - %s' % (datasetdesc,imagedesc)
-    arr=makecalendar(request,gen)
+      pagename='%s - %s' % (datasetdesc,imagedesc)
+      entrynames.append(imagedesc)
+      arr.append(makecalendar(request,gen))
+    if subtypekey=="all":
+        pagename='%s - Multi-View' % datasetdesc
     return {'project':'Picnic',
-            'entries':arr,'newmonthform':request.relative_url("/selectmonth",True),'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
+            'allentries':arr,'entrynames':entrynames,'newmonthform':request.relative_url("/selectmonth",True),'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
             'firsttime':validLaterTime(methodtype,methodkey,datetime(1990, 1, 1, 0, 0, 0)),
             'thistime':thismonth,
             'lasttime':validPriorTime(methodtype,methodkey,datetime.utcnow()),

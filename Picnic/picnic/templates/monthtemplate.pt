@@ -10,6 +10,7 @@
 
 function checkViewType() {
   itemlist = document.forms[0];
+  itemlist['type'].onchange="checkViewType();";
   idx=itemlist['type'].selectedIndex;
 
   daybutton = document.getElementById('daybutton');
@@ -26,11 +27,11 @@ function checkViewType() {
 </head>
 <body>
 <div id="wrap">
-  <table><tbody>
+  <table align="center"><tbody>
     <tr>
-      <td align="left" width="150"><a href="${prevlink}" tal:condition="prevlink">Previous Month</a></td>
+      <td align="left" width="150"><a href="${prevlink}" tal:condition="prevlink">Previous</a></td>
       <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
-      <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next Month</a></td>
+      <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next</a></td>
     </tr>
     <tr><td></td><td align="center">
       <form name="newmonth" action="${newmonthform}">
@@ -39,16 +40,20 @@ function checkViewType() {
           <tr>
             <td align="center">
               <select name=type>
+                <option value="all" tal:attributes="selected 'all'==selectedtype" >Multi-View</option>
                 <option tal:repeat="thumbtype caltypes" tal:content="thumbtype.name" tal:attributes="value thumbtype.prefix;selected thumbtype.prefix==selectedtype" />
               </select>
           </td>
             <td align="center">
               <span id="daybutton">
+              <select name=day>
+                <option tal:repeat="daday range(1,32)" tal:content="daday" tal:attributes="value daday;selected daday==thistime.day"/>
+              </select>
               </span>
             </td>
             <td align="center">
-              <select name=month>
-                <option tal:condition="lasttime.year!=firsttime.year" tal:repeat="damonth range(1,13)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
+             <select name=month>
+               <option tal:condition="lasttime.year!=firsttime.year" tal:repeat="damonth range(1,13)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
                 <option tal:condition="lasttime.year==firsttime.year" tal:repeat="damonth range(firsttime.month,lasttime.month+1)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
              </select>
             </td>
@@ -69,21 +74,28 @@ function checkViewType() {
     </td></tr>
     <tr><td></td><td align="center"><a href="${request.relative_url('/',to_application=True)}">Return to Data Portal</a></td></tr>
     <tr><td colspan=3>
-       <table cellspacing="3">
-        <tbody tal:define="customfillerimageurl None">
-          <tr tal:repeat="i range((len(entries)+7)/8)">
-            <td tal:repeat="j range(8*i,min(8*(i+1),len(entries)))">
+      <table cellspacing="3">
+        <tbody tal:define="customfillerimageurl None;imwidth 8 if len(allentries)<=1 else 50">
+        <div tal:repeat="ent range(len(allentries))">
+          <tr tal:repeat="i range((len(allentries[ent])+imwidth-1)/imwidth)" tal:define="entries allentries[ent]">
+            <td tal:condition="len(entrynames)>1">${entrynames[ent]}</td>
+            <td tal:repeat="j range(imwidth*i,min(imwidth*(i+1),len(entries)))">
               <img tal:attributes="src entries[j].imageurl" tal:condition="not entries[j].dayurl and entries[j].imageurl" tal:define="global customfillerimageurl entries[j].imageurl or customfillerimageurl">
               <a tal:attributes="href entries[j].dayurl" tal:condition="entries[j].dayurl and entries[j].imageurl"><img tal:attributes="src entries[j].imageurl" tal:define="global customfillerimageurl None"></a>
-              <img tal:attributes="src missingimageurl" tal:condition="not entries[j].imageurl and (j==(i*8) or entries[j-1].imageurl) and not customfillerimageurl">
-              <img tal:attributes="src customfillerimageurl" tal:condition="not entries[j].imageurl and j==(i*8) and customfillerimageurl">
-              <img tal:attributes="src blankimageurl" tal:condition="not entries[j].imageurl and not j==(i*8) and (not entries[j-1].imageurl or customfillerimageurl)">
+              <img tal:attributes="src missingimageurl" tal:condition="not entries[j].imageurl and (j==(i*imwidth) or entries[j-1].imageurl) and not customfillerimageurl">
+              <img tal:attributes="src customfillerimageurl" tal:condition="not entries[j].imageurl and j==(i*imwidth) and customfillerimageurl">
+              <img tal:attributes="src blankimageurl" tal:condition="not entries[j].imageurl and not j==(i*imwidth) and (not entries[j-1].imageurl or customfillerimageurl)">
             </td>
           </tr>
+        </div>
         </tbody>
       </table>
     </td></tr>
   </tbody></table>
 </div>
+<script type="text/javascript"><!--
+checkViewType();
+-->
+</script>
 </body>
 </html>

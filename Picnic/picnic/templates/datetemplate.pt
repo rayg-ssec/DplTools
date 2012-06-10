@@ -8,7 +8,7 @@
 </head>
 <body>
 <div id="wrap">
-  <table><tbody>
+  <table align="center"><tbody>
     <tr>
       <td align="left" width="150"><a href="${prevlink}" tal:condition="prevlink">Previous</a></td>
       <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
@@ -22,6 +22,17 @@
             <td>
               Entire Month:
             </td>
+            <td>
+              <form name="Multi-View" action="${newmonthform}">
+              <input type="hidden" name="type" value="all"/>
+              <input type="hidden" name="day" value="${thistime.day}"/>
+              <input type="hidden" name="month" value="${thistime.month}"/>
+              <input type="hidden" name="year" value="${thistime.year}"/>
+              <input type="hidden" name="accessby" value="${methodtype}"/>
+              <input type="hidden" name="accessto" value="${methodkey}"/>
+              <input type="submit" value="Multi-View"/>
+              </form>
+            </td>
             <td tal:repeat="cal caltypes">
               <form name="${cal.name}" action="${newmonthform}">
               <input type="hidden" name="type" value="${cal.prefix}"/>
@@ -34,6 +45,27 @@
               </form>
             </td>
           </tr>
+        </tbody></table>
+      </td>
+    </tr>
+    <tr>
+      <td></td>
+      <td align="center">
+        <a href="${request.relative_url('/',to_application=True)}">Return to Data Portal</a>
+      </td>
+    </tr>
+    <tr>
+      <td></td>
+      <td align="center">
+        <table><tbody>
+          <td>
+            <tr tal:repeat="formbutton redirectbuttons">
+              <form name="${formbutton.submit}" action="${formbutton.url}" >
+              <input type="hidden" tal:repeat="forminput formbutton.inputs" tal:attributes="name forminput.name;value forminput.value"/>
+              <input type="submit" value="${formbutton.submit}" />
+              </form>
+            </tr>
+          </td>
         </tbody></table>
       </td>
     </tr>
