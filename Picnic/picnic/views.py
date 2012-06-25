@@ -173,8 +173,12 @@ def imageurlfor(req,inst,date,fname,fullfile):
     if hashname not in staticresources:
         b={}
         b['filename']=fullfile
-        b['mimetype']='image/jpeg'
-        staticresources[hashname]=b
+        if fullfile.endswith('.jpg'):
+            b['mimetype']='image/jpeg'
+        if fullfile.endswith('.png'):
+            b['mimetype']='image/png'
+        if 'mimetype' in b:
+            staticresources[hashname]=b
     return req.relative_url('/statichash/'+ hashname,to_application=True) #req.static_url(fname)
 
 def makecalendar(req,gen):
