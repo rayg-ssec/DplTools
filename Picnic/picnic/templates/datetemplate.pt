@@ -69,7 +69,7 @@
         </tbody></table>
       </td>
     </tr>
-    <tr><td colspan=3>
+    <tr><td colspan="3">
       <table cellspacing="3">
         <tbody>
           <tr tal:repeat="entry entries">

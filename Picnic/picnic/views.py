@@ -26,7 +26,13 @@ def makeformbutton(label,cgiurl,bdate,edate):
                 ]
             }
 
-def validdate(yearno,monthno,dayno=1,hourno=0):
+def validdate(yearno,monthno,dayno=1,hourno=0,minuteno=0):
+    while minuteno>=60:
+        minuteno-=60
+        hourno+=1
+    while minuteno<0:
+        minuteno+=60
+        hourno-=1
     while hourno>23:
         hourno-=24
         dayno+=1
@@ -54,7 +60,7 @@ def validdate(yearno,monthno,dayno=1,hourno=0):
             yearno-=1
         (dummy,daysinmonth)=calendar.monthrange(yearno,monthno)
         dayno+=daysinmonth
-    return datetime(yearno,monthno,dayno,hourno,0,0)
+    return datetime(yearno,monthno,dayno,hourno,minuteno,0)
 
 def monthurlfor(req,atype,access,imtype,date):
     URL='/%s/%s/%s/%04i/%02i/' % (atype,access,imtype,date.year,date.month)
@@ -80,28 +86,36 @@ def select_month(request):
         return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))
 
 def redirect_month(request):
-    try:
+    #try:
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
         subtypekey=request.matchdict['thumbtype']
+        nowtime=datetime.utcnow()
         if 'year' in request.matchdict:
             yearno=int(request.matchdict['year'])
         else:
-            yearno=datetime.utcnow().year
+            yearno=nowtime.year
         if 'month' in request.matchdict:
             monthno=int(request.matchdict['month'])
         else:
-            monthno=datetime.utcnow().month
+            monthno=nowtime.month
         if 'day' in request.matchdict:
             dayno=int(request.matchdict['month'])
-        elif monthno==datetime.utcnow().month and yearno==datetime.utcnow().year:
-            dayno=datetime.utcnow().day-3
+        elif monthno==nowtime.month and yearno==nowtime.year and subtypekey=='all':
+            dayno=nowtime.day-3
+            if dayno<=0:
+                monthno-=1
+                if monthno<=0:
+                    monthno+=12
+                    yearno-=1
+                (dummy,daysinmonth)=calendar.monthrange(yearno,monthno)
+                dayno+=daysinmonth
         else:
             dayno=1
         besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,0,0,0))
         return HTTPTemporaryRedirect(location=monthurlfor(request,methodtype,methodkey,subtypekey,besttime))
-    except:
-        return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))        
+    #except:
+    #return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))        
 
 def dayurlfor(req,atype,access,date):
     returl='/%s/%s/%04i/%02i/%02i/' % (atype,access,date.year,date.month,date.day)
@@ -128,18 +142,19 @@ def redirect_day(request):
     try:
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
+        nowtime=datetime.utcnow()
         if 'year' in request.matchdict:
             yearno=int(request.matchdict['year'])
         else:
-            yearno=datetime.utcnow().year
+            yearno=nowtime.year
         if 'month' in request.matchdict:
             monthno=int(request.matchdict['month'])
         else:
-            monthno=datetime.utcnow().month
+            monthno=nowtime.month
         if 'day' in request.matchdict:
             dayno=int(request.matchdict['day'])
         else:
-            dayno=datetime.utcnow().day
+            dayno=nowtime.day
         if 'ampm' in request.matchdict:
             ampm=request.matchdict['ampm']
             if ampm=='am':
@@ -147,7 +162,7 @@ def redirect_day(request):
             else:
                 hourno=12
         else:
-            hourno=datetime.utcnow().hour
+            hourno=nowtime.hour
         besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,hourno,0,0))
         return HTTPTemporaryRedirect(location=dayurlfor(request,methodtype,methodkey,besttime))
     except:
@@ -231,11 +246,11 @@ def portal_view(request):
                 linkset.append({'link':"/by_site/%i/%s/" % (siteid,inst.thumbsets[0].prefix),'name':i})
         linkarr.append(linkset)
         linkset=[]
-        linkarr.append([{'link':"http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid,
-                         #'link':"/by_site/%i/custom_rti/" % siteid ,
+        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid,
+                         'link':"/by_site/%i/custom_rti/" % siteid ,
                          'name':"Custom Images"}])
-        linkarr.append([{'link':"http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid,
-                         #'link':"/by_site/%i/custom_netcdf/" % siteid ,
+        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid,
+                         'link':"/by_site/%i/custom_netcdf/" % siteid ,
                          'name':"Custom NetCDF"}])
         entry['linkarray']=linkarr
         activesites.append(entry)
@@ -264,11 +279,11 @@ def portal_view(request):
                 retstr+="- <a href=\"/by_site/%i/%s/\">%s</a>\n" % (siteid,inst.thumbsets[0].prefix,i);
         linkarr.append(linkset)
         linkset=[]
-        linkarr.append([{'link':"http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid,
-                         #'link':"/by_site/%i/custom_rti/" % siteid,
+        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid,
+                         'link':"/by_site/%i/custom_rti/" % siteid,
                          'name':"Custom Images"}])
-        linkarr.append([{'link':"http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid,
-                         #'link':"/by_site/%i/custom_netcdf/" % siteid,
+        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid,
+                         'link':"/by_site/%i/custom_netcdf/" % siteid,
                          'name':"Custom NetCDF"}])
         entry['linkarray']=linkarr
         inactivesites.append(entry)
@@ -343,7 +358,7 @@ def date_view(request):
             entries.append({'calurl':calurl,'imageurl':imageurl})
     nextlink=None
     prevlink=None
-    if datetime.utcnow()>nextdate and nextlinkdate:
+    if currentime>nextdate and nextlinkdate:
         nextlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,nextlinkdate)
     if priorlinkdate:
         prevlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,priorlinkdate)
@@ -408,14 +423,15 @@ def month_view(request):
     if priorlinkdate>=thismonth:
         priorlinkdate=validPriorTime(methodtype,methodkey,prevmonth)
     nextlinkdate=validLaterTime(methodtype,methodkey,nextmonth)
-    #    currenttime=datetime.utcnow();
+    currenttime=datetime.utcnow();
     endthismonth=nextmonth
     if subtypekey=='depol' or subtypekey=='bscat':
         pagedesc+=' 0-15km'
     nextlink=None
     prevlink=None
-    if datetime.utcnow()<=nextmonth:
-        endthismonth=datetime.utcnow()
+    
+    if currenttime<=nextmonth:
+        endthismonth=currenttime
     elif nextlinkdate:
         nextlink=monthurlfor(request,request.matchdict['accesstype'],methodkey,subtypekey,nextlinkdate)
     if priorlinkdate:
@@ -454,8 +470,24 @@ def month_view(request):
             'allentries':arr,'entrynames':entrynames,'newmonthform':request.relative_url("/selectmonth",True),'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
             'firsttime':validLaterTime(methodtype,methodkey,datetime(1990, 1, 1, 0, 0, 0)),
             'thistime':thismonth,
-            'lasttime':validPriorTime(methodtype,methodkey,datetime.utcnow()),
+            'lasttime':validPriorTime(methodtype,methodkey,currenttime),
             'caltypes':caltypes,'monthnames':calendar.month_name,
             'missingimageurl':imageurlfor(request,None,None,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
             'blankimageurl':imageurlfor(request,None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
+
+
+@view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
+@view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
+def form_view(request):
+    methodtype=request.matchdict['accesstype']
+    methodkey=request.matchdict['access']
+    lasttime=validClosestTime(methodtype,methodkey,datetime.utcnow())
+    endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
+    starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
+    (instruments,name)=dpl_hsrllore_simpleDatasets(int(methodkey))
+    return {'project':'Picnic',
+            'bdate':starttime,
+            'edate':endtime,'monthnames':calendar.month_name,
+            'datasets':instruments,
+            'sitename':name}

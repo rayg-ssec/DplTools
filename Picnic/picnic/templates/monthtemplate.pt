@@ -10,7 +10,6 @@
 
 function checkViewType() {
   itemlist = document.forms[0];
-  itemlist['type'].onchange="checkViewType();";
   idx=itemlist['type'].selectedIndex;
 
   daybutton = document.getElementById('daybutton');
@@ -39,26 +38,26 @@ function checkViewType() {
         <tbody>
           <tr>
             <td align="center">
-              <select name=type>
+              <select name="type" onchange="checkViewType();">
                 <option value="all" tal:attributes="selected 'all'==selectedtype" >Multi-View</option>
                 <option tal:repeat="thumbtype caltypes" tal:content="thumbtype.name" tal:attributes="value thumbtype.prefix;selected thumbtype.prefix==selectedtype" />
               </select>
           </td>
             <td align="center">
               <span id="daybutton">
-              <select name=day>
+              <select name="day">
                 <option tal:repeat="daday range(1,32)" tal:content="daday" tal:attributes="value daday;selected daday==thistime.day"/>
               </select>
               </span>
             </td>
             <td align="center">
-             <select name=month>
+             <select name="month">
                <option tal:condition="lasttime.year!=firsttime.year" tal:repeat="damonth range(1,13)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
                 <option tal:condition="lasttime.year==firsttime.year" tal:repeat="damonth range(firsttime.month,lasttime.month+1)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
              </select>
             </td>
             <td>
-              <select name=year>
+              <select name="year">
                 <option tal:repeat="dayear range(lasttime.year,firsttime.year-1,-1)" tal:content="dayear" tal:attributes="value dayear;selected dayear==thistime.year"/>
               </select>
             </td>
@@ -73,7 +72,7 @@ function checkViewType() {
       </form>
     </td></tr>
     <tr><td></td><td align="center"><a href="${request.relative_url('/',to_application=True)}">Return to Data Portal</a></td></tr>
-    <tr><td colspan=3>
+    <tr><td colspan="3">
       <table cellspacing="3">
         <tbody tal:define="customfillerimageurl None;imwidth 8 if len(allentries)<=1 else 50">
         <div tal:repeat="ent range(len(allentries))">
