@@ -482,6 +482,9 @@ def month_view(request):
 def form_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
+    if methodtype=='by_site':
+        pathname='site'
+        pathidx=int(methodkey)
     lasttime=validClosestTime(methodtype,methodkey,datetime.utcnow())
     endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
     starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
@@ -489,5 +492,5 @@ def form_view(request):
     return {'project':'Picnic',
             'bdate':starttime,
             'edate':endtime,'monthnames':calendar.month_name,
-            'datasets':instruments,
+            'datasets':instruments,pathname:pathidx,
             'sitename':name}

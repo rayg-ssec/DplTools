@@ -3,13 +3,13 @@
 <head>
 <Title>${sitename} Processed Data Retreival</Title>
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
-<script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?js=yes&site=13"></script>
+<script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?js=yes&site=${site}"></script>
 <style type="text/css">.checklink A:link {color: #000000; text-decoration: none} .checklink A:visited {text-decoration: none} .checklink A:active {text-decoration: none} .checklink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
 <FORM id="reqform" ACTION="http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi" METHOD="GET">
 <INPUT TYPE="HIDDEN" NAME="URL" VALUE="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/exportdata.cgi"/>
-<INPUT TYPE="HIDDEN" NAME="site" VALUE="13"/>
+<INPUT TYPE="HIDDEN" NAME="site" VALUE="${site}"/>
 <P/>
 <div align="center">
 <B>${sitename}</B><BR/>
@@ -19,16 +19,16 @@ year<select NAME="byr" SIZE="1" onchange="freshentop();checkDataAvailability();"
 <option  tal:repeat="byear range(2012,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
 </select>
 month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value bmonth;selected bdate.month==bmonth"/>
+<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value monthnames[bmonth];selected bdate.month==bmonth"/>
 </select>
 day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bday range(1,32)" tal:content="bday" tal:attributes="value bday;selected bdate.day==bday"/>
+<option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value '%02i' % bday;selected bdate.day==bday"/>
 </select>
 hour<select NAME="bhr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bhour range(0,24)" tal:content="bhour" tal:attributes="value bhour;selected bdate.hour==bhour"/>
+<option  tal:repeat="bhour range(0,24)" tal:content="'%02i' % bhour" tal:attributes="value '%02i' % bhour;selected bdate.hour==bhour"/>
 </select>
 minute<select NAME="bmn" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bmin range(0,5,60)" tal:content="bmin" tal:attributes="value bmin;selected bdate.minute==bmin"/>
+<option  tal:repeat="bmin range(0,60,5)" tal:content="'%02i' % bmin" tal:attributes="value '%02i' % bmin;selected bdate.minute==bmin"/>
 </select>
 <P/><P/>
 <B><TT>To:    </TT></B><P/>
@@ -36,16 +36,16 @@ year<select NAME="eyr" SIZE="1" onchange="freshenbottom();checkDataAvailability(
 <option  tal:repeat="eyear range(2012,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
 </select>
 month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value emonth;selected edate.month==emonth"/>
+<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value monthnames[emonth];selected edate.month==emonth"/>
 </select>
 day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="eday range(1,32)" tal:content="eday" tal:attributes="value eday;selected edate.day==eday"/>
+<option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value '%02i' % eday;selected edate.day==eday"/>
 </select>
 hour<select NAME="ehr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="ehour range(0,24)" tal:content="ehour" tal:attributes="value ehour;selected edate.hour==ehour"/>
+<option  tal:repeat="ehour range(0,24)" tal:content="'%02i' % ehour" tal:attributes="value '%02i' % ehour;selected edate.hour==ehour"/>
 </select>
 minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="emin range(0,5,60)" tal:content="emin" tal:attributes="value emin;selected edate.minute==emin"/>
+<option  tal:repeat="emin range(0,60,5)" tal:content="'%02i' % emin" tal:attributes="value '%02i' % emin;selected edate.minute==emin"/>
 </select>
 <INPUT TYPE="HIDDEN" NAME="fill" value="on"/></div><div align="center">
 <TABLE border="2"><TR><TD>
