@@ -1,12 +1,13 @@
 from pyramid.view import view_config
 from dpl_hsrl_imagearchive import *
-from datetime import datetime
+from datetime import datetime,timedelta
 from pyramid.httpexceptions import HTTPNotFound, HTTPTemporaryRedirect
 from webob import Response
 from hashlib import sha1 as hashfunc
 import os
 import calendar
 import plistlib
+import multiprocessing
 
 staticresources={};
 
@@ -358,7 +359,7 @@ def date_view(request):
             entries.append({'calurl':calurl,'imageurl':imageurl})
     nextlink=None
     prevlink=None
-    if currentime>nextdate and nextlinkdate:
+    if currenttime>nextdate and nextlinkdate:
         nextlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,nextlinkdate)
     if priorlinkdate:
         prevlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,priorlinkdate)
@@ -476,6 +477,42 @@ def month_view(request):
             'blankimageurl':imageurlfor(request,None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
+from hsrl.dpl_experimental.dpl_rti import dpl_rti
+
+def dp(dplc,instrument):
+    import hsrl.data_stream.open_config as oc
+    import hsrl.data_stream.display_utilities as du
+    import json
+    du.init_colorbar_status()
+    v=dplc
+
+    (disp,conf)=du.get_display_defaults('archive_plots.json')
+    fd = oc.open_config('process_control.json')
+    dd = json.load(fd)
+    #self.rs_static.corr_adjusts = dd['corr_adjusts']
+    process_defaults=dd['processing_defaults']
+    fd.close()
+  
+    rs=None
+    for n in v:
+        figs=du.show_images(instrument,n,None,{},process_defaults,disp,None,None,None)
+        #print n.rs_inv.beta_a_backscat_par
+        #print n.rs_inv.times
+        # force a redraw
+        rs=n
+
+        for x in figs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
+        
+        #      print 'updating  %d' % x.num
+        
+        
+            fig = figs.figure(x)#plt.figure(x.num)
+        
+      # QApplication.processEvents()
+            
+            fig.canvas.draw()
+            #fig.canvas.
+
 
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
@@ -488,7 +525,13 @@ def form_view(request):
     lasttime=validClosestTime(methodtype,methodkey,datetime.utcnow())
     endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
     starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
+    session=request.session
+    print session.get_csrf_token()
     (instruments,name)=dpl_hsrllore_simpleDatasets(int(methodkey))
+    #dplc=dpl_rti('bagohsrl',starttime,endtime,timedelta(seconds=15),endtime-starttime,0,15*1000,15);
+    #multiprocessing.Process(target=dp,args=(dplc,'bagohsrl')).start()
+    #dp(dplc,'bagohsrl')
+    #print request.__dict__
     return {'project':'Picnic',
             'bdate':starttime,
             'edate':endtime,'monthnames':calendar.month_name,

@@ -4,6 +4,8 @@ from pyramid.config import Configurator
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
+    import matplotlib
+    matplotlib.use('Agg')
     my_session_factory = UnencryptedCookieSessionFactoryConfig('picnicsecret')
     config = Configurator(settings=settings, session_factory=my_session_factory)
     config.add_static_view('static', 'static', cache_max_age=3600)
