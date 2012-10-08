@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-package.module
-~~~~~~~~~~~~~
+dplkit.role.narrator
+~~~~~~~~~~~~~~~~~~~~
 
+A Narrator is initialized with a sequence of equivalent media URIs,
+and when called, generates a series of data frames.
 
-A description which can be long and explain the complete
-functionality of this module even with indented code examples.
-Class/Function however should not be documented here.
-
+The narrator is created one-per-media-uri, 
+optionally one-per-media-uri-sequence iff it makes the 
+most sense to implicitly catenate media file contents.
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
 :license: GPLv3, see LICENSE for more details
@@ -28,11 +29,11 @@ class aNarrator(object):
     """
     meta = None     # a mapping of what channels are provided, use @property to provide an active form
 
-    def __init__(self, uri, *args, **kwargs):
-        """given a uri and constraint arguments, initialize the narrator
+    def __init__(self, media_uri, *args, **kwargs):
+        """given media information and constraint arguments, initialize the narrator
         """
         super(aNarrator, self).__init__()
-        self.uri = uri
+        self._media_uri = media_uri
 
     def __call__(self, **kwargs):
         """yield a series of frames from the desired part of the input file or files
@@ -48,17 +49,16 @@ class CsvNarrator(aNarrator):
     _csv = None
     meta = None
 
-    def __init__(self, uri, **kwargs):
+    def __init__(self, urls, **kwargs):
         from csv import DictReader
         from urllib2 import urlopen
-        fp = urlopen(uri)
-        self._csv = csv = DictReader(fp)
-        self.meta = dict((name, None) for name in csv.fieldnames)
-
+        self._csv = csv = [DictReader(urlopen(url)) for url in urls]
+        self.meta = dict((name, None) for name in csv[0].fieldnames)
 
     def __call__(self, **kwargs):
-        for row in self._csv:
-            yield row
+        for csv in self._csv:
+            for row in csv:
+                yield row
 
 
 
@@ -70,10 +70,16 @@ class CsvNarrator(aNarrator):
 #
 
 
-def test():
+def test(*args):
     """ """
-    pass
+    from pprint import pprint
+    tcn = CsvNarrator(args)
+    for frame in tcn():
+        pprint(frame)
+    pprint(list(tcn.meta.keys()))
+    
 
 
 if __name__=='__main__':
-    test()
+    from sys import argv
+    test(*argv[1:])
