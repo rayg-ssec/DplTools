@@ -6,7 +6,7 @@ package.module
 
 
 
-librarian(search-terms) -> asset-uris
+librarian(search-criteria) -> [asset-uri, asset-uri...]
 
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
@@ -15,13 +15,19 @@ librarian(search-terms) -> asset-uris
 
 import os, sys
 import logging
+from exceptions import Exception
 
 LOG = logging.getLogger(__name__)
 
 
+class AmbiguousQuery(Exception):
+    """Exception saying that a given query doesn't resolve to an un-ambiguous sequence of assets
+    """
+    pass
+
 
 class aLibrarian(object):
-    """A Librarian returns sets of media URIs given search expressions.
+    """A Librarian returns sets of media asset URIs when given search expressions.
     """
     meta = None  # dictionary of available search keys for the collection
 
@@ -31,19 +37,16 @@ class aLibrarian(object):
         super(aLibrarian, self).__init__()
 
     def __call__(self, *where_exprs, **key_values):
-        """return sqeuence of asset URIs matching search conditions
-        where_exprs is a series of string expressions (SQL-based) of which all must be satisfied
-        key_values is a dictionary of asset attributes that must match, and can include lambda expressions returning true/false
-
-        example:
+        """
+        Yield time-ordered sequence of non-overlapping asset URIs satisfying search conditions
+        where_exprs is a series of string expressions (SQL-conformant) of which all must be satisfied
+        key_values is a dictionary of asset attributes that must match
+        key_values can also include lambda expressions returning true/false on the key in question
+        Admissible keys should be a subset of librarian's meta.keys().
+ 
+        examples:
         uri_seq = librarian(date = lambda x: (x >= mindate) and (x < maxdate))
         """
-        pass
-
-    def where(self, where_expr):
-        pass
-
-    def having(self, **key_values):
         pass
 
 

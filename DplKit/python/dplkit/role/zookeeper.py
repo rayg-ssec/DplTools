@@ -34,6 +34,12 @@ class aZookeeper(object):
         super(aZookeeper, self).__init__()
         self.uri = uri
 
+    def open(self, uri):
+        """
+        return a file object (or equivalent as expected by the client) for a given URI
+        """
+        return None
+
     def __call__(self, uri=None):
         """yields a sqeuence of media uri sets
         """
