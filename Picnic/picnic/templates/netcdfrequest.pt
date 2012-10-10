@@ -1,0 +1,409 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+<Title>${sitename} Processed Data Retreival</Title>
+<script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
+<script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?js=yes&site=${site}"></script>
+<style type="text/css">.checklink A:link {color: #000000; text-decoration: none} .checklink A:visited {text-decoration: none} .checklink A:active {text-decoration: none} .checklink A:hover {text-decoration: underline;}</style>
+</head>
+<body>
+<FORM id="reqform" ACTION="http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi" METHOD="GET">
+<INPUT TYPE="HIDDEN" NAME="URL" VALUE="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/exportdata.cgi"/>
+<INPUT TYPE="HIDDEN" NAME="site" VALUE="${site}"/>
+<P/>
+<div align="center">
+<B>${sitename}</B><BR/>
+<B>To generate a Downloadable NetCDF Dataset,<br/>select UTC time and averaging intervals for data</B><BR/><BR/>
+<B><TT>From:    </TT></B><P/>
+year<select NAME="byr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="byear range(2012,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
+</select>
+month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value monthnames[bmonth];selected bdate.month==bmonth"/>
+</select>
+day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value '%02i' % bday;selected bdate.day==bday"/>
+</select>
+hour<select NAME="bhr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="bhour range(0,24)" tal:content="'%02i' % bhour" tal:attributes="value '%02i' % bhour;selected bdate.hour==bhour"/>
+</select>
+minute<select NAME="bmn" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="bmin range(0,60,5)" tal:content="'%02i' % bmin" tal:attributes="value '%02i' % bmin;selected bdate.minute==bmin"/>
+</select>
+<P/><P/>
+<B><TT>To:    </TT></B><P/>
+year<select NAME="eyr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="eyear range(2012,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
+</select>
+month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value monthnames[emonth];selected edate.month==emonth"/>
+</select>
+day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value '%02i' % eday;selected edate.day==eday"/>
+</select>
+hour<select NAME="ehr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="ehour range(0,24)" tal:content="'%02i' % ehour" tal:attributes="value '%02i' % ehour;selected edate.hour==ehour"/>
+</select>
+minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="emin range(0,60,5)" tal:content="'%02i' % emin" tal:attributes="value '%02i' % emin;selected edate.minute==emin"/>
+</select>
+<INPUT TYPE="HIDDEN" NAME="fill" value="on"/></div><div align="center">
+<TABLE border="2"><TR><TD>
+<TABLE><TR><TD align="right">
+Min altitude: 
+</TD><TD align="right">
+<select name="lheight" size="1"  onchange="checkGridSize();" >
+<option tal:repeat="x range(1,15)" tal:content="x" tal:attributes="value x;selected x==0"/>
+<option tal:repeat="x range(15,35,5)" tal:content="x" tal:attributes="value x;selected x==0"/>
+</select>
+</TD><TD align="left">
+km
+</TD></TR><TR><TD align="right">
+Max altitude: 
+</TD><TD align="right">
+<select name="height" size="1"  onchange="checkGridSize();" >
+<option tal:repeat="x range(1,15)" tal:content="x" tal:attributes="value x;selected x==15"/>
+<option tal:repeat="x range(15,35,5)" tal:content="x" tal:attributes="value x;selected x==15"/>
+</select>
+</TD><TD align="left">
+km
+</TD></TR></TABLE>
+</TD><TD>
+<TABLE><TR><TD align="right">
+Time Resolution: 
+</TD><TD align="right">
+<select name="timeres" size="1"  onchange="checkGridSize();" >
+<option value="2.5">2.5</option>
+<option value="5">5</option>
+<option value="10">10</option>
+<option value="15">15</option>
+<option value="30" selected="true">30</option>
+<option value="60">60</option>
+<option value="120">120</option>
+<option value="180">180</option>
+<option value="240">240</option>
+<option value="300">300</option>
+<option value="600">600</option>
+<option value="900">900</option>
+<option value="1200">1200</option>
+<option value="3600">3600</option>
+<option value="43200">43200</option>
+</select>
+</TD><TD align="left">
+seconds/record
+</TD></TR><TR><TD align="right">
+Altitude Resolution: 
+</TD><TD align="right">
+<select name="altres" size="1"  onchange="checkGridSize();" >
+<option value="7.5">7.5</option>
+<option value="15">15</option>
+<option value="30" selected="true">30</option>
+<option value="45">45</option>
+<option value="60">60</option>
+<option value="75">75</option>
+<option value="90">90</option>
+<option value="120">120</option>
+<option value="150">150</option>
+<option value="300">300</option>
+<option value="450">450</option>
+<option value="600">600</option>
+<option value="900">900</option>
+<option value="1200">1200</option>
+</select>
+</TD><TD align="left">
+meters/point
+</TD></TR></TABLE>
+</TD><TD>
+<TABLE><TR><TD align="right">
+<A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#filemode"  TARGET="lidarwebdoc">File Mode:</A> 
+</TD><TD align="left">
+<span id="filemoderecommend" style="display: none"><font color="#cc0000">Grid size is huge.<BR/>Recommend breaking into multiple smaller files.<BR/></font></span>
+<select name="filemode" size="1"  onchange="updateFMVisibilities();checkOverpassCount();checkGridSize();sanityCheckSubmit();" >
+<option value="single" selected="true">single</option>
+<option value="satellite">satellite</option>
+<option value="routine">routine</option>
+<option value="30minute">30minute</option>
+<option value="hour">hour</option>
+<option value="day">day</option>
+<option value="week">week</option>
+<option value="month">month</option>
+</select>
+</TD></TR><TR id="fm_multi"><TD align="right" style="background-color: transparent" >
+Username: 
+</TD><TD align="left">
+<INPUT TYPE="TEXT" NAME="username" value="" size="10" maxsize="16" onchange="sanityCheckSubmit();"/><BR/>(4 or more characters)
+</TD></TR></TABLE>
+
+<TABLE><TR id="overhead_mins"><TD colspan="2">
+Minutes Per File:<INPUT TYPE="TEXT" NAME="sat_windowsize" value="60" size="5" maxsize="10"/>
+</TD></TR><TR id="satelliteselect"><TD colspan="2"  id="overpasscount_hi">
+Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5" maxsize="10" onchange="checkOverpassCount();"/>km
+<BR/>Satellite:
+
+<select name="satellite" size="1"  onchange="checkOverpassCount();" >
+<option value="AQUA" selected="true">AQUA</option>
+<option value="AURA">AURA</option>
+<option value="CALIPSO">CALIPSO</option>
+<option value="CLOUDSAT">CLOUDSAT</option>
+<option value="DMSP13">DMSP13</option>
+<option value="DMSP13                from De-Navigation">DMSP13                from De-Navigation</option>
+<option value="DMSP13          Derived from B/L Elements">DMSP13          Derived from B/L Elements</option>
+<option value="DMSP13        Derived from B/L Elements">DMSP13        Derived from B/L Elements</option>
+<option value="DMSP14">DMSP14</option>
+<option value="DMSP14                from De-Navigation">DMSP14                from De-Navigation</option>
+<option value="DMSP14          Derived from B/L Elements">DMSP14          Derived from B/L Elements</option>
+<option value="DMSP14        Derived from B/L Elements">DMSP14        Derived from B/L Elements</option>
+<option value="DMSP15">DMSP15</option>
+<option value="DMSP15                from De-Navigation">DMSP15                from De-Navigation</option>
+<option value="DMSP15          Derived from B/L Elements">DMSP15          Derived from B/L Elements</option>
+<option value="DMSP15        Derived from B/L Elements">DMSP15        Derived from B/L Elements</option>
+<option value="DMSP16">DMSP16</option>
+<option value="DMSP17">DMSP17</option>
+<option value="FY1C">FY1C</option>
+<option value="FY1D">FY1D</option>
+<option value="FY3A">FY3A</option>
+<option value="HUANG1          Manually-Entered Parameters">HUANG1          Manually-Entered Parameters</option>
+<option value="HUANG2          Manually-Entered Parameters">HUANG2          Manually-Entered Parameters</option>
+<option value="HUANG3          Manually-Entered Parameters">HUANG3          Manually-Entered Parameters</option>
+<option value="ISS">ISS</option>
+<option value="LAN7">LAN7</option>
+<option value="METOPA">METOPA</option>
+<option value="NOAA11">NOAA11</option>
+<option value="NOAA12">NOAA12</option>
+<option value="NOAA14">NOAA14</option>
+<option value="NOAA15">NOAA15</option>
+<option value="NOAA16">NOAA16</option>
+<option value="NOAA17">NOAA17</option>
+<option value="NOAA18">NOAA18</option>
+<option value="NOAA19">NOAA19</option>
+<option value="PARASOL">PARASOL</option>
+<option value="TERRA">TERRA</option>
+<option value="TRMM">TRMM</option>
+</select>
+<BR/>Counted <span id="overpasscount">X</span> intervals. <span id="overpass_progress" style="display: none"><font color="#cc0000">(loading...)</font></span><BR/><input type="button" name="satlist" value="Preview Data Intervals (Incomplete)" onclick="previewSatList();" alt="" />
+</TD></TR><TR id="overhead_times"><TD id="sat_times_hi"><TABLE><TR>
+<TD rowspan="5"><select NAME="sat_times" MULTIPLE="true" SIZE="7" onchange="updateFMVisibilities();"></select><INPUT TYPE="hidden" NAME="sat_timeslist" VALUE=""/></TD><TD>Routine File<BR/>Midpoint Times (UT):</TD></TR><TR><TD>
+<select NAME="sat_hour" SIZE="1" >
+<option tal:repeat="x range(0,24)" tal:content="'%02i' % x" tal:attributes="value x;selected x==0"/>
+</select>
+:<select NAME="sat_min" SIZE="1" >
+<option tal:repeat="x range(0,60)" tal:content="'%02i' % x" tal:attributes="value x;selected x==0"/>
+</select>
+</TD></TR><TR><TD><A HREF="javascript: remSatTime();"> <input type="button" name="sat_rem" value="Remove" onclick="remSatTime();" alt="" /></A><A HREF="javascript: addSatTime();"> <input type="button" name="sat_add" value="Add" onclick="addSatTime();" alt="" /></A></TD></TR></TABLE></TD></TR>
+</TABLE>
+</TD></TR></TABLE>
+<TABLE border="2"><TR><TD colspan="2" align="center"><A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#masking" TARGET="lidarwebdoc">Data Quality Masking</A>  (Leave blank to disable)</TD></TR><TR>
+<TD><TABLE>
+<TR><TD align="right">Minimum Radar Backscatter</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.min_radar_backscat" value="1e-15" size="7" MAXSIZE="15" onchange="bscs2rUpdate();"/>
+</TD><TD>1/(m str) </TD></TR>
+<TR><TD align="right">Minimum Lidar Backscatter</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.min_beta_a" value="" size="7" MAXSIZE="15"/>
+</TD><TD>1/(m str) </TD></TR>
+<TR><TD align="right">Minimum Molecular Count</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.mol_lost" value="1" size="7" MAXSIZE="15"/>
+</TD><TD>counts </TD></TR>
+<TR><TD align="right">Lidar Mask Altitude: 0 to </TD><TD><INPUT TYPE="TEXT" NAME="qc_params.min_lidar_alt" value="100" size="7" MAXSIZE="15"/>
+</TD><TD>m </TD></TR>
+<TR><TD align="right">Lock Quality</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.lock_level" value="0.6" size="7" MAXSIZE="15"/>
+</TD><TD> </TD></TR>
+</TABLE></TD>
+<TD><TABLE>
+<TR><TD align="right">Minimum Radar Reflectivity</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.min_radar_dBz" value="" size="7" MAXSIZE="15" onchange="r2bscsUpdate();"/>
+</TD><TD>dBz </TD></TR>
+<TR><TD align="right">Lidar Backscatter Signal-to-Noise Ratio</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.backscat_snr" value="1" size="7" MAXSIZE="15"/>
+</TD><TD> </TD></TR>
+<TR><TD align="right">Molecular Count Signal-to-Noise Ratio</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.mol_snr" value="" size="7" MAXSIZE="15"/>
+</TD><TD> </TD></TR>
+<TR><TD align="right">Radar Mask Altitude: 0 to </TD><TD><INPUT TYPE="TEXT" NAME="qc_params.min_radar_alt" value="200" size="7" MAXSIZE="15"/>
+</TD><TD>m </TD></TR>
+<TR><TD colspan="3"><INPUT TYPE="HIDDEN" NAME="qc_params.seed_percent" value="" size="7" MAXSIZE="15"/>
+</TD></TR>
+</TABLE></TD>
+</TR></TABLE>
+</div>
+
+<DIV ALIGN="CENTER"><font color="#cc0000">under construction</font></DIV> <BR/>
+<DIV ALIGN="CENTER"><a href="http://lidar.ssec.wisc.edu/syst/ahsrl/export_netcdf_help.html">Documentation</a><p/></DIV>
+<DIV ALIGN="CENTER"><BIG><BIG>Select your desired datasets:</BIG></BIG></DIV>
+  <TABLE ALIGN="CENTER" CELLSPACING="5">
+
+<TR>
+<TD colspan="2" align="left"><BIG>Derived Quantities</BIG></TD>
+
+<TD colspan="2" align="left"><A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#rawdata" TARGET="lidarwebdoc"><BIG>Raw Data</BIG></A></TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartBackXSec" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartBackXSec');">Particulate Backscatter Cross Section</A></span></TD>
+
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="Cmb" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('Cmb');">Combined Channel Counts</A></span></TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartOptDep" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartOptDep');">Particulate Optical Depth</A></span></TD>
+
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="Mol" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('Mol');">Molecular Channel Counts</A></span></TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartDepol" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartDepol');">Particulate Depolarization</A></span></TD>
+
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="Crs" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('Crs');">Cross Polarized Channel Counts</A></span></TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartScatXSec" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartScatXSec');">Particulate Extinction Cross Section</A></span></TD>
+
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="RdoProf" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('RdoProf');">Radiosonde Profile(s)</A></span></TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="AttenBackScat" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('AttenBackScat');">Attenuated Molecular Backscatter</A></span></TD>
+
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="MolScatXSec" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('MolScatXSec');">Molecular Scattering Cross Section</A></span></TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="ErrEst" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('ErrEst');">Error Estimates</A></span></TD>
+
+<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="System" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('System');">Calibration/System Measurements</A></span></TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD colspan="2" align="left"><BIG></BIG></TD>
+
+<TD colspan="2" align="left"><BIG></BIG></TD>
+
+<TD colspan="2" align="left"><BIG></BIG></TD>
+
+</TR>
+<TR>
+<TD colspan="2"> </TD>
+
+<TD colspan="2"> </TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD colspan="2"> </TD>
+
+<TD colspan="2"> </TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD colspan="2"> </TD>
+
+<TD colspan="2"> </TD>
+
+<TD colspan="2"> </TD>
+
+</TR>
+<TR>
+<TD colspan="2"> </TD>
+
+<TD colspan="2" align="left"><BIG></BIG></TD>
+
+<TD colspan="2" align="left"><BIG></BIG></TD>
+
+</TR>
+</TABLE>
+
+<DIV ALIGN="CENTER"><span id="param_part" >
+<A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partmeasurements" TARGET="_blank">Particle Size Distribution Parameters</A><BR/>
+<P/>
+<TABLE><TR><TD>New Code.  Use with caution<BR/>Check your Distribution Graphs.<BR/><span id="showgraph"  style="display: none"><A HREF="javascript: sendFormAction('reqform','particleparametergraph.cgi');"> <input type="button" name="graph" value="Size Distribution Graphs" onclick="sendFormAction('reqform','particleparametergraph.cgi');" alt="" /></A></span>
+
+</TD><TD ALIGN="CENTER">
+<TABLE><TR>
+<TD ALIGN="CENTER" COLSPAN="18" style="background: #c0ffc0"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/dist.png" alt="n(D)=aD^alpha exp(-bD^gamma)"/></TD>
+</TR><TR></TR><TR>
+<TD ALIGN="RIGHT" style="background: #c0c0ff"><BIG>Water:</BIG></TD><TD></TD>
+
+<TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/alpha.png" alt="alpha"/>=</TD><TD><INPUT TYPE="TEXT" NAME="particlesettings.alpha_water" VALUE="2" size="3" MAXSIZE="10"/></TD><TD></TD>
+<TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/gamma.png" alt="gamma"/>=</TD><TD><INPUT TYPE="TEXT" NAME="particlesettings.g_water" VALUE="1" size="3" MAXSIZE="10"/></TD><TD></TD><TD></TD>
+<TD ALIGN="RIGHT" style="background: #c0c0ff"><BIG>Ice:</BIG></TD><TD></TD>
+<TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/alpha.png" alt="alpha"/>=</TD><TD><INPUT TYPE="TEXT" NAME="particlesettings.alpha_ice" VALUE="1" size="3" MAXSIZE="10"/></TD><TD></TD>
+<TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/gamma.png" alt="gamma"/>=</TD><TD><INPUT TYPE="TEXT" NAME="particlesettings.g_ice" VALUE="1" size="3" MAXSIZE="10"/></TD>
+
+</TR></TABLE>
+</TD></TR><TR><TD colspan="2">
+<TABLE><TR>
+<TD ALIGN="CENTER" COLSPAN="5" style="background: #c0c0ff"><BIG>Ice:</BIG><BR/></TD>
+</TR><TR>
+<TD>
+<A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#crystalpreset" TARGET="lidarwebdoc">Ice Crystal Type Preset</A>:<BR/><select NAME="presetPSET" size="1" onchange="changePSET();">
+<option>(custom)</option>
+
+<option>Solid Spheres</option>
+<option>Fire II (Arnott 1994)</option>
+<option>Hex Columns (Mitchell 1996)</option>
+<option selected="true">Bullet Rosettes (Mitchell 1996)</option>
+<option>Stellar Crystal (Mitchell 1996)</option>
+<option>Aggregates of Thin Plates (Mitchell 1990, 1996)</option>
+<option>Broad Branched Crystal (Mitchell 1990, 1996)</option>
+
+</select>
+<INPUT TYPE="HIDDEN" NAME="particlesettings.type" VALUE="custom"/>
+</TD><TD></TD>
+<TD style="background: #c0ffc0"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/area.png" alt="A=sigma_a pi/4 D_r^(2-delta_a) D^delta_a"/></TD><TD></TD>
+<TD style="background: #c0ffc0"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/volume.png" alt="V=sigma_v pi/6 D_r^(3-delta_v) D^delta_v"/></TD>
+</TR><TR></TR><TR>
+
+<TD  ALIGN="RIGHT" style="background: #c0ffc0"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/Dr.png" alt="Dr"/>=<INPUT TYPE="TEXT" NAME="particlesettings.Dr" VALUE="60" size="4" MAXSIZE="10" onchange="clearPSET();"/>microns</TD><TD></TD>
+<TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/sigmaa.png" alt="sigma_a"/>=<INPUT TYPE="TEXT" NAME="particlesettings.sigma_a" VALUE="1.0" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD><TD></TD>
+<TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/sigmav.png" alt="sigma_v"/>=<INPUT TYPE="TEXT" NAME="particlesettings.sigma_v" VALUE="0.26" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD>
+</TR><TR>
+<TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/dlt.png" alt="D&lt;Dr"/>:</TD><TD></TD>
+<TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/deltaa.png" alt="delta_a"/>=<INPUT TYPE="TEXT" NAME="particlesettings.delta_a1" VALUE="2" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD><TD></TD>
+<TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/deltav.png" alt="delta_v"/>=<INPUT TYPE="TEXT" NAME="particlesettings.delta_v1" VALUE="3" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD>
+</TR><TR>
+<TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/dgt.png" alt="D&gt;=Dr"/>:</TD><TD></TD>
+<TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/deltaa.png" alt="delta_a"/>=<INPUT TYPE="TEXT" NAME="particlesettings.delta_a2" VALUE="1.57" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD><TD></TD>
+<TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/deltav.png" alt="delta_v"/>=<INPUT TYPE="TEXT" NAME="particlesettings.delta_v2" VALUE="2.26" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD>
+</TR></TABLE></TD></TR></TABLE></span></DIV><BR/>
+<DIV ALIGN="CENTER"><span id="param_edp_part" >
+<TABLE><TR><TD>Linear Depolarization below </TD><TD><INPUT TYPE="TEXT" NAME="particlesettings.h20_depol_threshold" VALUE="0.05" size="4" MAXSIZE="5"/></TD><TD>is considered liquid water</TD></TR></TABLE>
+<A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partdiameterprime" TARGET="_blank">Backscatter Phase Function used for Effective Diameter Prime</A><BR/>
+
+<TABLE>
+<TR VALIGN="CENTER">
+<TD ALIGN="RIGHT" style="background: #c0c0ff"><BIG>Ice:</BIG></TD><TD></TD>
+<TD ALIGN="LEFT">
+
+<IMG SRC="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/phase.png" alt="P(180)/(4pi)"/></TD><TD><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/eq.gif" alt="="/></TD><TD COLSPAN="3"><INPUT TYPE="TEXT" NAME="particlesettings.p180_ice" VALUE="0.035" size="5" MAXSIZE="10"/>
+
+</TD><TD><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/1sr.png" alt="sr^-1"/></TD><TD></TD>
+<TD ALIGN="RIGHT" style="background: #c0c0ff"><BIG>Water:</BIG></TD><TD></TD>
+<TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/waterphase.png" alt="P(180)/(4pi)=.05sr^-1"/></TD>
+</TR></TABLE></span></DIV>
+
+<BR/><BR/><DIV ALIGN="CENTER">
+E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>
+<INPUT TYPE="SUBMIT" VALUE="*BETA* Submit *BETA*"/><P/>
+<span id="avail_progress" style="display: none"><font color="#cc0000">updating options based on availability... (Timeout <span id="countdown">0</span>)</font></span><BR/>
+<script type="text/javascript"><!--
+updateVisibilities();changePSET();bscs2rUpdate();updateFMVisibilities();checkDataAvailability();
+--></script>
+</DIV>
+</FORM>
+<br />
+<div align="center">
+<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/ahsrl_data.htm">Back to AHSRL Data homepage</a><br />
+</div>
+</body>
+</html>

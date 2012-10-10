@@ -58,6 +58,16 @@ def dpl_hsrllore_simpleThumbPrefixes(siteid):
             ret.append(t.prefix)
     return ret
 
+def dpl_hsrllore_simpleDatasets(siteid):
+    pl=plistlib.readPlist('/etc/dataarchive.plist')
+    site=pl.Sites[siteid]
+    insts=pl.Instruments
+    ret=[]
+    for i in site.Instruments:
+        for t in insts[i].datasets:
+            ret.append(t)
+    return (ret,site.Name)
+
 class dpl_hsrl_imagearchive(object):
     def _findThumbPrefixes(self,insts,instrumentlist):
         ret=[]
@@ -75,8 +85,13 @@ class dpl_hsrl_imagearchive(object):
                     ret.append(j)
         return ret
         
-    def _suffixfortime(self,timed):
-        tmpst='.jpg'
+    def _suffixfortime(self,timed,variant=0):
+        if variant==0:
+            tmpst='.png'
+        elif variant==1:
+            tmpst='.jpg'
+        else:
+            return None
         if self.thumb:
             tmpst='_thumb'+tmpst;
         if timed.timetuple().tm_hour<12:
@@ -262,15 +277,21 @@ class dpl_hsrl_imagearchive(object):
             selfcurrenttime=self.timewindows[self.timewindowidx].Start
 
         fn=None
-
-        matchstr='^%s_........T.*%s' % ( self.pref, self._suffixfortime( self.currenttime ) )
-        pdate=self._getpathfordate(self.currenttime)
-
-        fn=self._findnewestfile(pdate,matchstr)
         placeholder=False
+        sufvariant=0
+
+        while fn==None:
+            suff=self._suffixfortime( self.currenttime, sufvariant )
+            if suff==None:
+                break
+            matchstr='^%s_........T.*%s' % ( self.pref, suff )
+            pdate=self._getpathfordate(self.currenttime)
+
+            fn=self._findnewestfile(pdate,matchstr)
+            sufvariant+=1
 
         if fn==None:
-            matchstr='^missing%s' % self._suffixfortime(self.currenttime)
+            matchstr='^missing%s' % self._suffixfortime(self.currenttime,1)
             fn=self._findnewestfile(pdate,matchstr)
             #print 'looking for missing image on %i.%02i.%02iT%02i.%02i matching %s in %s. got %s.' % (self.currenttime.year,self.currenttime.month,self.currenttime.day, self.currenttime.hour ,self.currenttime.minute, matchstr, pdate, fn)
             placeholder=True

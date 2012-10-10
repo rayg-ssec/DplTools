@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+<Title>${sitename} Real-Time RTI Generation</Title>
+<script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
+<script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?js=yes&site=${site}"></script>
+<style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
+</head>
+<body>
+<FORM ACTION="http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi" METHOD="GET">
+<INPUT TYPE="HIDDEN" NAME="URL" VALUE="/cgi-bin/ahsrldisplay/exportmatlabfigs.cgi">
+<INPUT TYPE="HIDDEN" NAME="site" value="${site}">
+<P>
+<div align="center">
+<B>${sitename}<BR/><BR/>
+<B>Select time for plots<BR/><BR/>
+All times should be entered in UTC.  Default is the last two hours</B>
+<P>
+<B><TT>From:    </TT></B><P>
+year<select NAME="byr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="byear range(2012,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
+</select>
+month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value monthnames[bmonth];selected bdate.month==bmonth"/>
+</select>
+day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value '%02i' % bday;selected bdate.day==bday"/>
+</select>
+hour<select NAME="bhr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="bhour range(0,24)" tal:content="'%02i' % bhour" tal:attributes="value '%02i' % bhour;selected bdate.hour==bhour"/>
+</select>
+minute<select NAME="bmn" SIZE="1" onchange="freshentop();checkDataAvailability();" >
+<option  tal:repeat="bmin range(0,60,5)" tal:content="'%02i' % bmin" tal:attributes="value '%02i' % bmin;selected bdate.minute==bmin"/>
+</select>
+<P><P>
+<B><TT>To:    </TT></B><P>
+year<select NAME="eyr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="eyear range(2012,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
+</select>
+month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value monthnames[emonth];selected edate.month==emonth"/>
+</select>
+day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value '%02i' % eday;selected edate.day==eday"/>
+</select>
+hour<select NAME="ehr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="ehour range(0,24)" tal:content="'%02i' % ehour" tal:attributes="value '%02i' % ehour;selected edate.hour==ehour"/>
+</select>
+minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
+<option  tal:repeat="emin range(0,60,5)" tal:content="'%02i' % emin" tal:attributes="value '%02i' % emin;selected edate.minute==emin"/>
+</select>
+<P><B><TT>Altitude(km)</TT></B><BR>  Min:
+<select name="lheight" size="1" >
+<option value="0" selected="true">0</option>
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+<option value="9">9</option>
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+<option value="13">13</option>
+<option value="14">14</option>
+<option value="15">15</option>
+<option value="20">20</option>
+<option value="25">25</option>
+<option value="30">30</option>
+</select>
+  Max:
+<select name="height" size="1" >
+<option value="1">1</option>
+<option value="2">2</option>
+<option value="3">3</option>
+<option value="4">4</option>
+<option value="5">5</option>
+<option value="6">6</option>
+<option value="7">7</option>
+<option value="8">8</option>
+<option value="9">9</option>
+<option value="10">10</option>
+<option value="11">11</option>
+<option value="12">12</option>
+<option value="13">13</option>
+<option value="14">14</option>
+<option value="15" selected="true">15</option>
+<option value="20">20</option>
+<option value="25">25</option>
+<option value="30">30</option>
+</select>
+</div><BR>
+<TABLE border="true" align="center" >
+<TR><TD colspan="1" align="center"><B>Select desired figure layout</B>
+</TD></TR>
+<TR valign="top">
+<TD><TABLE>
+<TR><TD>HSRL</TD></TR>
+<TR><TD><INPUT type="radio" name="lidarfig" value="0"><span class="radiolink"><a href="javascript: setRadio('lidarfig',0)">None</a></span></TD></TR>
+<TR><TD><INPUT type="radio" name="lidarfig" value="1"><span class="radiolink"><a href="javascript: setRadio('lidarfig',1)">Att. bscat, bscat, depol</a></span></TD></TR>
+<TR><TD><INPUT type="radio" name="lidarfig" value="2"><span class="radiolink"><a href="javascript: setRadio('lidarfig',2)">Bscat, depol</a></span></TD></TR>
+<TR><TD><INPUT type="radio" name="lidarfig" value="5"><span class="radiolink"><a href="javascript: setRadio('lidarfig',5)">Bscat, depol, line plots</a></span></TD></TR>
+<TR><TD><INPUT type="radio" checked name="lidarfig" value="3"><span class="radiolink"><a href="javascript: setRadio('lidarfig',3)">All figures</a></span></TD></TR>
+</TABLE></TD>
+</TR></TABLE>
+<BR><div align="center">
+E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""></span>
+<INPUT TYPE="SUBMIT" VALUE="Submit"><P>
+<span id="avail_progress" style="display: none"><font color="#cc0000">updating options based on availability... (Timeout <span id="countdown">0</span>)</font></span> <BR/>
+<script type="text/javascript"><!--
+checkDataAvailability();
+--></script>
+</FORM>
+<div align="center">
+<a href="/syst/ahsrl/about_image.htm">About the images</a><br />
+<a href="/syst/ahsrl/ahsrl_data.htm">Back to AHSRL Data homepage</a><br />
+</div>
+</body>
+</html>
