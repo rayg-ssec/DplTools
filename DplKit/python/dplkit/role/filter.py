@@ -31,14 +31,25 @@ class aFilter(object):
     def meta(self):
         return self.provides
 
-    def __init__(self, upstream_seq, **kwargs):
+    def __init__(self, frames, **kwargs):
         """
+        A filter is initialized with a primary frame sequence (typically a generator provided by an upstream object)
+        and any needed metadata to define its behavior. 
 
+        Typically a filter is not re-used for multiple frame sequences.
         """
         pass
 
-    def __call__(self):
+    def process(self, *args, **kwargs):
+        """the default action of the filter is to process one framestream into another"""
         pass
+
+    def __iter__(self):
+        return self.process()
+
+    def __call__(self, *args, **kwargs):
+        "the default action of a filter is to process"
+        return self.process(*args, **kwargs)
 
 
 

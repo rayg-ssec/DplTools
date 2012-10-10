@@ -29,26 +29,44 @@ class AmbiguousQuery(Exception):
 class aLibrarian(object):
     """A Librarian returns sets of media asset URIs when given search expressions.
     """
-    meta = None  # dictionary of available search keys for the collection
+    provides = None  # mapping-of-mappings showing available search keys for the collection, and their metadata
+    requires = None  # FUTURE: mapping describing preconditions for a successful search. 
+
+    @property
+    def meta(self):
+        return self.provides
 
     def __init__(self, *args, **kwargs):
         """
         """
         super(aLibrarian, self).__init__()
 
-    def __call__(self, *where_exprs, **key_values):
+    def query(self, *where_exprs, **key_values):
         """
-        Yield time-ordered sequence of non-overlapping asset URIs satisfying search conditions
+        Yield time-ordered sequence of dictionaries satisfying search conditions
+        Each dictionary should have a 'uri' key compatible with being passed to a zookeeper
         where_exprs is a series of string expressions (SQL-conformant) of which all must be satisfied
         key_values is a dictionary of asset attributes that must match
         key_values can also include lambda expressions returning true/false on the key in question
         Admissible keys should be a subset of librarian's meta.keys().
  
-        examples:
-        uri_seq = librarian(date = lambda x: (x >= mindate) and (x < maxdate))
+        example for a simple system with one librarian, one zookeeper, one narrator class:
+
+        assets = mylibrarian(start=start_time, end=end_time)
+        for asset_info in assets:
+            media_info = myzookeeper(**asset_info)
+            frames = mynarrator(**media_info)
+            for frame in frames:
+                process(frame)
+
         """
         pass
 
+    def __call__(self, *args, **kwargs):
+        """
+        default action for a librarian is to query()
+        """
+        return self.query(*args, **kwargs)
 
 
 def test():

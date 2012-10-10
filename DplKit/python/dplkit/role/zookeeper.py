@@ -9,6 +9,8 @@ A zookeeper is given a logical data query as a URL, match keys, or SQL 'where' e
 and generates a series of media URI sets which can be used to access the data.
 Each set in the sequence is alternate URIs for the same media asset.
 
+Zookeepers typically have nothing to do with framestreams.
+
 query -> [ (media-uri, media-uri, ...), (media-uri, ...) ]
 
 The zookeeper is created one-per-collection.
@@ -26,7 +28,7 @@ LOG = logging.getLogger(__name__)
 
 class aZookeeper(object):
     """Zookeeper(uri, **constraints) returns an URL when given sets of logical URIs
-    """
+    """    
 
     def __init__(self, *args, **kwargs):
         """
@@ -34,16 +36,36 @@ class aZookeeper(object):
         super(aZookeeper, self).__init__()
         self.uri = uri
 
+    def locate(self, uri, **kwargs):
+        """yields a sequence of dictionaries including 'url' key and other metadata useful as criteria
+        """
+
+    def guide(self, uri):
+        """higher-level optional API yields a sequence of tuples:
+        (asset-metadata-mapping, narrator-creating-callable)
+        Typically a user would 
+            - review the metadata-mapping content to see if it's of interest
+            - if it's of interest, 
+        """
+        pass
+
     def open(self, uri):
         """
-        return a file object (or equivalent as expected by the client) for a given URI
+        Return a file object (or equivalent as expected by the client) for a given URI.
+        This may use whatever means are necessary to fetch the media, and may cache it.        
+        The object returned by 
         """
         return None
 
-    def __call__(self, uri=None):
-        """yields a sqeuence of media uri sets
+    def __call__(self, *args, **kwargs):
         """
-        pass
+        default action of the zookeeper is to locate media
+        """
+        return self.locate(*args, **kwargs)
+
+
+
+
 
 
 

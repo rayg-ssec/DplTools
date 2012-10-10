@@ -32,27 +32,24 @@ class CsvNarrator(aNarrator):
     dplkit.frame.carrier objects could also be used.
     """
     _csv = None
-    meta = None
 
-    def __init__(self, urls, **kwargs):
+    def __init__(self, url, **kwargs):
         from csv import DictReader
         from urllib2 import urlopen
-        self._csv = csv = [DictReader(urlopen(url)) for url in urls]
-        self.meta = dict((name, None) for name in csv[0].fieldnames)
+        self._csv = csv = DictReader(urlopen(url))
+        self.provides = dict((name, None) for name in csv.fieldnames)
 
-
-    def __call__(self, **kwargs):
-        for csv in self._csv:
-            for row in csv:
-                yield struct(row, meta=self.meta)
+    def read(self, *args, **kwargs):
+        for row in self._csv:
+            yield struct(row, meta=self.meta)
 
 
 
 def test(*args):
     """ """
     from pprint import pprint
-    tcn = CsvNarrator(args)
-    for frame in tcn():
+    tcn = CsvNarrator(*args)
+    for frame in tcn:
         pprint(frame)
     pprint(list(tcn.meta.keys()))
     

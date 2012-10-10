@@ -23,7 +23,7 @@ LOG = logging.getLogger(__name__)
 
 
 class aNarrator(object):
-    """Narrator(uri, **constraints) generates a framestream from a media URI.
+    """Narrator(url, **constraints) generates a framestream from a media URI.
     It also provides a meta mapping as an attribute.
     """
     provides = None     # similar to .meta, a mapping of what channels are provided, use @property to provide an active form
@@ -31,17 +31,28 @@ class aNarrator(object):
     @property
     def meta(self):
         return self.provides
+    # FUTURE: decide on standardization of meta vs provides+requires attributes
 
-    def __init__(self, media_uri_seq, *args, **kwargs):
+    def __init__(self, url, *args, **kwargs):
         """given media information and constraint arguments, initialize the narrator
         """
         super(aNarrator, self).__init__()
-        self._media_uri_seq = media_uri_seq
+        self._url = url
 
-    def __call__(self, **kwargs):
-        """yield a series of frames from the desired part of the input file or files
+    def read(self, *args, **kwargs):
+        """
+        Yield a series of frames from the desired part of the input file or files
         """
         pass
+
+    def __iter__(self):
+        return self.read()
+
+    def __call__(self, *args, **kwargs):
+        """
+        The default action of a narrator is to read from the provided media.
+        """
+        return self.read(*args, **kwargs)
         
 
 
