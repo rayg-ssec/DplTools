@@ -16,6 +16,7 @@ Class/Function however should not be documented here.
 
 import os, sys
 import logging
+from abc import ABCMeta, abstractmethod
 
 LOG = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ class aFilter(object):
     """
     Filters modify one or more input frame-streams to produce one or more output data-streams.
     """
+    __metaclass__ = ABCMeta
     provides = None  # mapping of information about channels this filter provides, similar to .meta on frames
     requires = None  # mapping of information about what it needs from upstream
 
@@ -31,15 +33,17 @@ class aFilter(object):
     def meta(self):
         return self.provides
 
-    def __init__(self, frames, **kwargs):
+    def __init__(self, source, **kwargs):
         """
         A filter is initialized with a primary frame sequence (typically a generator provided by an upstream object)
         and any needed metadata to define its behavior. 
 
         Typically a filter is not re-used for multiple frame sequences.
         """
+        super(aFilter, self).__init__()
         pass
 
+    @abstractmethod
     def process(self, *args, **kwargs):
         """the default action of the filter is to process one framestream into another"""
         pass

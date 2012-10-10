@@ -20,7 +20,7 @@ from exceptions import Exception
 LOG = logging.getLogger(__name__)
 
 
-class AmbiguousQuery(Exception):
+class AmbiguousQueryError(Exception):
     """Exception saying that a given query doesn't resolve to an un-ambiguous sequence of assets
     """
     pass

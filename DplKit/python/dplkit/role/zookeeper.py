@@ -21,6 +21,7 @@ The zookeeper is created one-per-collection.
 
 import os, sys
 import logging
+from abc import ABCMeta, abstractmethod
 
 LOG = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ LOG = logging.getLogger(__name__)
 class aZookeeper(object):
     """Zookeeper(uri, **constraints) returns an URL when given sets of logical URIs
     """    
+    __metaclass__ = ABCMeta
 
     def __init__(self, *args, **kwargs):
         """
@@ -36,35 +38,35 @@ class aZookeeper(object):
         super(aZookeeper, self).__init__()
         self.uri = uri
 
-    def locate(self, uri, **kwargs):
+    @abstractmethod
+    def locate(self, uri, *args, **kwargs):
         """yields a sequence of dictionaries including 'url' key and other metadata useful as criteria
         """
-
-    def guide(self, uri):
-        """higher-level optional API yields a sequence of tuples:
-        (asset-metadata-mapping, narrator-creating-callable)
-        Typically a user would 
-            - review the metadata-mapping content to see if it's of interest
-            - if it's of interest, 
-        """
         pass
+
+    # def guide(self, uri):
+    #     """higher-level optional API yields a sequence of tuples:
+    #     (asset-metadata-mapping, narrator-creating-callable)
+    #     Typically a user would 
+    #         - review the metadata-mapping content to see if it's of interest
+    #         - if it's of interest, use the corresponding callable with no parameters to obtain a narrator
+    #     """
+    #     # FUTURE: a Broker role to identify which narrator class to use based on zookeeper locate output()
+    #     pass
 
     def open(self, uri):
         """
         Return a file object (or equivalent as expected by the client) for a given URI.
         This may use whatever means are necessary to fetch the media, and may cache it.        
-        The object returned by 
+        The object returned is typically read-only
         """
-        return None
+        raise NotImplementedError("open is not supported from this collection")
 
     def __call__(self, *args, **kwargs):
         """
         default action of the zookeeper is to locate media
         """
         return self.locate(*args, **kwargs)
-
-
-
 
 
 

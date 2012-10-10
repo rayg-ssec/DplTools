@@ -16,6 +16,7 @@ or between machines or processes.
 
 import os, sys
 import logging
+from abc import ABCMeta, abstractmethod
 
 LOG = logging.getLogger(__name__)
 
@@ -26,16 +27,86 @@ class aBridge(object):
     Outgoing bridges act like artists; incoming bridges act like narrators.
 
     """
+    __metaclass__ = ABCMeta
     provides = None   # mapping of inforamtion about the framestream channels that will be available
     requires = None   # FUTURE
 
-    def 
+    @abstractmethod
+    def read(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    def process(self, *args, **kwargs):
+        pass
 
 
 
-#
-## Code goes here.
-#
+class aIncomingBridge(aBridge):
+    """
+    abstract bridge base. 
+    Outgoing bridges act like artists; incoming bridges act like narrators.
+
+    """
+    __metaclass__ = ABCMeta
+    provides = None   # mapping of inforamtion about the framestream channels that will be available
+    requires = None   # FUTURE
+
+    @property
+    def meta(self):
+        return self.provides
+    # FUTURE: decide on standardization of meta vs provides+requires attributes
+
+    def __init__(self, source, *args, **kwargs):
+        """given media information and constraint arguments, initialize the narrator
+        """
+        super(aIncomingBridge, self).__init__()
+
+    @abstractmethod
+    def read(self, *args, **kwargs):
+        pass
+
+    def process(self, *args, **kwargs):
+        raise NotImplementedError('unsupported process operation for incoming-only bridge')
+
+    def __iter__(self):
+        return self.read()
+
+    def __call__(self, *args, **kwargs):
+        """
+        The default action of a narrator is to read from the provided media.
+        """
+        return self.read(*args, **kwargs)
+
+
+
+class aOutgoingBridge(aBridge):
+    """
+    abstract bridge base. 
+    Outgoing bridges act like artists; incoming bridges act like narrators.
+
+    """
+    __metaclass__ = ABCMeta
+    def __init__(self, source, *args, **kwargs):
+        """given media information and constraint arguments, initialize the narrator
+        """
+        super(aOutgoingBridge, self).__init__()
+        self._source = source
+
+    def read(self, *args, **kwargs):
+        raise NotImplementedError('unsupported read operation for outgoing-only bridge')
+
+    @abstractmethod
+    def process(self, *args, **kwargs):
+        pass
+
+    def __iter__(self):
+        return self.process()
+
+    def __call__(self, *args, **kwargs):
+        return self.process(*args, **kwargs)
+
+
+
 
 
 def test():

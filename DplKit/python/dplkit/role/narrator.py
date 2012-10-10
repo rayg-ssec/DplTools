@@ -17,7 +17,7 @@ most sense to implicitly catenate media file contents.
 
 import os, sys
 import logging
-# FUTURE: consider using ABCMeta, @abstractmethod from module abc
+from abc import ABCMeta, abstractmethod
 
 LOG = logging.getLogger(__name__)
 
@@ -26,6 +26,8 @@ class aNarrator(object):
     """Narrator(url, **constraints) generates a framestream from a media URI.
     It also provides a meta mapping as an attribute.
     """
+    __metaclass__ = ABCMeta
+
     provides = None     # similar to .meta, a mapping of what channels are provided, use @property to provide an active form
 
     @property
@@ -39,6 +41,7 @@ class aNarrator(object):
         super(aNarrator, self).__init__()
         self._url = url
 
+    @abstractmethod
     def read(self, *args, **kwargs):
         """
         Yield a series of frames from the desired part of the input file or files
@@ -50,7 +53,7 @@ class aNarrator(object):
 
     def __call__(self, *args, **kwargs):
         """
-        The default action of a narrator is to read from the provided media.
+        Read the media and yield a series of data frames (see .read())
         """
         return self.read(*args, **kwargs)
         
