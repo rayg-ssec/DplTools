@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-package.module
-~~~~~~~~~~~~~
+dplkit.role.artist
+~~~~~~~~~~~~~~~~~~
 
-
-A description which can be long and explain the complete
-functionality of this module even with indented code examples.
-Class/Function however should not be documented here.
-
+Artist takes in a frame stream, and writes out images or other visual representations.
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
 :license: GPLv3, see LICENSE for more details

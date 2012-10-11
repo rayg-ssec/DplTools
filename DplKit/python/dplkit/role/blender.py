@@ -26,7 +26,13 @@ class aBlender(object):
     A blender combines one or more frame streams into a single outgoing stream. Its primary activity is combine()
     """
     __metaclass__ = ABCMeta
+    provides = None
     requires = None  # mapping of information about what it needs from upstream
+
+    @property
+    def meta(self):
+        return self.provides
+    # FUTURE: decide on standardization of meta vs provides+requires attributes
 
     def __init__(self, *args, **kwargs):
         """
