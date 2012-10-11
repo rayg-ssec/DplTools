@@ -16,6 +16,7 @@ librarian(search-criteria) -> [asset-uri, asset-uri...]
 import os, sys
 import logging
 from exceptions import Exception
+from abc import ABCMeta, abstractmethod
 
 LOG = logging.getLogger(__name__)
 
@@ -29,6 +30,8 @@ class AmbiguousQueryError(Exception):
 class aLibrarian(object):
     """A Librarian returns sets of media asset URIs when given search expressions.
     """
+    __metaclass__ = ABCMeta
+
     provides = None  # mapping-of-mappings showing available search keys for the collection, and their metadata
     requires = None  # FUTURE: mapping describing preconditions for a successful search. 
 
@@ -41,7 +44,8 @@ class aLibrarian(object):
         """
         super(aLibrarian, self).__init__()
 
-    def query(self, *where_exprs, **key_values):
+    @abstractmethod
+    def search(self, *where_exprs, **key_values):
         """
         Yield time-ordered sequence of dictionaries satisfying search conditions
         Each dictionary should have a 'uri' key compatible with being passed to a zookeeper
@@ -64,9 +68,9 @@ class aLibrarian(object):
 
     def __call__(self, *args, **kwargs):
         """
-        default action for a librarian is to query()
+        default action for a librarian is to search()
         """
-        return self.query(*args, **kwargs)
+        return self.search(*args, **kwargs)
 
 
 def test():

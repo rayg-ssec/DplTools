@@ -16,36 +16,9 @@ Class/Function however should not be documented here.
 
 import os, sys
 import logging
-from abc import ABCMeta, abstractmethod
+from ..role.blender import aBlender
 
 LOG = logging.getLogger(__name__)
-
-
-class aBlender(object):
-    """
-    A blender combines one or more frame streams into a single outgoing stream. Its primary activity is combine()
-    """
-    __metaclass__ = ABCMeta
-    requires = None  # mapping of information about what it needs from upstream
-
-    def __init__(self, *args, **kwargs):
-        """
-        """
-        super(aBlender, self).__init__()
-        pass
-
-    @abstractmethod
-    def combine(self, *args, **kwargs):
-        """
-        """        
-        pass
-
-    def __iter__(self):
-        return self.combine()
-
-    def __call__(self, *args, **kwargs):
-        "the default action of an artist is to combine"
-        return self.combine(*args, **kwargs)
 
 
 
