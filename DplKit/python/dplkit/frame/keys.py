@@ -6,6 +6,9 @@ dplkit.frame.keys
 
 "standard" keys / channel-names which are used in dplkit
 
+Where useful we re-use names in the CF convention.
+http://cf-pcmdi.llnl.gov/documents/cf-standard-names/
+
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
 :license: GPLv3, see LICENSE for more details
 """

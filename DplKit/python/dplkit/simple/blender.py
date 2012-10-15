@@ -39,10 +39,6 @@ class Merge(aBlender):
 
 
 
-#
-## Code goes here.
-#
-
 
 def test():
     """ """

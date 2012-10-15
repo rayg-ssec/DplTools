@@ -62,13 +62,15 @@ class struct(object):
     def __repr__(self):
         return repr(self.as_dict())
 
-    def as_dict(self):
+    def as_dict(self, without_meta = False):
         """
-        return as a new dictionary
+        return as a new dictionary, optionally stripping the metadata dictionary
         """
         dv = dict(self._data_)
         sv = dict((k,v) for (k,v) in vars(self).items() if not (k.startswith('_') and k.endswith('_')))
         dv.update(sv)
+        if without_meta:
+            del dv['meta']
         return dv
 
 frame = struct
