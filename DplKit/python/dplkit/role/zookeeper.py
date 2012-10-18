@@ -39,7 +39,7 @@ class aZookeeper(object):
         self.uri = uri
 
     @abstractmethod
-    def capture(self, uri, *args, **kwargs):
+    def obtain(self, uri, *args, **kwargs):
         """yields a sequence of dictionaries including 'url' key and other metadata useful as criteria
         """
         pass
@@ -64,9 +64,9 @@ class aZookeeper(object):
 
     def __call__(self, *args, **kwargs):
         """
-        default action of the zookeeper is to capture media as immediately usable URLs
+        default action of the zookeeper is to obtain access to media as immediately usable URLs
         """
-        return self.capture(*args, **kwargs)
+        return self.obtain(*args, **kwargs)
 
 
 
