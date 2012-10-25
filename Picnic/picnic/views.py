@@ -5,11 +5,159 @@ from pyramid.httpexceptions import HTTPNotFound, HTTPTemporaryRedirect
 from webob import Response
 from hashlib import sha1 as hashfunc
 import os
+import sys
 import calendar
 import plistlib
 import multiprocessing
+from sets import Set
 
-staticresources={};
+imagesets=[
+    {'name':'HSRL',
+     'enabled':Set(['lidar']),#any set of data
+     'formname':'lidarfig',
+     'default':'most',
+     'order':['none','some','few','most','all'],
+     'sets':
+     {
+         'most':{
+             'name':'Bscat, depol, line plots',
+             'figs':['backscat_image','circular_depol_image','linear_depol_image'],
+             'enabled':['lidar'],#only enabled with any. used with javascript
+             },
+         'none':{
+             'name':'None',
+             'figs':[],
+             },
+         'some':{
+             'name':'Att. bscat, bscat, depol',
+             'figs':['atten_backscat_image','backscat_image','circular_depol_image','linear_depol_image'],
+             'enabled':['lidar'],#only enabled with any. used with javascript
+             },
+         'few':{
+             'name':'Bscat, depol',
+             'figs':['backscat_image','circular_depol_image','linear_depol_image'],
+             'enabled':['lidar'],#only enabled with any. used with javascript
+             },
+         'all':{
+             'name':'All figures',
+             'figs':[],
+             'enabled':['lidar'],#only enabled with any. used with javascript
+             },
+        }
+    },
+    {'name':'MMCR',
+     'enabled':Set(['merge']),#any set of data
+     'formname':'radarfig',
+     'default':'ref',
+     'order':['none','ref','bscat'],
+     'sets':
+     {
+         'none':{
+             'name':'None',
+             'figs':[],
+              },
+         'ref':{
+             'name':'All, Reflectivity(dBz)',
+             'figs':[],
+             'enabled':['merge'],#only enabled with any. used with javascript
+             },
+         'bscat':{
+             'name':'All, Bscat(1/(m sr))',
+             'figs':[],
+             'enabled':['merge'],#only enabled with any. used with javascript
+             },
+        }
+    },
+     {'name':'AERI',
+     'enabled':Set(['paeri0','paeri1','paeri2','paeri1pca','paeri2pca']),#any set of data
+     'formname':'aerifig',
+     'default':'bright',
+     'order':['none','bright','rad'],
+     'sets':
+     {
+         'none':{
+             'name':'None',
+             'figs':[],
+             },
+         'bright':{
+             'name':'Brightness Temp',
+             'figs':[],
+             'enabled':['paeri0'],#only enabled with any. used with javascript
+             },
+         'rad':{
+             'name':'Radiance',
+             'figs':[],
+             'enabled':['paeri1','paeri2','paeripc1','paeripc2'],#only enabled with any. used with javascript
+             },
+        }
+    },
+    {'name':'MWR',
+     'enabled':Set(['mwr']),#any set of data
+     'formname':'mwrfig',
+     'default':'all',
+     'order':['none','all'],
+     'sets':
+     {
+         'none':{
+             'name':'None',
+             'figs':[],
+             },
+         'all':{
+             'name':'All',
+             'figs':[],
+             'enabled':['mwr'],#only enabled with any. used with javascript
+             },
+         }
+    },
+     {'name':'Cooperative Quantities',
+      'link':'http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr',
+     'required':Set(['lidar','merge']),#requires all set of data
+     'formname':'combfig',
+     'default':'part',
+     'order':['none','part'],
+     'sets':
+     {
+         'none':{
+             'name':'None',
+             'figs':[],
+             },
+         'part':{
+             'name':'Part. Measurements',
+             'figs':[],
+             'required':['lidar','merge'],#only enabled with all. used with javascript
+             },
+        }
+    },
+  
+    ]
+
+hsrlncsets=[]
+
+
+
+def imagesetsForInstruments(instruments):
+    iset=Set(instruments)
+    imagesetlist=[]
+    for aset in imagesets:
+        if 'enabled' in aset and len(aset['enabled'] & iset)==0:
+            continue
+        if 'required' in aset and len(aset['required'] & iset)!=len(aset['required']):
+            continue
+        imagesetlist.append(aset)
+
+    return imagesetlist
+
+def netcdfsetsForInstruments(instruments):
+    ncsets=[]
+    #for aset in ncsets:
+        #in instruments:
+        #  ncsets.append(hsrlncsets)
+
+    return ncsets
+
+staticresources={}
+
+tasks={}
 
 def makeformbutton(label,cgiurl,bdate,edate):
     return {'submit':label,'url':cgiurl,
@@ -64,19 +212,18 @@ def validdate(yearno,monthno,dayno=1,hourno=0,minuteno=0):
     return datetime(yearno,monthno,dayno,hourno,minuteno,0)
 
 def monthurlfor(req,atype,access,imtype,date):
-    URL='/%s/%s/%s/%04i/%02i/' % (atype,access,imtype,date.year,date.month)
     if imtype=='all':
-        URL+='%02i/' % (date.day)
-    return req.relative_url(URL,to_application=True)
+        return req.route_path('multiview',accesstype=atype,access=access,year=date.year,month=date.month,day=date.day)
+    return req.route_path('month',accesstype=atype,access=access,thumbtype=imtype,year=date.year,month=date.month)
 
 @view_config(route_name='select_month')
 def select_month(request):
     try:
         if not ('year' in request.params and 'month' in request.params):
-            return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/%s/' % (request.params.getone('accessby'),
-                                                                                       request.params.getone('accessto'),
-                                                                                       request.params.getone('type')),
-                                                                       to_application=True))
+            return HTTPTemporaryRedirect(location=request.route_path('thumb',
+                                                                    accesstype=request.params.getone('accessby'),
+                                                                    access=request.params.getone('accessto'),
+                                                                    thumbtype=request.params.getone('type')))
         selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')))
         return HTTPTemporaryRedirect(location=monthurlfor(request,
                                                           request.params.getone('accessby'),
@@ -84,8 +231,9 @@ def select_month(request):
                                                           request.params.getone('type'),
                                                           selected))
     except:
-        return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))
+        return HTTPTemporaryRedirect(location=request.route_path("home"))
 
+@view_config(route_name='thumb')
 def redirect_month(request):
     #try:
         methodtype=request.matchdict['accesstype']
@@ -116,29 +264,32 @@ def redirect_month(request):
         besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,0,0,0))
         return HTTPTemporaryRedirect(location=monthurlfor(request,methodtype,methodkey,subtypekey,besttime))
     #except:
-    #return HTTPTemporaryRedirect(location=request.relative_url("/",to_application=True))        
+    #return HTTPTemporaryRedirect(location=request.route_path("home"))        
 
 def dayurlfor(req,atype,access,date):
-    returl='/%s/%s/%04i/%02i/%02i/' % (atype,access,date.year,date.month,date.day)
     if date.hour<12:
-        returl+='am/'
+        hour='am'
     else:
-        returl+='pm/'
-    return req.relative_url(returl,to_application=True)
+        hour='pm'
+    return req.route_path('date',accesstype=atype,access=access,
+                         year=date.year,month=date.month,day=date.day,ampm=hour)
 
 @view_config(route_name='select_day')
 def select_day(request):
     try:
         if not ('year' in request.params and 'month' in request.params and 'day' in request.params and 'hour' in request.params):
-            return HTTPTemporaryRedirect(location=request.relative_url('/%s/%s/' % (request.params.getone('accessby'),request.params.getone('accessto'))))
+            return HTTPTemporaryRedirect(location=request.route_path('today',
+                                                                    accesstype=request.params.getone('accessby'),
+                                                                    access=request.params.getone('accessto')))
         selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')),int(request.params.getone('day')),int(request.params.getone('hour')))
         return HTTPTemporaryRedirect(location=monthurlfor(request,
                                                           request.params.getone('accessby'),
                                                           request.params.getone('accessto'),
                                                           selected))
     except:
-        return HTTPTemporaryRedirect(location=request.relative_url('/',to_application=True))
+        return HTTPTemporaryRedirect(location=request.route_path('home'))
 
+@view_config(route_name='today')
 def redirect_day(request):
     try:
         methodtype=request.matchdict['accesstype']
@@ -167,7 +318,7 @@ def redirect_day(request):
         besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,hourno,0,0))
         return HTTPTemporaryRedirect(location=dayurlfor(request,methodtype,methodkey,besttime))
     except:
-        return HTTPTemporaryRedirect(location=request.relative_url('/',to_application=True))
+        return HTTPTemporaryRedirect(location=request.route_path('home'))
 
 @view_config(route_name='image_request')
 def image_request(request):
@@ -195,7 +346,7 @@ def imageurlfor(req,inst,date,fname,fullfile):
             b['mimetype']='image/png'
         if 'mimetype' in b:
             staticresources[hashname]=b
-    return req.relative_url('/statichash/'+ hashname,to_application=True) #req.static_url(fname)
+    return req.route_path('image_request',statickey=hashname) #req.static_url(fname)
 
 def makecalendar(req,gen):
     entryvec=[]
@@ -216,7 +367,6 @@ def portal_view(request):
     pl=plistlib.readPlist('/etc/dataarchive.plist')
     dirs=pl.Sites
     insts=pl.Instruments
-    retstr=''#<UL>\n'
     activeSites=[]
     activeSiteInfo={}
     activesites=[]
@@ -228,7 +378,8 @@ def portal_view(request):
             activeSites.append(siteid)
             activeSiteInfo[siteid]=site
         siteid+=1
-
+        
+    defaultaccesstype='by_site'
     for siteid in reversed(activeSites):
         n=activeSiteInfo[siteid]
         entry={}
@@ -236,7 +387,7 @@ def portal_view(request):
         linkset=[]
         linkarr=[]
         linkset.append({'name':"Archive:",'link':None})
-        linkset.append({'link':"/by_site/%i/all/" % siteid,'name':'Multi-View'})
+        linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype='all'),'name':'Multi-View'})
 
         ins=n.Instruments
         for i in ins:
@@ -244,15 +395,20 @@ def portal_view(request):
                 continue
             inst=insts[i]
             if 'thumbsets' in inst and len(inst.thumbsets)>0:
-                linkset.append({'link':"/by_site/%i/%s/" % (siteid,inst.thumbsets[0].prefix),'name':i})
+                linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype=inst.thumbsets[0].prefix),'name':i})
         linkarr.append(linkset)
+        instlinks=len(linkset)
         linkset=[]
-        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid,
-                         'link':"/by_site/%i/custom_rti/" % siteid ,
-                         'name':"Custom Images"}])
-        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid,
-                         'link':"/by_site/%i/custom_netcdf/" % siteid ,
-                         'name':"Custom NetCDF"}])
+        if instlinks>3:
+            imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid
+        else:
+            imlink=request.route_path('imagegen',accesstype=defaultaccesstype,access=siteid)
+        if instlinks>0:
+            nclink="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid
+        else:
+            nclink=request.route_path('netcdfgen',accesstype=defaultaccesstype,access=siteid)
+        linkarr.append([{'link':imlink,'name':"Custom Images"}])
+        linkarr.append([{'link':nclink,'name':"Custom NetCDF"}])
         entry['linkarray']=linkarr
         activesites.append(entry)
 
@@ -268,7 +424,7 @@ def portal_view(request):
         linkset=[]
         linkarr=[]
         linkset.append({'name':"Archive:",'link':None})
-        linkset.append({'link':"/by_site/%i/all/" % siteid,'name':'Multi-View'})
+        linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype='all'),'name':'Multi-View'})
 
         ins=n.Instruments
         for i in ins:
@@ -276,16 +432,20 @@ def portal_view(request):
                 continue
             inst=insts[i]
             if 'thumbsets' in inst and len(inst.thumbsets)>0:
-                linkset.append({'link':"/by_site/%i/%s/" % (siteid,inst.thumbsets[0].prefix),'name':i})
-                retstr+="- <a href=\"/by_site/%i/%s/\">%s</a>\n" % (siteid,inst.thumbsets[0].prefix,i);
+                linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype=inst.thumbsets[0].prefix),'name':i})
         linkarr.append(linkset)
+        instlinks=len(linkset)
         linkset=[]
-        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid,
-                         'link':"/by_site/%i/custom_rti/" % siteid,
-                         'name':"Custom Images"}])
-        linkarr.append([{#'link':"http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid,
-                         'link':"/by_site/%i/custom_netcdf/" % siteid,
-                         'name':"Custom NetCDF"}])
+        if instlinks>3:
+            imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid
+        else:
+            imlink=request.route_path('imagegen',accesstype=defaultaccesstype,access=siteid)
+        if instlinks>0:
+            nclink="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid
+        else:
+            nclink=request.route_path('netcdfgen',accesstype=defaultaccesstype,access=siteid)
+        linkarr.append([{'link':imlink,'name':"Custom Images"}])
+        linkarr.append([{'link':nclink,'name':"Custom NetCDF"}])
         entry['linkarray']=linkarr
         inactivesites.append(entry)
     
@@ -354,32 +514,39 @@ def date_view(request):
         except KeyError as e:
             return HTTPNotFound(e)
         if img:
-            calurl=monthurlfor(request,request.matchdict['accesstype'],methodkey,hightothumb[i],selectdate)
+            calurl=monthurlfor(request,methodtype,methodkey,hightothumb[i],selectdate)
             imageurl=imageurlfor(request,img['instrument'],img['time'],img['filename'],img['path'])
             entries.append({'calurl':calurl,'imageurl':imageurl})
     nextlink=None
     prevlink=None
     if currenttime>nextdate and nextlinkdate:
-        nextlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,nextlinkdate)
+        nextlink=dayurlfor(request,methodtype,methodkey,nextlinkdate)
     if priorlinkdate:
-        prevlink=dayurlfor(request,request.matchdict['accesstype'],methodkey,priorlinkdate)
+        prevlink=dayurlfor(request,methodtype,methodkey,priorlinkdate)
+    ds=dpl_hsrllore_datasetForSite(int(methodkey))
+    if len(entries)>1:
+        imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid
+    else:
+        imlink=request.route_path('imagegen',accesstype=methodtype,access=methodkey)
+    if len(entries)>0:
+        nclink="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi"
+    else:
+        nclink=request.route_path('netcdfgen',accesstype=methodtype,access=methodkey)
     redirectbuttons=[]
-    redirectbuttons.append(makeformbutton("Customize Image","http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi",selectdate,nextdate))
+    redirectbuttons.append(makeformbutton("Customize Image",imlink,selectdate,nextdate))
     redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
     redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
-    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})
-    redirectbuttons.append(makeformbutton("Generate NetCDF","http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi",selectdate,nextdate))
+    redirectbuttons.append(makeformbutton("Generate NetCDF",nclink,selectdate,nextdate))
+    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})#if nclink becomes from here, this parameter isn't needed
     redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
     redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
-    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})
     redirectbuttons.append(makeformbutton("Show LogBook","http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi",selectdate,nextdate))
     redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
     redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
-    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})
-    redirectbuttons[-1]['inputs'].append({'name':'dataset','value':'%i' % dpl_hsrllore_datasetForSite(int(methodkey))})
+    redirectbuttons[-1]['inputs'].append({'name':'dataset','value':'%i' % ds[0]})
     return { 
         'entries':entries,'caltypes':caltypes,
-        'newmonthform':request.relative_url("/selectmonth",True),'methodtype':methodtype,'methodkey':methodkey,
+        'newmonthform':request.route_path("select_month"),'methodtype':methodtype,'methodkey':methodkey,
         'thistime':selectdate,'redirectbuttons':redirectbuttons,
         'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
@@ -468,7 +635,8 @@ def month_view(request):
     if subtypekey=="all":
         pagename='%s - Multi-View' % datasetdesc
     return {'project':'Picnic',
-            'allentries':arr,'entrynames':entrynames,'newmonthform':request.relative_url("/selectmonth",True),'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
+            'allentries':arr,'entrynames':entrynames,'newmonthform':request.route_path("select_month"),
+            'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
             'firsttime':validLaterTime(methodtype,methodkey,datetime(1990, 1, 1, 0, 0, 0)),
             'thistime':thismonth,
             'lasttime':validPriorTime(methodtype,methodkey,currenttime),
@@ -477,34 +645,51 @@ def month_view(request):
             'blankimageurl':imageurlfor(request,None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
-from hsrl.dpl_experimental.dpl_rti import dpl_rti
+def makedpl(dplparameters,processingfunction,sessionid,session):
+    from hsrl.dpl_experimental.dpl_rti import dpl_rti
+    dplc=dpl_rti(*dplparameters)
+    processingfunction(dplc,sessionid,session)
 
-def dp(dplc,instrument):
+def dp(dplc,sessionid,session):
     import hsrl.data_stream.open_config as oc
     import hsrl.data_stream.display_utilities as du
+    import hsrl.calibration.cal_read_utilities as cru
     import json
     du.init_colorbar_status()
-    v=dplc
+    instrument=session['dataset']
 
-    (disp,conf)=du.get_display_defaults('archive_plots.json')
+    (disp,conf)=du.get_display_defaults('all_plots.json')
     fd = oc.open_config('process_control.json')
     dd = json.load(fd)
     #self.rs_static.corr_adjusts = dd['corr_adjusts']
     process_defaults=dd['processing_defaults']
     fd.close()
-  
+
+    folder=os.path.join('.','sessions',sessionid);
+    
     rs=None
-    for n in v:
-        figs=du.show_images(instrument,n,None,{},process_defaults,disp,None,None,None)
+    for n in dplc:
+        print 'loop'
+        figs=du.show_images(instrument,n,dplc.rs_init.sounding,
+                            dplc.rs_init.rs_constants,
+                            dplc.rs_static.processing_defaults,
+                            disp,
+                            dplc.rs_init.last_sounding_time,
+                            dplc.rs_static.max_alt,None)
         #print n.rs_inv.beta_a_backscat_par
         #print n.rs_inv.times
         # force a redraw
         rs=n
+        fignum=0
 
-        for x in figs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
-        
+        for x in session['figstocapture']:#plt._pylab_helpers.Gcf.get_all_fig_managers():
+            figname=os.path.join(folder,'figure%04i_%s.png' % (fignum,x))
+            fignum = fignum + 1
         #      print 'updating  %d' % x.num
-        
+            if x not in figs:
+                f=file(figname,'w')
+                f.close()
+                continue
         
             fig = figs.figure(x)#plt.figure(x.num)
         
@@ -512,7 +697,136 @@ def dp(dplc,instrument):
             
             fig.canvas.draw()
             #fig.canvas.
+            fig.savefig(figname,format='png',bbox_inches='tight')
+    
+@view_config(route_name='imageresult',renderer='templates/imageresult.pt')
+def imageresult(request):
+    sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
+    folder=os.path.join('.','sessions',sessionid);
+    sessiontask=tasks[sessionid]
+    session=sessiontask['session']
+    #scan session folder for images
+    ims = []
+    try:
+        fl=os.listdir(folder)
+    except:
+        fl=[]
+    for f in fl:
+        if f.endswith('.png'):
+            ims.append(imageurlfor(request,None,None,sessionid+'_'+f, os.path.join(folder,f)))
+    ims.sort()
+    #send to template
+    return { 'imageurls':ims, 'logfileurl':session['logfileurl'],'logbookurl':session['logbookurl'],
+             'sitename':session['name'], 'site':session['site'] ,
+             'timespan':'FIXMEtimespan', 'rangespan':'FIXMErangespan' } 
+    
+@view_config(route_name='imagereq')
+def imagerequest(request):
+    session=request.session
+    sessionid=session.new_csrf_token()
+    #sessionid=request.POST['csrf_token']
+    #add task status to list
+    #print request.route_path('imageresult')
+    session['finalpage']=request.route_path('imageresult',session=sessionid);
+    tasks[sessionid]={'session':session}
+    #load parameters
+    #print request.params
 
+    method='site'
+    methodkey=int(request.params.getone(method));
+    starttime=datetime(int(request.params.getone('byr')),
+                       int(request.params.getone('bmo')),
+                       int(request.params.getone('bdy')),
+                       int(request.params.getone('bhr')),
+                       int(request.params.getone('bmn')),
+                       0)
+    endtime=datetime(int(request.params.getone('eyr')),
+                     int(request.params.getone('emo')),
+                     int(request.params.getone('edy')),
+                     int(request.params.getone('ehr')),
+                     int(request.params.getone('emn')),
+                     0)
+    timeres=(endtime-starttime).total_seconds()/640 #640 pixels wide
+    altmin=float(request.params.getone('lheight'))*1000
+    altmax=float(request.params.getone('height'))*1000
+    altres=(altmax-altmin)/480 # 480 pixels high
+    #contstruct dpl
+    (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(int(methodkey))
+    imagesetlist=imagesetsForInstruments(instruments)
+ 
+    figstocapture=[]
+    for i in imagesetlist:
+        print i
+        try:
+            setmode=request.params.getone(i['formname'])
+            figstocapture.extend(i['sets'][setmode]['figs'])
+        except:
+            pass
+    #print figstocapture
+
+    #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+
+    #dplc=dpl_rti(datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres);#alt in m
+    #construct image generation parameters
+    session['dataset']=datasetname
+    session['name']=name
+    session['site']=methodkey
+    session['figstocapture']=figstocapture
+
+    folder=os.path.join('.','sessions',sessionid);
+    os.mkdir(folder)
+  
+    #start process
+    stdt=file(os.path.join(folder,'logfile'),'w')
+    tasks[sessionid]['process']=multiprocessing.Process(target=makedpl,args=([datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp,sessionid,session))
+    tasks[sessionid]['process'].start()
+    stdt.close()
+    session['logfileurl']=imageurlfor(request,None,None,sessionid+'_'+'logfile', os.path.join(folder,'logfile'))
+    sv=dpl_hsrllore_datasetForSite(methodkey)
+    print sv
+    session['logbookurl']='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?dataset=%i&rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (sv[0],starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
+    
+    #redirect to the progress page
+    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+
+
+@view_config(route_name='dataAvailability')
+def dataAvailability(request):
+    site=request.params.getone('site')
+    starttime=request.params.getone('time0')
+    endtime=request.params.getone('time1')
+    p, childStdout = os.pipe()
+    pid=os.fork()
+    if pid==0:
+        os.close(p)
+        os.dup2(childStdout,sys.stdout.fileno())
+        os.execv("/home/jpgarcia/hsrl.git/ahsrl/compressedread/dataAvailability",("/home/jpgarcia/hsrl.git/ahsrl/compressedread/dataAvailability",'p',site,starttime,endtime))
+        sys.exit()
+    os.close(childStdout)
+    os.waitpid(pid,0)
+    response=request.response
+    response.content_type='text/plain'
+    
+    response.body=os.read(p,4096)
+    os.close(p)
+    return response
+    
+@view_config(route_name='progress')
+def progress_getlastid(request):
+    sessionid=request.session.get_csrf_token()  #get_cookies['session']#POST['csrf_token']
+    return HTTPTemporaryRedirect(location=request.route_path("progress_withid",session=sessionid))
+    
+@view_config(route_name='progress_withid',renderer='templates/progress.pt')
+def progresspage(request):
+    sessionid=request.matchdict['session']#session.get_csrf_token()  #get_cookies['session']#POST['csrf_token']
+    #check status of this task
+    if sessionid not in tasks:
+        return HTTPNotFound('Invalid session')
+    if tasks[sessionid]['process'].is_alive():
+        #load intermediate if not
+        return {'pagename':tasks[sessionid]['session']['name'],'progresspage':request.route_path('progress_withid',session=sessionid),'sessionid':sessionid}
+    #load next page if complete
+    return HTTPTemporaryRedirect(location=tasks[sessionid]['session']['finalpage'])
 
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
@@ -522,18 +836,58 @@ def form_view(request):
     if methodtype=='by_site':
         pathname='site'
         pathidx=int(methodkey)
-    lasttime=validClosestTime(methodtype,methodkey,datetime.utcnow())
-    endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
-    starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
-    session=request.session
-    print session.get_csrf_token()
-    (instruments,name)=dpl_hsrllore_simpleDatasets(int(methodkey))
-    #dplc=dpl_rti('bagohsrl',starttime,endtime,timedelta(seconds=15),endtime-starttime,0,15*1000,15);
-    #multiprocessing.Process(target=dp,args=(dplc,'bagohsrl')).start()
-    #dp(dplc,'bagohsrl')
-    #print request.__dict__
+    (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(pathidx)
+
+    try:
+        starttime=validdate(int(request.params.getone('byr')),
+                            int(request.params.getone('bmo')),
+                            int(request.params.getone('bdy')),
+                            int(request.params.getone('bhr')),
+                            int(request.params.getone('bmn')))
+        endtime=validdate(int(request.params.getone('eyr')),
+                          int(request.params.getone('emo')),
+                          int(request.params.getone('edy')),
+                          int(request.params.getone('ehr')),
+                          int(request.params.getone('emn')))
+        maxalt=float(request.params.getone('maxalt'))
+        minalt=float(request.params.getone('minalt'))
+    except:
+        #print 'fallback'
+        #print request.POST
+        #print request.GET
+        minalt=0
+        maxalt=15
+        lasttime=validClosestTime(methodtype,methodkey,datetime.utcnow())
+        endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
+        starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
+
+    print request
+    # used in both forms, but simplifies template
+    alts=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,20,25,30] #in kilometers
+    # these are only used in netcdf, and not form-configurable. this simplifies the template
+    altres=30
+    timeres=30
+    altresvals=[7.5,15,30,45,60,75,90,120,150,300,450,600,900,1200] # in meters
+    timeresvals=[2.5,5,10,15,30,60,120,180,240,300,600,900,1200,3600,43200] # in seconds
+
+    print instruments
+
+    hosttouse=None
+    porttouse=None
+    if "X-Forwarded-Host" in request.headers:
+        hosttouse=request.headers['X-Forwarded-Host']
+        porttouse=''
+
     return {'project':'Picnic',
             'bdate':starttime,
             'edate':endtime,'monthnames':calendar.month_name,
+            'altrange':[minalt,maxalt],'alts':alts,
+            'timeresvals':timeresvals,'altresvals':altresvals,
+            'timeres':timeres,'altres':altres,
+            'imagesets':imagesetsForInstruments(instruments),
+            'netcdfsets':netcdfsetsForInstruments(instruments),
             'datasets':instruments,pathname:pathidx,
+            'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
+            'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
+            'dataAvailabilityURL':request.route_path('dataAvailability'),
             'sitename':name}

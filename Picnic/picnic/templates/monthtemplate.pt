@@ -71,7 +71,7 @@ function checkViewType() {
       </table>
       </form>
     </td></tr>
-    <tr><td></td><td align="center"><a href="${request.relative_url('/',to_application=True)}">Return to Data Portal</a></td></tr>
+    <tr><td></td><td align="center"><a href="${request.route_path('home')}">Return to Data Portal</a></td></tr>
     <tr><td colspan="3">
       <table cellspacing="3">
         <tbody tal:define="customfillerimageurl None;imwidth 8 if len(allentries)<=1 else 50">

@@ -3,13 +3,299 @@
 <head>
 <Title>${sitename} Real-Time RTI Generation</Title>
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
-<script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?js=yes&site=${site}"></script>
+<script language="javascript">
+var allDatasets='${','.join(datasets)}';
+var datasetpath='${site}';
+var jspath='site';
+
+var xmlhttp=false;
+
+function getReq(){
+//var xmlhttp=false;
+if(xmlhttp){
+  xmlhttp.abort();
+  return xmlhttp;
+}
+/*@cc_on @*/
+/*@if (@_jscript_version >= 5)
+// JScript gives us Conditional compilation, we can cope with old IE versions.
+// and security blocked creation of the objects.
+ try {
+  xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
+ } catch (e) {
+  try {
+   xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+  } catch (E) {
+   xmlhttp = false;
+  }
+ }
+@end @*/
+if (!xmlhttp && typeof XMLHttpRequest!='undefined') {
+	try {
+		xmlhttp = new XMLHttpRequest();
+	} catch (e) {
+		xmlhttp=false;
+	}
+}
+if (!xmlhttp && window.createRequest) {
+	try {
+		xmlhttp = window.createRequest();
+	} catch (e) {
+		xmlhttp=false;
+	}
+}
+return xmlhttp;
+}
+
+function hasString(arr,str){
+  var i=0;
+  for(i=0;i<arr.length;i++)
+    if(arr[i]==str)
+      return true;
+  return false;
+}
+
+var enState=new Object();
+
+function doDisable(objs,field,disable){
+  if(field.length){//string
+    fieldidx=field.split(':');
+    if(fieldidx.length>1){
+      field=fieldidx[0];
+      idxes=fieldidx[1].split(',');
+      f=objs[field];
+      if(f==null)
+        return;
+      for(i=0;i<idxes.length;i++){
+        idx=parseInt(idxes[i]);
+        if(disable && !f[idx].disabled && f[idx].checked && (!enState.hasOwnProperty(field) || !f[enState[field]].disabled)){
+          enState[field]=idx;
+          f[0].checked=true;
+        }
+        if(disable && idx==0)
+          f.disabled=true;
+        doDisable(f,idx,disable);
+        if(!disable && idx==0)
+          f.disabled=false;
+        if(!disable && enState.hasOwnProperty(field) && enState[field]==idx)
+          f[idx].checked=true;
+      }
+      return;
+    }
+  }
+
+  var obj=objs[field];
+  if(obj==null)
+    return;
+  var objt;
+  if(obj.length)
+    objt="array";
+  else
+    objt=obj.type.toLowerCase();
+  wasDis=false;
+  if(objt=="array")
+    wasDis=obj[0].disabled;
+  else
+    wasDis=obj.disabled;
+  if(disable==wasDis)
+    return;
+  if(disable){
+    obj.disabled=true;
+    if (objt == "array"){
+      var vi=0;
+      for(i=0;i<obj.length;i++){
+        if(obj[i].checked)
+          vi=i;
+        doDisable(obj,i,true);
+      }
+      enState[field]=vi;
+      //obj[0].disabled=false;
+      obj[0].checked=true;
+    }else{
+      //obj.disabled=true;
+    }
+  }else{
+    obj.disabled=false;
+    if (objt == "array"){
+      for(i=0;i<obj.length;i++)
+        doDisable(obj,i,false);
+      obj[enState[field]].checked=true;
+    }else{
+      //obj.disabled=false;
+    }
+  }
+}
+
+function padString(str,filler,len){
+ var ret="";
+ while(ret.length+str.length<len)
+   ret=ret+filler;
+ ret=ret+str;
+ return ret
+}
+
+function beginUpdating(){
+  var itemlist = document.forms[0];
+progressdisplay=document.getElementById('avail_progress');
+progressdisplay.style.display="";
+var sbmt=null;
+for(i=0;i<itemlist.length;i++){
+var tempobj = itemlist.elements[i];
+if (tempobj.type.toLowerCase() == "submit")
+sbmt=tempobj;
+}
+sbmt.disabled=true;
+}
+
+function finishUpdating(){
+progressdisplay=document.getElementById('avail_progress');
+progressdisplay.style.display="none";
+}
+
+var needany=new Array();
+var needlidar=new Array('lidarfig');
+var needmerge=new Array('radarfig');
+var needmwr=new Array('mwrfig');
+var needpaeri0=new Array('aerifig:1');
+var needpaeri1=new Array();
+var needpaeripca1=new Array();
+var needpaerinon0=new Array('aerifig:2');
+var needpaeriany=new Array('aerifig:0');
+var needlidaramerge=new Array('combfig');
+
+
+var fallbackTimeout=false;
+function sanityCheckSubmit() {
+  itemlist=document.forms[0];
+  var invcount=0;
+  var sbmt=null;
+  for(i=0;i<itemlist.length;i++){
+     var tempobj = itemlist.elements[i];
+     if (tempobj.type.toLowerCase() == "submit")
+       sbmt=tempobj;
+  }
+
+  if(invcount>0){
+    sbmt.disabled=true;
+  }else{
+    sbmt.disabled=false;
+  }
+}
+
+
+function updateFromData(availability){
+  var itemlist = document.forms[0];
+  fallbackTimeout=false;
+  var av=new Array();
+  var doall=false;
+  if (availability && availability=='all')
+    doall=true;
+  if (availability && availability.length>0)
+    av=availability.split(',');
+  var lidar=hasString(av,'lidar')||doall;
+  var merge=hasString(av,'merge')||doall;
+  var mwr=hasString(av,'mwr')||doall;
+  var paeri0=hasString(av,'paeri0')||doall;
+  var paeri1=hasString(av,'paeri1')||hasString(av,'paeri2')||doall;
+  var paeri1pc=hasString(av,'paeri1pca')||hasString(av,'paeri2pca')||doall;
+  var paerinon0=paeri1||paeri1pc||doall;
+  var paeriany=paeri0||paerinon0||doall;
+  var i=0;
+  for(i=0;i<needany.length;i++)
+    doDisable(itemlist,needany[i],av.length==0)
+  for(i=0;i<needlidar.length;i++)
+    doDisable(itemlist,needlidar[i],!lidar);
+  for(i=0;i<needmerge.length;i++)
+    doDisable(itemlist,needmerge[i],!merge);
+  for(i=0;i<needmwr.length;i++)
+    doDisable(itemlist,needmwr[i],!mwr);
+  for(i=0;i<needpaeri0.length;i++)
+    doDisable(itemlist,needpaeri0[i],!paeri0);
+  for(i=0;i<needlidaramerge.length;i++)
+    doDisable(itemlist,needlidaramerge[i],(!lidar)||(!merge));
+  for(i=0;i<needpaeri1.length;i++)
+    doDisable(itemlist,needpaeri1[i],(!paeri1));
+  for(i=0;i<needpaeripca1.length;i++)
+    doDisable(itemlist,needpaeripca1[i],(!paeri1pc));
+  for(i=0;i<needpaerinon0.length;i++)
+    doDisable(itemlist,needpaerinon0[i],(!paerinon0));
+  for(i=0;i<needpaeriany.length;i++)
+    doDisable(itemlist,needpaeriany[i],(!paeriany));
+  if(av.length>0)
+    sanityCheckSubmit();
+}
+
+function clearFallback(){
+    if(fallbackTimeout){
+      clearTimeout(fallbackTimeout);
+      fallbackTimeout=false;
+    }
+}
+var countDownSeconds=0;
+var countDownInterval=false;
+
+function countDown(){
+   if(!countDownInterval)
+     countDownInterval=setInterval("countDown()",1000);
+  document.getElementById("countdown").innerHTML = String(countDownSeconds);
+  countDownSeconds=countDownSeconds-1;
+  if(countDownSeconds<0){
+    clearInterval(countDownInterval);
+    countDownInterval=false;
+  }
+}
+
+function checkDataAvailability(enabled) {
+  var itemlist = document.forms[0];
+  beginUpdating();
+  //var dbg=itemlist['DEBUG'];
+  var bstr=itemlist['byr'].value + padString(String(itemlist['bmo'].selectedIndex+1),'0',2) + padString(itemlist['bdy'].value,'0',2)  + 'T' + padString(itemlist['bhr'].value,'0',2) + padString(itemlist['bmn'].value,'0',2);
+  var estr=itemlist['eyr'].value + padString(String(itemlist['emo'].selectedIndex+1),'0',2) + padString(itemlist['edy'].value,'0',2)  + 'T' + padString(itemlist['ehr'].value,'0',2) + padString(itemlist['emn'].value,'0',2);
+  var availurl='${dataAvailabilityURL}?'+jspath+'='+datasetpath+'&time0='+bstr+'&time1='+estr;
+  //dbg.value=availurl;
+  r=getReq();
+  r.open('GET',availurl,true);
+  r.onreadystatechange=function(){
+    if(r.readyState!=4)
+      return;
+    var availability = r.responseText;
+    clearFallback();
+    countDownSeconds=0;
+    updateFromData(availability);
+    finishUpdating();
+   }
+   clearFallback();
+   countDownSeconds=15;
+   countDown();
+   fallbackTimeout=setTimeout("updateFromData('all')",countDownSeconds*1000);
+   r.send(null);
+}
+
+function setRadio(name,value){
+  var itemlist = document.forms[0];
+  var cb=itemlist[name];
+  for(i=0;i<cb.length;i++)
+    if(cb[i].value==value){
+      if(!cb[i].disabled)
+        cb[i].checked=true;
+      break;
+    }
+}
+
+
+function showCustomEmail(){
+  es=document.getElementById('emailset');
+  es.style.display="none";
+  ec=document.getElementById('emailcustom');
+  ec.style.display="";
+}
+</script>
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
 <FORM ACTION="http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi" METHOD="GET">
-<INPUT TYPE="HIDDEN" NAME="URL" VALUE="/cgi-bin/ahsrldisplay/exportmatlabfigs.cgi">
-<INPUT TYPE="HIDDEN" NAME="site" value="${site}">
+<INPUT TYPE="HIDDEN" NAME="URL" VALUE="${imagedestinationurl}"/>
+<INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
 <P>
 <div align="center">
 <B>${sitename}<BR/><BR/>
@@ -21,7 +307,7 @@ year<select NAME="byr" SIZE="1" onchange="freshentop();checkDataAvailability();"
 <option  tal:repeat="byear range(2012,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
 </select>
 month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value monthnames[bmonth];selected bdate.month==bmonth"/>
+<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value bmonth;selected bdate.month==bmonth"/>
 </select>
 day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
 <option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value '%02i' % bday;selected bdate.day==bday"/>
@@ -38,7 +324,7 @@ year<select NAME="eyr" SIZE="1" onchange="freshenbottom();checkDataAvailability(
 <option  tal:repeat="eyear range(2012,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
 </select>
 month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value monthnames[emonth];selected edate.month==emonth"/>
+<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value emonth;selected edate.month==emonth"/>
 </select>
 day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
 <option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value '%02i' % eday;selected edate.day==eday"/>
@@ -51,64 +337,28 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 </select>
 <P><B><TT>Altitude(km)</TT></B><BR>  Min:
 <select name="lheight" size="1" >
-<option value="0" selected="true">0</option>
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="5">5</option>
-<option value="6">6</option>
-<option value="7">7</option>
-<option value="8">8</option>
-<option value="9">9</option>
-<option value="10">10</option>
-<option value="11">11</option>
-<option value="12">12</option>
-<option value="13">13</option>
-<option value="14">14</option>
-<option value="15">15</option>
-<option value="20">20</option>
-<option value="25">25</option>
-<option value="30">30</option>
+<option tal:repeat="h alts" tal:content="'%i' % h" tal:attributes="value h;selected h==altrange[0]" />
 </select>
   Max:
 <select name="height" size="1" >
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="5">5</option>
-<option value="6">6</option>
-<option value="7">7</option>
-<option value="8">8</option>
-<option value="9">9</option>
-<option value="10">10</option>
-<option value="11">11</option>
-<option value="12">12</option>
-<option value="13">13</option>
-<option value="14">14</option>
-<option value="15" selected="true">15</option>
-<option value="20">20</option>
-<option value="25">25</option>
-<option value="30">30</option>
+<option tal:repeat="h alts" tal:content="'%i' % h" tal:attributes="value h;selected h==altrange[1]" />
 </select>
 </div><BR>
-<TABLE border="true" align="center" >
-<TR><TD colspan="1" align="center"><B>Select desired figure layout</B>
+<TABLE border="4" align="center" >
+<TR><TD colspan="${len(imagesets)}" align="center"><B>Select desired figure layout</B>
 </TD></TR>
 <TR valign="top">
-<TD><TABLE>
-<TR><TD>HSRL</TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="0"><span class="radiolink"><a href="javascript: setRadio('lidarfig',0)">None</a></span></TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="1"><span class="radiolink"><a href="javascript: setRadio('lidarfig',1)">Att. bscat, bscat, depol</a></span></TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="2"><span class="radiolink"><a href="javascript: setRadio('lidarfig',2)">Bscat, depol</a></span></TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="5"><span class="radiolink"><a href="javascript: setRadio('lidarfig',5)">Bscat, depol, line plots</a></span></TD></TR>
-<TR><TD><INPUT type="radio" checked name="lidarfig" value="3"><span class="radiolink"><a href="javascript: setRadio('lidarfig',3)">All figures</a></span></TD></TR>
+<TD tal:repeat="imset imagesets"><TABLE>
+<TR><TD><span tal:condition="'link' not in imset">${imset.name}</span><span tal:condition="'link' in imset"><a href="${imset.link}">${imset.name}</a></span></TD></TR>
+<TR tal:repeat="setname imset.order"><TD>
+  <INPUT type="radio" tal:attributes="name imset.formname;value setname;selected setname==imset.default" />
+  <span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
+</TD></TR>
 </TABLE></TD>
 </TR></TABLE>
 <BR><div align="center">
-E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""></span>
-<INPUT TYPE="SUBMIT" VALUE="Submit"><P>
+E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>
+<INPUT TYPE="SUBMIT" VALUE="Submit"/><P>
 <span id="avail_progress" style="display: none"><font color="#cc0000">updating options based on availability... (Timeout <span id="countdown">0</span>)</font></span> <BR/>
 <script type="text/javascript"><!--
 checkDataAvailability();
