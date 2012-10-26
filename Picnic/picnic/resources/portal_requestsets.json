@@ -9,7 +9,7 @@
                 "most": {
                     "enabled": ["lidar"],
                     "name": "Bscat, depol, line plots",
-                    "figs": ["backscat_image", "circular_depol_image", "linear_depol_image"]
+                    "figs": ["backscat_image",  "linear_depol_image","sounding","backscat_profile","backscat_ratio_FIXME","extinction_image","od_profile","depol_profile"]
                     },
                 "none": {
                     "name": "None",
@@ -18,17 +18,17 @@
                 "some": {
                     "enabled": ["lidar"],
                     "name": "Att. bscat, bscat, depol",
-                    "figs": ["atten_backscat_image", "backscat_image", "circular_depol_image", "linear_depol_image"]
+                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image"]
                     },
                 "all": {
                     "enabled": ["lidar"],
                     "name": "All figures",
-                    "figs": ["atten_backscat_image", "backscat_image", "circular_depol_image", "linear_depol_image", null]
+                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image", "circular_depol_image","sounding","backscat_profile","backscat_ratio_FIXME","extinction_image","od_profile","depol_profile", null]
                     },
                 "few": {
                     "enabled": ["lidar"],
                     "name": "Bscat, depol",
-                    "figs": ["backscat_image", "circular_depol_image", "linear_depol_image"]
+                    "figs": ["backscat_image", "linear_depol_image"]
                     }
                 },
             "order": ["none", "some", "few", "most", "all"],

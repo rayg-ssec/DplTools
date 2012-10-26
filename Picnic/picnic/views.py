@@ -595,7 +595,7 @@ def dp(dplc,sessionid,session):
     
     rs=None
     for n in dplc:
-        print 'loop'
+        #print 'loop'
         figs=du.show_images(instrument,n,dplc.rs_init.sounding,
                             dplc.rs_init.rs_constants,
                             dplc.rs_static.processing_defaults,
@@ -694,7 +694,7 @@ def imagerequest(request):
  
     figstocapture=[]
     for i in imagesetlist:
-        print i
+        #print i
         try:
             setmode=request.params.getone(i['formname'])
             figstocapture.extend(i['sets'][setmode]['figs'])
@@ -722,7 +722,7 @@ def imagerequest(request):
     stdt.close()
     sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
     sv=dpl_hsrllore_datasetForSite(methodkey)
-    print sv
+    #print sv
     sessiondict['logbookurl']='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?dataset=%i&rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (sv[0],starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
 
     json.dump(sessiondict,file(os.path.join(folder,'session.json'),'w'))
@@ -765,7 +765,7 @@ def progresspage(request):
     #    return HTTPNotFound('Invalid session')
     folder=os.path.join('.','sessions',sessionid);
     session=json.load(file(os.path.join(folder,"session.json")))
-    if sessionid in tasks and tasks[sessionid].is_alive():
+    if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
         #load intermediate if not
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),'sessionid':sessionid,'destination':session['finalpage']}
     #load next page if complete
@@ -804,7 +804,7 @@ def form_view(request):
         endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
         starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
 
-    print request
+    #print request
     # used in both forms, but simplifies template
     alts=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,20,25,30] #in kilometers
     # these are only used in netcdf, and not form-configurable. this simplifies the template
@@ -813,7 +813,7 @@ def form_view(request):
     altresvals=[7.5,15,30,45,60,75,90,120,150,300,450,600,900,1200] # in meters
     timeresvals=[2.5,5,10,15,30,60,120,180,240,300,600,900,1200,3600,43200] # in seconds
 
-    print instruments
+                                                                            #print instruments
 
     hosttouse=None
     porttouse=None
@@ -845,11 +845,11 @@ from operator import itemgetter
 def statuspage(request):
     folder=os.path.join('.','sessions');
     sess=os.listdir(folder)
-    sessinfo=[(n,infoOfFile(os.path.join(folder,n))[0],tasks[n].is_alive() if n in tasks else False,tasks[n] if n in tasks else None) for n in sess]
+    sessinfo=[(n,infoOfFile(os.path.join(folder,n))[0],tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,tasks[n] if n in tasks else None) for n in sess]
     sessinfo.sort(key=itemgetter(1),reverse=True)
     runningtasks=0
     for ses in tasks:
-        if tasks[ses].is_alive():
+        if tasks[ses]!=None and tasks[ses].is_alive():
             runningtasks=runningtasks+1
     return {'sessions':sess,
             'sessioninfo':sessinfo,
@@ -864,9 +864,9 @@ def debugsession(request):
     sessionid=request.matchdict['session']
     folder=os.path.join('.','sessions',sessionid);
     session=json.load(file(os.path.join(folder,"session.json")))
-    if sessionid in tasks:
+    if sessionid in tasks and tasks[sessionid]!=None:
         task=tasks[sessionid]
-        running=task.is_active()
+        running=task.is_alive()
     else:
         task=None
         running=False
