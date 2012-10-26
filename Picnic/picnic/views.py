@@ -11,149 +11,20 @@ import plistlib
 import multiprocessing
 from sets import Set
 
-imagesets=[
-    {'name':'HSRL',
-     'enabled':Set(['lidar']),#any set of data
-     'formname':'lidarfig',
-     'default':'most',
-     'order':['none','some','few','most','all'],
-     'sets':
-     {
-         'most':{
-             'name':'Bscat, depol, line plots',
-             'figs':['backscat_image','circular_depol_image','linear_depol_image'],
-             'enabled':['lidar'],#only enabled with any. used with javascript
-             },
-         'none':{
-             'name':'None',
-             'figs':[],
-             },
-         'some':{
-             'name':'Att. bscat, bscat, depol',
-             'figs':['atten_backscat_image','backscat_image','circular_depol_image','linear_depol_image'],
-             'enabled':['lidar'],#only enabled with any. used with javascript
-             },
-         'few':{
-             'name':'Bscat, depol',
-             'figs':['backscat_image','circular_depol_image','linear_depol_image'],
-             'enabled':['lidar'],#only enabled with any. used with javascript
-             },
-         'all':{
-             'name':'All figures',
-             'figs':[],
-             'enabled':['lidar'],#only enabled with any. used with javascript
-             },
-        }
-    },
-    {'name':'MMCR',
-     'enabled':Set(['merge']),#any set of data
-     'formname':'radarfig',
-     'default':'ref',
-     'order':['none','ref','bscat'],
-     'sets':
-     {
-         'none':{
-             'name':'None',
-             'figs':[],
-              },
-         'ref':{
-             'name':'All, Reflectivity(dBz)',
-             'figs':[],
-             'enabled':['merge'],#only enabled with any. used with javascript
-             },
-         'bscat':{
-             'name':'All, Bscat(1/(m sr))',
-             'figs':[],
-             'enabled':['merge'],#only enabled with any. used with javascript
-             },
-        }
-    },
-     {'name':'AERI',
-     'enabled':Set(['paeri0','paeri1','paeri2','paeri1pca','paeri2pca']),#any set of data
-     'formname':'aerifig',
-     'default':'bright',
-     'order':['none','bright','rad'],
-     'sets':
-     {
-         'none':{
-             'name':'None',
-             'figs':[],
-             },
-         'bright':{
-             'name':'Brightness Temp',
-             'figs':[],
-             'enabled':['paeri0'],#only enabled with any. used with javascript
-             },
-         'rad':{
-             'name':'Radiance',
-             'figs':[],
-             'enabled':['paeri1','paeri2','paeripc1','paeripc2'],#only enabled with any. used with javascript
-             },
-        }
-    },
-    {'name':'MWR',
-     'enabled':Set(['mwr']),#any set of data
-     'formname':'mwrfig',
-     'default':'all',
-     'order':['none','all'],
-     'sets':
-     {
-         'none':{
-             'name':'None',
-             'figs':[],
-             },
-         'all':{
-             'name':'All',
-             'figs':[],
-             'enabled':['mwr'],#only enabled with any. used with javascript
-             },
-         }
-    },
-     {'name':'Cooperative Quantities',
-      'link':'http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr',
-     'required':Set(['lidar','merge']),#requires all set of data
-     'formname':'combfig',
-     'default':'part',
-     'order':['none','part'],
-     'sets':
-     {
-         'none':{
-             'name':'None',
-             'figs':[],
-             },
-         'part':{
-             'name':'Part. Measurements',
-             'figs':[],
-             'required':['lidar','merge'],#only enabled with all. used with javascript
-             },
-        }
-    },
-  
-    ]
+setsfile='picnic/resources/portal_requestsets.json'
 
-hsrlncsets=[]
-
-
-
-def imagesetsForInstruments(instruments):
+def formsetsForInstruments(instruments,subset):
     iset=Set(instruments)
-    imagesetlist=[]
-    for aset in imagesets:
-        if 'enabled' in aset and len(aset['enabled'] & iset)==0:
+    setlist=[]
+    sets=json.load(file(setsfile))[subset]
+    for aset in sets:
+        if 'enabled' in aset and len(Set(aset['enabled']) & iset)==0:
             continue
-        if 'required' in aset and len(aset['required'] & iset)!=len(aset['required']):
+        if 'required' in aset and len(Set(aset['required']) & iset)!=len(Set(aset['required'])):
             continue
-        imagesetlist.append(aset)
+        setlist.append(aset)
 
-    return imagesetlist
-
-def netcdfsetsForInstruments(instruments):
-    ncsets=[]
-    #for aset in ncsets:
-        #in instruments:
-        #  ncsets.append(hsrlncsets)
-
-    return ncsets
+    return setlist
 
 staticresources={}
 
@@ -320,8 +191,61 @@ def redirect_day(request):
     except:
         return HTTPTemporaryRedirect(location=request.route_path('home'))
 
-@view_config(route_name='image_request')
-def image_request(request):
+imagepathcache={}
+imagepathcacheage=None
+
+def moddateoffile(f):
+    return os.stat(f).st_mtime
+
+@view_config(route_name='image_resource')
+@view_config(route_name='session_resource')
+def session_resource(request):
+    fn=request.matchdict['filename']
+    if 'session' in request.matchdict:
+        f=os.path.join('.','sessions',request.matchdict['session'],fn)
+    elif 'accesstype' in request.matchdict:
+        global imagepathcache
+        global imagepathcacheage
+        methodtype=request.matchdict['accesstype']
+        methodkey=request.matchdict['access']
+        yearno=int(request.matchdict['year'])
+        monthno=int(request.matchdict['month'])
+        dayno=int(request.matchdict['day'])
+        #FIXME HACKY CACHY
+        md=moddateoffile("/etc/dataarchive.plist")
+        if imagepathcacheage==None or imagepathcacheage!=md:
+            imagepathcacheage=md
+            imagepathcache.clear()
+        if methodtype not in imagepathcache or methodkey not in imagepathcache[methodtype]:
+            if len(imagepathcache)==0:
+                imagepathcacheage=moddateoffile("/etc/dataarchive.plist")
+            tmpdp=dpl_hsrl_imagearchive(methodtype,methodkey,None,False,datetime(yearno,monthno,dayno,0,0,0),datetime(yearno,monthno,dayno,1,0,0))
+            if methodtype not in imagepathcache:
+                imagepathcache[methodtype]={}
+            imagepathcache[methodtype][methodkey]=tmpdp.basepath
+            
+        f=os.path.join(imagepathcache[methodtype][methodkey],'%04i' % yearno,'%02i' % monthno, '%02i' % dayno,'images',fn)
+    else:
+        return HTTPNotFound("File doesn't exist")
+       
+    m=None
+    if not os.access(f,os.R_OK):
+        return HTTPNotFound("File doesn't exist")
+    if fn.endswith('.jpg'):
+        m='image/jpeg'
+    if fn.endswith('.png'):
+        m='image/png'
+    if fn=='logfile':
+        m='text/plain'
+    if fn.endswith('.json'):
+        m='application/json'
+
+    if m==None:
+        return HTTPNotFound("File inaccessible")
+    return Response(content_type=m,app_iter=file(f))
+
+@view_config(route_name='resource_request')
+def resource_request(request):
     #print request
     #print request.matchdict
     k=request.matchdict['statickey'];
@@ -331,12 +255,10 @@ def image_request(request):
             mt=staticresources[k]['mimetype']
             return Response(content_type=mt,app_iter=f)
         staticresources.erase(k);
-    return HTTPNotFound("Image doesn't exist in request cache")
+    return HTTPNotFound("File doesn't exist in request cache")
 
-def imageurlfor(req,inst,date,fname,fullfile):
+def staticurlfor(req,fname,fullfile):
     hashname=fname
-    if date!=None:
-        hashname='%s_%04i%02i%02i_' % (inst,date.year,date.month,date.day) + hashname
     if hashname not in staticresources:
         b={}
         b['filename']=fullfile
@@ -346,7 +268,7 @@ def imageurlfor(req,inst,date,fname,fullfile):
             b['mimetype']='image/png'
         if 'mimetype' in b:
             staticresources[hashname]=b
-    return req.route_path('image_request',statickey=hashname) #req.static_url(fname)
+    return req.route_path('resource_request',statickey=hashname) #req.static_url(fname)
 
 def makecalendar(req,gen):
     entryvec=[]
@@ -357,7 +279,8 @@ def makecalendar(req,gen):
         else:
             if i['is_valid']: #is not a custom missing image
                 dayurl=dayurlfor(req,req.matchdict['accesstype'],req.matchdict['access'],i['time'])
-            imageurl=imageurlfor(req,i['instrument'],i['time'],i['filename'],i['path'])
+            imageurl=req.route_path('image_resource',accesstype=req.matchdict['accesstype'],access=req.matchdict['access'],
+                                    year=i['time'].year,month=i['time'].month,day=i['time'].day,filename=i['filename'])
             #print i[4]
         entryvec.append({'dayurl':dayurl,'imageurl':imageurl})
     return entryvec
@@ -486,7 +409,7 @@ def date_view(request):
     nextlinkdate=validLaterTime(methodtype,methodkey,nextdate)
     pagename='%s' % (methodkey)
     pagedesc=None
-    pagedesc=selectdate.strftime('%B %d, %Y ') + ampm_range
+    pagedesc=selectdate.strftime('%B %e, %Y ') + ampm_range
     hightothumb={
         'bscat_depol':'bscat'
     }
@@ -515,7 +438,7 @@ def date_view(request):
             return HTTPNotFound(e)
         if img:
             calurl=monthurlfor(request,methodtype,methodkey,hightothumb[i],selectdate)
-            imageurl=imageurlfor(request,img['instrument'],img['time'],img['filename'],img['path'])
+            imageurl=request.route_path('image_resource',accesstype=methodtype,access=methodkey,year=img['time'].year,month=img['time'].month,day=img['time'].day,filename=img['filename'])
             entries.append({'calurl':calurl,'imageurl':imageurl})
     nextlink=None
     prevlink=None
@@ -525,7 +448,7 @@ def date_view(request):
         prevlink=dayurlfor(request,methodtype,methodkey,priorlinkdate)
     ds=dpl_hsrllore_datasetForSite(int(methodkey))
     if len(entries)>1:
-        imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid
+        imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi"
     else:
         imlink=request.route_path('imagegen',accesstype=methodtype,access=methodkey)
     if len(entries)>0:
@@ -534,6 +457,7 @@ def date_view(request):
         nclink=request.route_path('netcdfgen',accesstype=methodtype,access=methodkey)
     redirectbuttons=[]
     redirectbuttons.append(makeformbutton("Customize Image",imlink,selectdate,nextdate))
+    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})#if nclink becomes from here, this parameter isn't needed
     redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
     redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
     redirectbuttons.append(makeformbutton("Generate NetCDF",nclink,selectdate,nextdate))
@@ -573,7 +497,7 @@ def month_view(request):
     imagedesc=subtypekey
     thismonth=validdate(yearno,monthno,dayno)
     if isMulti:
-        pagedesc=thismonth.strftime('%D %B %Y')
+        pagedesc=thismonth.strftime('%B %e, %Y')+' - '+validdate(thismonth.year,thismonth.month,thismonth.day+3).strftime('%B %e, %Y')
         nextmonth=validdate(thismonth.year,thismonth.month,thismonth.day+4)
         prevmonth=validdate(thismonth.year,thismonth.month,thismonth.day-4)
     else:
@@ -641,11 +565,13 @@ def month_view(request):
             'thistime':thismonth,
             'lasttime':validPriorTime(methodtype,methodkey,currenttime),
             'caltypes':caltypes,'monthnames':calendar.month_name,
-            'missingimageurl':imageurlfor(request,None,None,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
-            'blankimageurl':imageurlfor(request,None,None,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
+            'missingimageurl':staticurlfor(request,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
+            'blankimageurl':staticurlfor(request,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
-def makedpl(dplparameters,processingfunction,sessionid,session):
+def makedpl(mystdout,dplparameters,processingfunction,sessionid,session):
+    os.dup2(mystdout.fileno(),sys.stdout.fileno())
+    os.dup2(mystdout.fileno(),sys.stderr.fileno())
     from hsrl.dpl_experimental.dpl_rti import dpl_rti
     dplc=dpl_rti(*dplparameters)
     processingfunction(dplc,sessionid,session)
@@ -682,7 +608,17 @@ def dp(dplc,sessionid,session):
         rs=n
         fignum=0
 
+        alreadycaptured=[]
+
         for x in session['figstocapture']:#plt._pylab_helpers.Gcf.get_all_fig_managers():
+            if x in alreadycaptured:
+                continue
+            alreadycaptured.append(x)
+            if x == None:
+                tmp=[ f for f in figs ];
+                tmp.sort()
+                session['figstocapture'].extend(tmp)
+                continue
             figname=os.path.join(folder,'figure%04i_%s.png' % (fignum,x))
             fignum = fignum + 1
         #      print 'updating  %d' % x.num
@@ -703,9 +639,10 @@ def dp(dplc,sessionid,session):
 def imageresult(request):
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
     folder=os.path.join('.','sessions',sessionid);
-    sessiontask=tasks[sessionid]
-    session=sessiontask['session']
+    #sessiontask=tasks[sessionid]
+    #session=sessiontask['session']
     #scan session folder for images
+    session=json.load(file(os.path.join(folder,"session.json")))
     ims = []
     try:
         fl=os.listdir(folder)
@@ -713,7 +650,7 @@ def imageresult(request):
         fl=[]
     for f in fl:
         if f.endswith('.png'):
-            ims.append(imageurlfor(request,None,None,sessionid+'_'+f, os.path.join(folder,f)))
+            ims.append( request.route_path('session_resource',session=sessionid,filename=f) )
     ims.sort()
     #send to template
     return { 'imageurls':ims, 'logfileurl':session['logfileurl'],'logbookurl':session['logbookurl'],
@@ -724,11 +661,12 @@ def imageresult(request):
 def imagerequest(request):
     session=request.session
     sessionid=session.new_csrf_token()
+    sessiondict={}
     #sessionid=request.POST['csrf_token']
     #add task status to list
     #print request.route_path('imageresult')
-    session['finalpage']=request.route_path('imageresult',session=sessionid);
-    tasks[sessionid]={'session':session}
+    sessiondict['finalpage']=request.route_path('imageresult',session=sessionid);
+    tasks[sessionid]=None
     #load parameters
     #print request.params
 
@@ -752,7 +690,7 @@ def imagerequest(request):
     altres=(altmax-altmin)/480 # 480 pixels high
     #contstruct dpl
     (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(int(methodkey))
-    imagesetlist=imagesetsForInstruments(instruments)
+    imagesetlist=formsetsForInstruments(instruments,'images')
  
     figstocapture=[]
     for i in imagesetlist:
@@ -768,23 +706,26 @@ def imagerequest(request):
 
     #dplc=dpl_rti(datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres);#alt in m
     #construct image generation parameters
-    session['dataset']=datasetname
-    session['name']=name
-    session['site']=methodkey
-    session['figstocapture']=figstocapture
+    sessiondict['dataset']=datasetname
+    sessiondict['name']=name
+    sessiondict['site']=methodkey
+    sessiondict['figstocapture']=figstocapture
 
     folder=os.path.join('.','sessions',sessionid);
     os.mkdir(folder)
   
     #start process
-    stdt=file(os.path.join(folder,'logfile'),'w')
-    tasks[sessionid]['process']=multiprocessing.Process(target=makedpl,args=([datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp,sessionid,session))
-    tasks[sessionid]['process'].start()
+    logfilepath=os.path.join(folder,'logfile')
+    stdt=file(logfilepath,'w')
+    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp,sessionid,sessiondict))
+    tasks[sessionid].start()
     stdt.close()
-    session['logfileurl']=imageurlfor(request,None,None,sessionid+'_'+'logfile', os.path.join(folder,'logfile'))
+    sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
     sv=dpl_hsrllore_datasetForSite(methodkey)
     print sv
-    session['logbookurl']='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?dataset=%i&rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (sv[0],starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
+    sessiondict['logbookurl']='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?dataset=%i&rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (sv[0],starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
+
+    json.dump(sessiondict,file(os.path.join(folder,'session.json'),'w'))
     
     #redirect to the progress page
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
@@ -820,13 +761,15 @@ def progress_getlastid(request):
 def progresspage(request):
     sessionid=request.matchdict['session']#session.get_csrf_token()  #get_cookies['session']#POST['csrf_token']
     #check status of this task
-    if sessionid not in tasks:
-        return HTTPNotFound('Invalid session')
-    if tasks[sessionid]['process'].is_alive():
+    #if sessionid not in tasks:
+    #    return HTTPNotFound('Invalid session')
+    folder=os.path.join('.','sessions',sessionid);
+    session=json.load(file(os.path.join(folder,"session.json")))
+    if sessionid in tasks and tasks[sessionid].is_alive():
         #load intermediate if not
-        return {'pagename':tasks[sessionid]['session']['name'],'progresspage':request.route_path('progress_withid',session=sessionid),'sessionid':sessionid}
+        return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),'sessionid':sessionid,'destination':session['finalpage']}
     #load next page if complete
-    return HTTPTemporaryRedirect(location=tasks[sessionid]['session']['finalpage'])
+    return HTTPTemporaryRedirect(location=session['finalpage'])
 
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
@@ -884,10 +827,66 @@ def form_view(request):
             'altrange':[minalt,maxalt],'alts':alts,
             'timeresvals':timeresvals,'altresvals':altresvals,
             'timeres':timeres,'altres':altres,
-            'imagesets':imagesetsForInstruments(instruments),
-            'netcdfsets':netcdfsetsForInstruments(instruments),
+            'imagesets':formsetsForInstruments(instruments,'images'),
+            'netcdfsets':formsetsForInstruments(instruments,'netcdf'),
             'datasets':instruments,pathname:pathidx,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
             'dataAvailabilityURL':request.route_path('dataAvailability'),
             'sitename':name}
+
+def infoOfFile(fn):
+    tmp=os.stat(fn)
+    return (datetime.utcfromtimestamp(tmp.st_ctime),datetime.utcfromtimestamp(tmp.st_mtime),tmp.st_size)
+
+from operator import itemgetter
+            
+@view_config(route_name='status',renderer='templates/status.pt')
+def statuspage(request):
+    folder=os.path.join('.','sessions');
+    sess=os.listdir(folder)
+    sessinfo=[(n,infoOfFile(os.path.join(folder,n))[0],tasks[n].is_alive() if n in tasks else False,tasks[n] if n in tasks else None) for n in sess]
+    sessinfo.sort(key=itemgetter(1),reverse=True)
+    runningtasks=0
+    for ses in tasks:
+        if tasks[ses].is_alive():
+            runningtasks=runningtasks+1
+    return {'sessions':sess,
+            'sessioninfo':sessinfo,
+            'runningtasks':runningtasks}
+
+@view_config(route_name='debug',renderer='templates/debug.pt')
+def debugpage(request):
+    return {}
+
+@view_config(route_name='debugsession',renderer='templates/debugsession.pt')
+def debugsession(request):
+    sessionid=request.matchdict['session']
+    folder=os.path.join('.','sessions',sessionid);
+    session=json.load(file(os.path.join(folder,"session.json")))
+    if sessionid in tasks:
+        task=tasks[sessionid]
+        running=task.is_active()
+    else:
+        task=None
+        running=False
+    if os.access(folder,os.R_OK):
+        filelist=os.listdir(folder)
+        filelist.sort()
+        filelistinfo=[]
+        for f in filelist:
+            inf=infoOfFile(os.path.join(folder,f))
+            filelistinfo.append((f,inf[2],inf[0],inf[1]))
+    else:
+        filelist=None
+        filelistinfo=None
+    if 'session.json' in filelist:
+        session=json.load(file(os.path.join(folder,"session.json")))
+    else:
+        session=None
+    return {'task':task,
+            'files':filelist,
+            'fileinfo':filelistinfo,
+            'session':session,
+            'running':running,
+            'sessionid':sessionid}

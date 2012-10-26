@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+  <title>HSRL Data Portal Session Debug ${sessionid}</title>
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+  <meta name="keywords" content="python web application" />
+  <meta name="description" content="pyramid web application" />
+  <link rel="shortcut icon" href="${request.static_url('picnic:static/favicon.ico')}" />
+  <link rel="stylesheet" href="${request.static_url('picnic:static/pylons.css')}" type="text/css" media="screen" charset="utf-8" />
+  <link rel="stylesheet" href="http://static.pylonsproject.org/fonts/nobile/stylesheet.css" media="screen" />
+  <link rel="stylesheet" href="http://static.pylonsproject.org/fonts/neuton/stylesheet.css" media="screen" />
+  <!--[if lte IE 6]>
+  <link rel="stylesheet" href="${request.static_url('picnic:static/ie6.css')}" type="text/css" media="screen" charset="utf-8" />
+  <![endif]-->
+</head>
+<body>
+<div id="wrap">
+  <table>
+    <tr>
+      <td><a href="${request.route_path('status')}">Back</a></td>
+    </tr>
+    <tr>
+      <td>${sessionid}</td>
+      <td><a tal:condition="running" tal:attributes="href request.route_path('progress_withid',session=sessionid)">running</a></td>
+    </tr>
+    <tr>
+      <td>Destination URL:</td>
+      <td tal:condition="session!=None"><a tal:attributes="href session.finalpage">here </a></td>
+      <td tal:condition="session==None">unknown</td>
+    </tr>
+    <tr tal:condition="session!=None and 'name' in session">
+      <td>Dataset:</td>
+      <td>${session.name}</td>
+      <td tal:condition="'dataset' in session and 'site' in session">[${session.dataset}(${session.site})]</td>
+    </tr>
+    <tr>
+      <td>Files</td>
+      <td tal:condition="files!=None">(${len(files)} count)</td>
+      <td tal:condition="files==None">folder missing</td>
+    </tr>    
+    <tr tal:condition="files!=None">
+      <td colspan="3">
+        <table border="4" cellpadding="20">
+          <tr><td>Name</td><td>size</td><td>created</td><td>modified</td></tr>
+          <tr tal:repeat="f fileinfo">
+            <td><a href="${request.route_path('session_resource',session=sessionid,filename=f[0])}">${f[0]}</a></td>
+            <td>${f[1]}</td>
+            <td>${f[2]}</td>
+            <td>${f[3]}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>    
+  </table>
+</div>
+</body>
+</html>

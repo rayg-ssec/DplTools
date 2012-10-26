@@ -32,11 +32,16 @@ def main(global_config, **settings):
     config.add_route('home', '/')
 
     #utilities
-    config.add_route('image_request','/statichash/{statickey}')#static file
+    config.add_route('session_resource','/session/{session}/{filename}')
+    config.add_route('image_resource','/{accesstype}/{access}/{year}/{month}/{day}/{filename}')
+    config.add_route('resource_request','/statichash/{statickey}')#static file
     config.add_route('progress', '/progress/')#
     config.add_route('progress_withid', '/progress/{session}')#
     config.add_route('select_month','/selectmonth')
     config.add_route('select_day','/selectday')
+    config.add_route('status','/status')
+    config.add_route('debug','/debug')
+    config.add_route('debugsession','/debug/{session}')
 
     config.scan()
     return config.make_wsgi_app()

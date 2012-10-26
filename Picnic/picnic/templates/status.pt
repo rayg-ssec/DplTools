@@ -1,8 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
 <head>
-  <title>${pagename} -- Progress...</title>
-  <META HTTP-EQUIV="Refresh" CONTENT="10;url=${progresspage}">
+  <title>HSRL Data Portal Status</title>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
   <meta name="keywords" content="python web application" />
   <meta name="description" content="pyramid web application" />
@@ -15,18 +14,15 @@
   <![endif]-->
 </head>
 <body>
-<script language="JavaScript">
-<!-- Use the HTML comment to hide JavaScript from old browsers
-setTimeout("self.location.replace('${progresspage}')",5000)
-// End hiding JavaScript -->
-</script><center><div id="wrap">
-  loading
-  <BR/>
-  <FORM action="${destination}" METHOD="GET">
-  <INPUT TYPE="HIDDEN" NAME="skip" VALUE="on">
-  <INPUT TYPE="HIDDEN" NAME="clientid" VALUE="${sessionid}">
-  <INPUT TYPE=SUBMIT VALUE="Skip/Abort">
-  </FORM>
-</div></center>
+<div id="wrap">
+    running tasks = ${runningtasks}<br>
+    <table>
+      <tr tal:repeat="sess sessioninfo">
+        <td><a href="${request.route_path('debugsession',session=sess[0])}">${sess[0]}</a></td>
+        <td>started ${sess[1].strftime('%F %R UT')}</td>
+        <td><a tal:condition="sess[2]" tal:attributes="href request.route_path('progress_withid',session=sess[0])">running</a></td>
+      </tr>
+    </table>
+</div>
 </body>
 </html>

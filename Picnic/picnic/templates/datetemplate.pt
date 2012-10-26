@@ -51,7 +51,7 @@
     <tr>
       <td></td>
       <td align="center">
-        <a href="${request.route_url('home')}">Return to Data Portal</a>
+        <a href="${request.route_path('home')}">Return to Data Portal</a>
       </td>
     </tr>
     <tr>
