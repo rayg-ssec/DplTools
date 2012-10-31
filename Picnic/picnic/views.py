@@ -13,6 +13,26 @@ from sets import Set
 
 setsfile='picnic/resources/portal_requestsets.json'
 
+def safejoin(*args):
+    tmp=os.path.abspath(args[0])
+    tmpargs=[tmp]
+    if len(args)>1:
+        tmpargs.extend(args[1:])
+    ret=os.path.join(*tmpargs)
+    if not ret.startswith(tmpargs[0]):
+        print "path " + ret + " doesn't start with " + tmpargs[0]
+        return None
+    if not ret.endswith(tmpargs[-1]):
+        print "path " + ret + " doesn't end with " + tmpargs[-1]
+        return None
+    if len(tmpargs)>2:
+        for p in tmpargs[1:(len(tmpargs)-1)]:
+            if os.path.sep+p+os.path.sep not in ret:
+                print "path " + ret + " doesn't with " + p
+                return None
+    return ret
+    
+
 def formsetsForInstruments(instruments,subset):
     iset=Set(instruments)
     setlist=[]
@@ -202,7 +222,7 @@ def moddateoffile(f):
 def session_resource(request):
     fn=request.matchdict['filename']
     if 'session' in request.matchdict:
-        f=os.path.join('.','sessions',request.matchdict['session'],fn)
+        f=safejoin('.','sessions',request.matchdict['session'],fn)
     elif 'accesstype' in request.matchdict:
         global imagepathcache
         global imagepathcacheage
@@ -224,7 +244,7 @@ def session_resource(request):
                 imagepathcache[methodtype]={}
             imagepathcache[methodtype][methodkey]=tmpdp.basepath
             
-        f=os.path.join(imagepathcache[methodtype][methodkey],'%04i' % yearno,'%02i' % monthno, '%02i' % dayno,'images',fn)
+        f=safejoin(imagepathcache[methodtype][methodkey],'%04i' % yearno,'%02i' % monthno, '%02i' % dayno,'images',fn)
     else:
         return HTTPNotFound("File doesn't exist")
        
@@ -565,8 +585,8 @@ def month_view(request):
             'thistime':thismonth,
             'lasttime':validPriorTime(methodtype,methodkey,currenttime),
             'caltypes':caltypes,'monthnames':calendar.month_name,
-            'missingimageurl':staticurlfor(request,'missing_thumb.jpg',os.path.join('/data/web_temp/clients/null','missing_thumb.jpg')),
-            'blankimageurl':staticurlfor(request,'blank_thumb.jpg',os.path.join('/data/web_temp/clients/null','blank_thumb.jpg')),
+            'missingimageurl':staticurlfor(request,'missing_thumb.jpg',safejoin('/data/web_temp/clients/null','missing_thumb.jpg')),
+            'blankimageurl':staticurlfor(request,'blank_thumb.jpg',safejoin('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
 def makedpl(mystdout,dplparameters,processingfunction,sessionid,session):
@@ -581,17 +601,23 @@ def dp(dplc,sessionid,session):
     import hsrl.data_stream.display_utilities as du
     import hsrl.calibration.cal_read_utilities as cru
     import json
-    du.init_colorbar_status()
+    import hsrl.graphics.graphics_toolkit as gt
     instrument=session['dataset']
 
-    (disp,conf)=du.get_display_defaults('all_plots.json')
+    if None in session['figstocapture']:
+        (disp,conf)=du.get_display_defaults('all_plots.json')
+    else:#fixme should this be enable_all()?
+        (disp,conf)=du.get_display_defaults('web_plots.json')
+        for fi in session['figstocapture']:
+            if fi in disp.get_attrs():
+                disp.set_value(fi,'enable',1)
     fd = oc.open_config('process_control.json')
     dd = json.load(fd)
     #self.rs_static.corr_adjusts = dd['corr_adjusts']
     process_defaults=dd['processing_defaults']
     fd.close()
 
-    folder=os.path.join('.','sessions',sessionid);
+    folder=safejoin('.','sessions',sessionid);
     
     rs=None
     for n in dplc:
@@ -619,7 +645,7 @@ def dp(dplc,sessionid,session):
                 tmp.sort()
                 session['figstocapture'].extend(tmp)
                 continue
-            figname=os.path.join(folder,'figure%04i_%s.png' % (fignum,x))
+            figname=safejoin(folder,'figure%04i_%s.png' % (fignum,x))
             fignum = fignum + 1
         #      print 'updating  %d' % x.num
             if x not in figs:
@@ -638,11 +664,11 @@ def dp(dplc,sessionid,session):
 @view_config(route_name='imageresult',renderer='templates/imageresult.pt')
 def imageresult(request):
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
-    folder=os.path.join('.','sessions',sessionid);
+    folder=safejoin('.','sessions',sessionid);
     #sessiontask=tasks[sessionid]
     #session=sessiontask['session']
     #scan session folder for images
-    session=json.load(file(os.path.join(folder,"session.json")))
+    session=json.load(file(safejoin(folder,"session.json")))
     ims = []
     try:
         fl=os.listdir(folder)
@@ -711,11 +737,11 @@ def imagerequest(request):
     sessiondict['site']=methodkey
     sessiondict['figstocapture']=figstocapture
 
-    folder=os.path.join('.','sessions',sessionid);
+    folder=safejoin('.','sessions',sessionid);
     os.mkdir(folder)
   
     #start process
-    logfilepath=os.path.join(folder,'logfile')
+    logfilepath=safejoin(folder,'logfile')
     stdt=file(logfilepath,'w')
     tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp,sessionid,sessiondict))
     tasks[sessionid].start()
@@ -725,7 +751,7 @@ def imagerequest(request):
     #print sv
     sessiondict['logbookurl']='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?dataset=%i&rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (sv[0],starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
 
-    json.dump(sessiondict,file(os.path.join(folder,'session.json'),'w'))
+    json.dump(sessiondict,file(safejoin(folder,'session.json'),'w'))
     
     #redirect to the progress page
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
@@ -763,8 +789,8 @@ def progresspage(request):
     #check status of this task
     #if sessionid not in tasks:
     #    return HTTPNotFound('Invalid session')
-    folder=os.path.join('.','sessions',sessionid);
-    session=json.load(file(os.path.join(folder,"session.json")))
+    folder=safejoin('.','sessions',sessionid);
+    session=json.load(file(safejoin(folder,"session.json")))
     if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
         #load intermediate if not
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),'sessionid':sessionid,'destination':session['finalpage']}
@@ -843,9 +869,9 @@ from operator import itemgetter
             
 @view_config(route_name='status',renderer='templates/status.pt')
 def statuspage(request):
-    folder=os.path.join('.','sessions');
+    folder=safejoin('.','sessions');
     sess=os.listdir(folder)
-    sessinfo=[(n,infoOfFile(os.path.join(folder,n))[0],tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,tasks[n] if n in tasks else None) for n in sess]
+    sessinfo=[(n,infoOfFile(safejoin(folder,n))[0],tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,tasks[n] if n in tasks else None) for n in sess]
     sessinfo.sort(key=itemgetter(1),reverse=True)
     runningtasks=0
     for ses in tasks:
@@ -862,8 +888,8 @@ def debugpage(request):
 @view_config(route_name='debugsession',renderer='templates/debugsession.pt')
 def debugsession(request):
     sessionid=request.matchdict['session']
-    folder=os.path.join('.','sessions',sessionid);
-    session=json.load(file(os.path.join(folder,"session.json")))
+    folder=safejoin('.','sessions',sessionid);
+    session=json.load(file(safejoin(folder,"session.json")))
     if sessionid in tasks and tasks[sessionid]!=None:
         task=tasks[sessionid]
         running=task.is_alive()
@@ -875,13 +901,13 @@ def debugsession(request):
         filelist.sort()
         filelistinfo=[]
         for f in filelist:
-            inf=infoOfFile(os.path.join(folder,f))
+            inf=infoOfFile(safejoin(folder,f))
             filelistinfo.append((f,inf[2],inf[0],inf[1]))
     else:
         filelist=None
         filelistinfo=None
     if 'session.json' in filelist:
-        session=json.load(file(os.path.join(folder,"session.json")))
+        session=json.load(file(safejoin(folder,"session.json")))
     else:
         session=None
     return {'task':task,
