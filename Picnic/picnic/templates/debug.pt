@@ -2,6 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
 <head>
   <title>HSRL Data Portal Debug</title>
+  <META HTTP-EQUIV="Refresh" CONTENT="120;url=${request.route_path('debug')}">
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
   <meta name="keywords" content="python web application" />
   <meta name="description" content="pyramid web application" />
@@ -14,14 +15,17 @@
   <![endif]-->
 </head>
 <body>
+<script language="JavaScript">
+<!-- Use the HTML comment to hide JavaScript from old browsers
+setTimeout("self.location.replace('${request.route_path('debug')}')",90000)
+// End hiding JavaScript -->
+</script>
 <center><div id="wrap">
-  loading
-  <BR/>
-  <FORM action="${destination}" METHOD="GET">
-  <INPUT TYPE="HIDDEN" NAME="skip" VALUE="on">
-  <INPUT TYPE="HIDDEN" NAME="clientid" VALUE="${sessionid}">
-  <INPUT TYPE=SUBMIT VALUE="Skip/Abort">
-  </FORM>
+  <table>
+    <tr tal:repeat="inf simpleinfos">
+      <td>${inf.name}</td><td>${inf.content}</td>
+    </tr>
+  </table>
 </div></center>
 </body>
 </html>

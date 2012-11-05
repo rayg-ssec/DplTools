@@ -2,6 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
 <head>
   <title>HSRL Data Portal Session Debug ${sessionid}</title>
+  <META tal:condition="running" HTTP-EQUIV="Refresh" CONTENT="10;url=${request.route_path('debugsession',session=sessionid)}">
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
   <meta name="keywords" content="python web application" />
   <meta name="description" content="pyramid web application" />
@@ -14,6 +15,11 @@
   <![endif]-->
 </head>
 <body>
+<script language="JavaScript" tal:condition="running" >
+<!-- Use the HTML comment to hide JavaScript from old browsers
+setTimeout("self.location.replace('${request.route_path('debugsession',session=sessionid)}')",5000)
+// End hiding JavaScript -->
+</script>
 <div id="wrap">
   <table>
     <tr>

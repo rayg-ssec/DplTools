@@ -589,33 +589,49 @@ def month_view(request):
             'blankimageurl':staticurlfor(request,'blank_thumb.jpg',safejoin('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
-def makedpl(mystdout,dplparameters,processingfunction,sessionid,session):
+def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
     os.dup2(mystdout.fileno(),sys.stdout.fileno())
     os.dup2(mystdout.fileno(),sys.stderr.fileno())
     from hsrl.dpl_experimental.dpl_rti import dpl_rti
+    if precall!=None:
+        precall(session,dplparameters)
+    print 'DPL_RTI Init Parameters:'
+    print dplparameters
     dplc=dpl_rti(*dplparameters)
-    processingfunction(dplc,sessionid,session)
+    processingfunction(dplc,session)
 
-def dp(dplc,sessionid,session):
+def dp_images_setup(session,dplparms):
+    import hsrl.data_stream.display_utilities as du
+    (disp,conf)=du.get_display_defaults('all_plots.json')
+    #else:#fixme should this be enable_all()?
+    #    (disp,conf)=du.get_display_defaults('web_plots.json')
+    if None not in session['figstocapture']: # None indicates all should be captured, so if its not, scan structure
+        data_req='images'
+        for fi in disp.get_attrs(): # for each figure
+            if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled
+                if fi in session['figstocapture']: #if requested, enable it
+                    disp.set_value(fi,'enable',1)
+                    if fi.startswith('show'):
+                        data_req='images housekeeping'
+                else:
+                    disp.set_value(fi,'enable',0) #otherwise disable it
+    else:
+        data_req= 'images housekeeping'
+
+    session['display_defaults']=disp
+    while len(dplparms)<10:
+        dplparms.append(None)
+    dplparms[9]=data_req
+
+def dp_images(dplc,session):
     import hsrl.data_stream.open_config as oc
     import hsrl.data_stream.display_utilities as du
     import hsrl.calibration.cal_read_utilities as cru
     import json
     import hsrl.graphics.graphics_toolkit as gt
     instrument=session['dataset']
-
-    if None in session['figstocapture']:
-        (disp,conf)=du.get_display_defaults('all_plots.json')
-    else:#fixme should this be enable_all()?
-        (disp,conf)=du.get_display_defaults('web_plots.json')
-        for fi in session['figstocapture']:
-            if fi in disp.get_attrs():
-                disp.set_value(fi,'enable',1)
-    fd = oc.open_config('process_control.json')
-    dd = json.load(fd)
-    #self.rs_static.corr_adjusts = dd['corr_adjusts']
-    process_defaults=dd['processing_defaults']
-    fd.close()
+    sessionid=session['sessionid']
+    disp=session['display_defaults']
 
     folder=safejoin('.','sessions',sessionid);
     
@@ -735,7 +751,9 @@ def imagerequest(request):
     sessiondict['dataset']=datasetname
     sessiondict['name']=name
     sessiondict['site']=methodkey
+    sessiondict['sessionid']=sessionid
     sessiondict['figstocapture']=figstocapture
+    #if None in session['figstocapture']:
 
     folder=safejoin('.','sessions',sessionid);
     os.mkdir(folder)
@@ -743,7 +761,7 @@ def imagerequest(request):
     #start process
     logfilepath=safejoin(folder,'logfile')
     stdt=file(logfilepath,'w')
-    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp,sessionid,sessiondict))
+    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp_images,sessiondict,dp_images_setup))
     tasks[sessionid].start()
     stdt.close()
     sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
@@ -883,7 +901,12 @@ def statuspage(request):
 
 @view_config(route_name='debug',renderer='templates/debug.pt')
 def debugpage(request):
-    return {}
+    info=[]
+    info.append({'name':'Python','content':sys.executable})
+    info.append({'name':'Python Version','content':sys.version})
+    info.append({'name':'Python platform','content':sys.platform})
+    info.append({'name':'Python Path','content':os.getenv('PYTHONPATH',"")})
+    return {'simpleinfos':info}
 
 @view_config(route_name='debugsession',renderer='templates/debugsession.pt')
 def debugsession(request):

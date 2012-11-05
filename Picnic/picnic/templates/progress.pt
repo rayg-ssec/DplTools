@@ -19,7 +19,8 @@
 <!-- Use the HTML comment to hide JavaScript from old browsers
 setTimeout("self.location.replace('${progresspage}')",5000)
 // End hiding JavaScript -->
-</script><center><div id="wrap">
+</script>
+<center><div id="wrap">
   loading
   <BR/>
   <FORM action="${destination}" METHOD="GET">
