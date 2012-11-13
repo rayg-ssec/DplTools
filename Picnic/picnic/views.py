@@ -9,9 +9,8 @@ import sys
 import calendar
 import plistlib
 import multiprocessing
-from sets import Set
 
-setsfile='picnic/resources/portal_requestsets.json'
+import jsgen
 
 def safejoin(*args):
     tmp=os.path.abspath(args[0])
@@ -32,19 +31,6 @@ def safejoin(*args):
                 return None
     return ret
     
-
-def formsetsForInstruments(instruments,subset):
-    iset=Set(instruments)
-    setlist=[]
-    sets=json.load(file(setsfile))[subset]
-    for aset in sets:
-        if 'enabled' in aset and len(Set(aset['enabled']) & iset)==0:
-            continue
-        if 'required' in aset and len(Set(aset['required']) & iset)!=len(Set(aset['required'])):
-            continue
-        setlist.append(aset)
-
-    return setlist
 
 staticresources={}
 
@@ -592,17 +578,22 @@ def month_view(request):
 def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
     os.dup2(mystdout.fileno(),sys.stdout.fileno())
     os.dup2(mystdout.fileno(),sys.stderr.fileno())
+    t=datetime.utcnow();
     from hsrl.dpl_experimental.dpl_rti import dpl_rti
+    print t
     if precall!=None:
         precall(session,dplparameters)
     print 'DPL_RTI Init Parameters:'
     print dplparameters
     dplc=dpl_rti(*dplparameters)
     processingfunction(dplc,session)
+    print datetime.utcnow()
+    print (datetime.utcnow()-t).total_seconds()
 
+#this will load the parameters from the session to create a json, or load and configure a premade one
 def dp_images_setup(session,dplparms):
     import hsrl.data_stream.display_utilities as du
-    (disp,conf)=du.get_display_defaults('all_plots.json')
+    (disp,conf)=du.get_display_defaults(session['display_defaults_file'])
     #else:#fixme should this be enable_all()?
     #    (disp,conf)=du.get_display_defaults('web_plots.json')
     if None not in session['figstocapture']: # None indicates all should be captured, so if its not, scan structure
@@ -732,7 +723,7 @@ def imagerequest(request):
     altres=(altmax-altmin)/480 # 480 pixels high
     #contstruct dpl
     (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(int(methodkey))
-    imagesetlist=formsetsForInstruments(instruments,'images')
+    imagesetlist=jsgen.formsetsForInstruments(instruments,'images')
  
     figstocapture=[]
     for i in imagesetlist:
@@ -746,17 +737,23 @@ def imagerequest(request):
 
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
+    folder=safejoin('.','sessions',sessionid);
+    os.mkdir(folder)
+
     #dplc=dpl_rti(datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres);#alt in m
     #construct image generation parameters
     sessiondict['dataset']=datasetname
     sessiondict['name']=name
     sessiondict['site']=methodkey
     sessiondict['sessionid']=sessionid
+    if 'display_defaults_file' in request.params:
+        sessiondict['display_defaults_file']=request.params.getone('display_defaults_file')
+        if os.path.sep in sessiondict['display_defaults_file']:
+            sessiondict['display_defaults_file']=os.path.join(folder,sessiondict['display_defaults_file'])
+    else:
+        sessiondict['display_defaults_file']='all_plots.json'
     sessiondict['figstocapture']=figstocapture
     #if None in session['figstocapture']:
-
-    folder=safejoin('.','sessions',sessionid);
-    os.mkdir(folder)
   
     #start process
     logfilepath=safejoin(folder,'logfile')
@@ -871,11 +868,12 @@ def form_view(request):
             'altrange':[minalt,maxalt],'alts':alts,
             'timeresvals':timeresvals,'altresvals':altresvals,
             'timeres':timeres,'altres':altres,
-            'imagesets':formsetsForInstruments(instruments,'images'),
-            'netcdfsets':formsetsForInstruments(instruments,'netcdf'),
+            'imagesets':jsgen.formsetsForInstruments(instruments,'images'),
+            'netcdfsets':jsgen.formsetsForInstruments(instruments,'netcdf'),
             'datasets':instruments,pathname:pathidx,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
+            'usercheckurl':request.route_url('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
             'sitename':name}
 
@@ -939,3 +937,370 @@ def debugsession(request):
             'session':session,
             'running':running,
             'sessionid':sessionid}
+
+
+def isValidEmailAddress(stringval):
+    s=stringval.split('@')
+    if len(s)!=2:
+        return False
+    return True
+
+datacookiename="datauser"
+keyfield="email"
+reqfields=("email","name",)
+optionalfields=("org",)
+
+@view_config(route_name='userCheck',renderer='templates/userCheck.pt')
+def userCheck(request):
+    import cgi_datauser
+    dbc=cgi_datauser.lidarwebdb()
+    info={};
+    doForm=True
+    fromSQL=False
+    indebug=False #True
+    if (keyfield in request.params and len(request.params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
+        doForm=False
+        if keyfield in request.params and len(request.params.getone(keyfield))>0:
+            if not isValidEmailAddress(request.params.getone(keyfield)):
+                doForm=True
+            else:
+                info[keyfield]=request.params.getone(keyfield)
+                hasreq=True;
+                for f in reqfields:
+                    if f in request.params and len(request.params.getone(f))>0:
+                        info[f]=request.params.getone(f)
+                    else
+                        hasreq=False
+                for f in optionalfields:
+                    if f in request.params and len(request.params.getone(f))>0:
+                        info[f]=request.params.getone(f)
+                if not hasreq:#work by lookup
+                    ti=dbc.getUserByEMail(info[keyfield])
+                    if ti:
+                        info=ti
+                        fromSQL=True
+        elif datacookiename in request.cookies:
+            ti=dbc.getUserByUID(request.cookies[datacookiename])
+            if ti:
+                info=ti
+                fromSQL=True
+        elif indebug: #DEBUG ONLY
+            ti=dbc.getUserByEMail("null")
+            if ti==None:
+                dbc.addClient({'email':'null','name':'bubba'})
+                ti=dbc.getUserByEMail("null")
+            info=ti
+            fromSQL=True
+        for f in reqfields:
+            if not info.has_key(f):
+                doForm=True
+                break
+    if not doForm:
+        if not fromSQL:
+            uid=dbc.addClient(info)
+        else:
+            uid=info['uid']
+        if uid!=None:
+            parms=''
+            jumpurl=''
+            if "PARAMS" in request.params:
+                parms='?'+request.params.getone('PARAMS')
+            if len(parms)<=1:
+                parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
+            if "URL" in request.params:
+                jumpurl=request.params.getone('URL')
+            if len(jumpurl)<=0:
+                jumpurl='/'
+                parms=''
+            dest=jumpurl + parms
+            if False and indebug:
+                print "Content-Type: text/plain"
+                print
+                if len(cookies)>0:
+                    print cookies
+                else:
+                    print "No cookies"
+                print "jump to %s" % dest
+            else:
+                bod="""
+                <HTML><HEAD>
+                <META HTTP-EQUIV="Refresh" CONTENT="0;url=%s">
+                <TITLE>Registered</TITLE>
+                </HEAD><BODY></BODY></HTML>
+               """  % dest
+            resp = Response(body=bod,content_type="text/html")
+            resp.set_cookie(datacookiename,uid,max_age=timedelta(weeks=12))
+            return resp
+    #form
+    #info=dbc.getUserByEMail("null")
+    #print "Content-Type: text/html"
+    #if len(cookies)>0:
+    #    print cookies
+    #print
+    if "URL" in request.params:
+        info["URL"]=request.params.getone('URL')
+    else:
+        info["URL"]=""
+    info["PARAMS"]=request.query_string#os.environ.get("QUERY_STRING","")
+    info["MYURL"]=request.path#os.environ.get("SCRIPT_NAME","")
+
+    fields=("email","name","org");
+    fielddesc={"email":"E-Mail Address",
+               "name":"Name",
+               "org":"Organization"}
+
+    return { 'MYURL': info['MYURL'],
+             'URL': info['URL'],
+             'PARAMS': info['PARAMS'],
+             'fields': fields,
+             'info': info,
+             'fielddesc': fielddesc,
+             'reqfields': reqfields}
+
+
+@view_config(route_name='imagejavascript',renderer='string')
+def imagejavascript(request):
+    methodtype=request.matchdict['accesstype']
+    methodkey=request.matchdict['access']
+    if methodtype=='by_site':
+        pathname='site'
+        pathidx=int(methodkey)
+    (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(pathidx)
+    request.response.content_type='text/javascript'
+ 
+    ret="""
+var allDatasets='%s';
+var datasetpath='%i';
+var jspath='site';
+
+var xmlhttp=false;
+
+function getReq(){
+//var xmlhttp=false;
+if(xmlhttp){
+  xmlhttp.abort();
+  return xmlhttp;
+}
+/*@cc_on @*/
+/*@if (@_jscript_version >= 5)
+// JScript gives us Conditional compilation, we can cope with old IE versions.
+// and security blocked creation of the objects.
+ try {
+  xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
+ } catch (e) {
+  try {
+   xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+  } catch (E) {
+   xmlhttp = false;
+  }
+ }
+@end @*/
+if (!xmlhttp && typeof XMLHttpRequest!='undefined') {
+	try {
+		xmlhttp = new XMLHttpRequest();
+	} catch (e) {
+		xmlhttp=false;
+	}
+}
+if (!xmlhttp && window.createRequest) {
+	try {
+		xmlhttp = window.createRequest();
+	} catch (e) {
+		xmlhttp=false;
+	}
+}
+return xmlhttp;
+}
+
+function hasString(arr,str){
+  var i=0;
+  for(i=0;i<arr.length;i++)
+    if(arr[i]==str)
+      return true;
+  return false;
+}
+
+var enState=new Object();
+
+function doDisable(objs,field,disable){
+  if(field.length){//string
+    fieldidx=field.split(':');
+    if(fieldidx.length>1){
+      field=fieldidx[0];
+      idxes=fieldidx[1].split(',');
+      f=objs[field];
+      if(f==null)
+        return;
+      for(i=0;i<idxes.length;i++){
+        idx=parseInt(idxes[i]);
+        if(disable && !f[idx].disabled && f[idx].checked && (!enState.hasOwnProperty(field) || !f[enState[field]].disabled)){
+          enState[field]=idx;
+          //f[0].checked=true;
+          setRadio(field,'none');
+        }
+        if(disable && idx==0)
+          f.disabled=true;
+        doDisable(f,idx,disable);
+        if(!disable && idx==0)
+          f.disabled=false;
+        if(!disable && enState.hasOwnProperty(field) && enState[field]==idx)
+          f[idx].checked=true;
+      }
+      return;
+    }
+  }
+
+  var obj=objs[field];
+  if(obj==null)
+    return;
+  var objt;
+  if(obj.length)
+    objt="array";
+  else
+    objt=obj.type.toLowerCase();
+  wasDis=false;
+  if(objt=="array")
+    wasDis=obj[0].disabled;
+  else
+    wasDis=obj.disabled;
+  if(disable==wasDis)
+    return;
+  if(disable){
+    obj.disabled=true;
+    if (objt == "array"){
+      var vi=0;
+      for(i=0;i<obj.length;i++){
+        if(obj[i].checked)
+          vi=i;
+        doDisable(obj,i,true);
+      }
+      enState[field]=vi;
+      obj[0].disabled=false;
+      obj[0].checked=true;
+    }else{
+      obj.disabled=true;
+    }
+  }else{
+    obj.disabled=false;
+    if (objt == "array"){
+      for(i=0;i<obj.length;i++)
+        doDisable(obj,i,false);
+      obj[enState[field]].checked=true;
+    }else{
+      obj.disabled=false;
+    }
+  }
+}
+
+function padString(str,filler,len){
+ var ret="";
+ while(ret.length+str.length<len)
+   ret=ret+filler;
+ ret=ret+str;
+ return ret
+}
+
+function beginUpdating(){
+  var itemlist = document.forms[0];
+progressdisplay=document.getElementById('avail_progress');
+progressdisplay.style.display="";
+var sbmt=null;
+for(i=0;i<itemlist.length;i++){
+var tempobj = itemlist.elements[i];
+if (tempobj.type.toLowerCase() == "submit")
+sbmt=tempobj;
+}
+sbmt.disabled=true;
+}
+
+function finishUpdating(){
+progressdisplay=document.getElementById('avail_progress');
+progressdisplay.style.display="none";
+}
+
+var fallbackTimeout=false;
+function sanityCheckSubmit() {
+  itemlist=document.forms[0];
+  var invcount=0;
+  var sbmt=null;
+  for(i=0;i<itemlist.length;i++){
+     var tempobj = itemlist.elements[i];
+     if (tempobj.type.toLowerCase() == "submit")
+       sbmt=tempobj;
+  }
+
+  if(invcount>0){
+    sbmt.disabled=true;
+  }else{
+    sbmt.disabled=false;
+  }
+}
+
+%s
+
+function clearFallback(){
+    if(fallbackTimeout){
+      clearTimeout(fallbackTimeout);
+      fallbackTimeout=false;
+    }
+}
+var countDownSeconds=0;
+var countDownInterval=false;
+
+function countDown(){
+   if(!countDownInterval)
+     countDownInterval=setInterval("countDown()",1000);
+  document.getElementById("countdown").innerHTML = String(countDownSeconds);
+  countDownSeconds=countDownSeconds-1;
+  if(countDownSeconds<0){
+    clearInterval(countDownInterval);
+    countDownInterval=false;
+  }
+}
+
+function checkDataAvailability() {
+  var itemlist = document.forms[0];
+  beginUpdating();
+  //var dbg=itemlist['DEBUG'];
+  var bstr=itemlist['byr'].value + padString(String(itemlist['bmo'].selectedIndex+1),'0',2) + padString(itemlist['bdy'].value,'0',2)  + 'T' + padString(itemlist['bhr'].value,'0',2) + padString(itemlist['bmn'].value,'0',2);
+  var estr=itemlist['eyr'].value + padString(String(itemlist['emo'].selectedIndex+1),'0',2) + padString(itemlist['edy'].value,'0',2)  + 'T' + padString(itemlist['ehr'].value,'0',2) + padString(itemlist['emn'].value,'0',2);
+  var availurl='%s?'+jspath+'='+datasetpath+'&time0='+bstr+'&time1='+estr;
+  //dbg.value=availurl;
+  r=getReq();
+  r.open('GET',availurl,true);
+  r.onreadystatechange=function(){
+    if(r.readyState!=4)
+      return;
+    var availability = r.responseText;
+    clearFallback();
+    countDownSeconds=0;
+    updateFromData(availability);
+    finishUpdating();
+   }
+   clearFallback();
+   countDownSeconds=15;
+   countDown();
+   fallbackTimeout=setTimeout("updateFromData('all')",countDownSeconds*1000);
+   r.send(null);
+}
+
+function setRadio(name,value){
+  var itemlist = document.forms[0];
+  var cb=itemlist[name];
+  for(i=0;i<cb.length;i++)
+    if(cb[i].value==value){
+      if(!cb[i].disabled)
+        cb[i].checked=true;
+      break;
+    }
+}
+
+
+function showCustomEmail(){
+  es=document.getElementById('emailset');
+  es.style.display="none";
+  ec=document.getElementById('emailcustom');
+  ec.style.display="";
+}
+""" % (','.join(instruments),pathidx,jsgen.makeUpdateFromData(jsgen.formsetsForInstruments(instruments,'images')),request.route_path('dataAvailability'))
+    return ret

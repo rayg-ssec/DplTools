@@ -16,6 +16,7 @@ def main(global_config, **settings):
     config.add_route('imagereq', '/rti_request/')#will set up process, and forward to progress#
     config.add_route('imageresult', '/rti_result/{session}')#
     config.add_route('imagegen', '/{accesstype}/{access}/custom_rti/')
+    config.add_route('imagejavascript', '/{accesstype}/{access}/custom_rti/req.js')
 
     #netcdf gen
     config.add_route('netcdfreq', '/netcdf_request/')#
@@ -37,6 +38,7 @@ def main(global_config, **settings):
     config.add_route('resource_request','/statichash/{statickey}')#static file
     config.add_route('progress', '/progress/')#
     config.add_route('progress_withid', '/progress/{session}')#
+    config.add_route('userCheck', '/userCheck')#
     config.add_route('select_month','/selectmonth')
     config.add_route('select_day','/selectday')
     config.add_route('status','/status')
