@@ -969,7 +969,7 @@ def userCheck(request):
                 for f in reqfields:
                     if f in request.params and len(request.params.getone(f))>0:
                         info[f]=request.params.getone(f)
-                    else
+                    else:
                         hasreq=False
                 for f in optionalfields:
                     if f in request.params and len(request.params.getone(f))>0:
