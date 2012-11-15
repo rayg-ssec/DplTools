@@ -873,7 +873,7 @@ def form_view(request):
             'datasets':instruments,pathname:pathidx,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
-            'usercheckurl':request.route_url('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
+            'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
             'sitename':name}
 
