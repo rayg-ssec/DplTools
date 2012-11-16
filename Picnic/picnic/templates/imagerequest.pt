@@ -3,8 +3,7 @@
 <head>
 <Title>${sitename} Real-Time RTI Generation</Title>
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
-<script language="javascript" src="${req.route_path('imagejavascript',accesstype=request.matchdict['accesstype'],access=request.matchdict['access'])}">
-</script>
+<script language="javascript" src="${req.route_path('imagejavascript',accesstype=request.matchdict['accesstype'],access=request.matchdict['access'])}"></script>
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>

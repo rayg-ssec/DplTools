@@ -677,6 +677,7 @@ def imageresult(request):
     #scan session folder for images
     session=json.load(file(safejoin(folder,"session.json")))
     ims = []
+    jsonfiles=[]
     try:
         fl=os.listdir(folder)
     except:
@@ -684,11 +685,98 @@ def imageresult(request):
     for f in fl:
         if f.endswith('.png'):
             ims.append( request.route_path('session_resource',session=sessionid,filename=f) )
+        if f.endswith('.json'):
+            jsonfiles.append(request.route_path('session_resource',session=sessionid,filename=f))
     ims.sort()
     #send to template
     return { 'imageurls':ims, 'logfileurl':session['logfileurl'],'logbookurl':session['logbookurl'],
              'sitename':session['name'], 'site':session['site'] ,
              'timespan':'FIXMEtimespan', 'rangespan':'FIXMErangespan' } 
+
+def setdictval(d,ks,v):
+    if len(ks)==1:
+        d[ks[0]]=v
+        return d
+    if ks[0] not in d:
+        d[ks[0]]={}
+    setdictval(d[ks[0]],ks[1:],v)
+
+def oneleveldict(sd,dd={},ks=[]):
+    if type(sd) is not type({}):
+        dd['.'.join(ks)]=sd
+        return dd
+    for k in sd:
+        oneleveldict(sd[k],dd,ks+[k])
+    return dd
+
+def meta(d):
+    ret={}
+    if type(d) is not type(ret):
+        return '%s' % (type(d).__name__)
+    for x in d:
+        ret[x]=meta(d[x])
+    return ret
+
+def loadMeta(d,pref,mpref):
+    ret={}
+    ret[pref]=d
+    ret[mpref]=meta(d)
+    ret['jsonprefix']=pref
+    ret['metaprefix']=mpref
+    return ret
+
+@view_config(route_name='generatejson',renderer='json')
+def generatejson(request):
+    fn=request.params.getone('file')
+    from hsrl.utils.locate_file import locate_file
+    sidedo=json.load(open(locate_file(fn),'r'))
+    if 'jsonprefix' in request.params: 
+        pref=request.params.getone('jsonprefix')
+        subpath=request.params.getone('subpath')
+        metpref='meta'
+        sided=oneleveldict(loadMeta(sidedo[subpath],pref,metpref))
+        res={}
+        res[pref]=sidedo[subpath]
+        for f in request.params:
+            if not f.startswith(pref + '.'):
+                continue
+            k=f
+            ks=k.split('.')
+            v=request.params.getone(f)
+            metkey=metpref + f[len(pref):]
+            if metkey in sided:
+                tp=sided[metkey]
+                if tp not in ['int','float']:
+                    print tp
+                if v.lower() in ['on','off','true','false'] and tp=='int':
+                    if v.lower() in ['on','true']:
+                        v=1
+                    else:
+                        v=0
+                else:
+                    v=eval(tp+'(v)')
+            #print 'setting value'
+            #print ks
+            #print v
+            setdictval(res,ks,v)
+            #print res
+        sidedo[subpath]=res[pref]
+    return sidedo
+
+@view_config(route_name='imagecustom',renderer='templates/imagecustom.pt')
+def imagecustom(request):
+    from hsrl.utils.locate_file import locate_file
+    fn='all_plots.json'
+    if 'display_defaults_file' in request.params:
+        fn=request.params.getone('display_defaults_file')
+        if os.path.sep in fn:
+            fn=safejoin(folder,sessiondict['display_defaults_file'])
+    ret={}
+    ret['jsonprefix']='json'
+    ret['file']=fn
+    ret['subpath']='display_defaults'
+    ret[ret['jsonprefix']] = json.load(open(locate_file(fn),'r'))[ret['subpath']]
+    return ret #loadMeta(ret,'json','meta')
     
 @view_config(route_name='imagereq')
 def imagerequest(request):
@@ -723,16 +811,6 @@ def imagerequest(request):
     altres=(altmax-altmin)/480 # 480 pixels high
     #contstruct dpl
     (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(int(methodkey))
-    imagesetlist=jsgen.formsetsForInstruments(instruments,'images')
- 
-    figstocapture=[]
-    for i in imagesetlist:
-        #print i
-        try:
-            setmode=request.params.getone(i['formname'])
-            figstocapture.extend(i['sets'][setmode]['figs'])
-        except:
-            pass
     #print figstocapture
 
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
@@ -749,11 +827,22 @@ def imagerequest(request):
     if 'display_defaults_file' in request.params:
         sessiondict['display_defaults_file']=request.params.getone('display_defaults_file')
         if os.path.sep in sessiondict['display_defaults_file']:
-            sessiondict['display_defaults_file']=os.path.join(folder,sessiondict['display_defaults_file'])
+            sessiondict['display_defaults_file']=safejoin(folder,sessiondict['display_defaults_file'])
+        sessiondict['figstocapture']=[None]
     else:
         sessiondict['display_defaults_file']='all_plots.json'
-    sessiondict['figstocapture']=figstocapture
-    #if None in session['figstocapture']:
+        imagesetlist=jsgen.formsetsForInstruments(instruments,'images')
+        
+        figstocapture=[]
+        for i in imagesetlist:
+            #print i
+            try:
+                setmode=request.params.getone(i['formname'])
+                figstocapture.extend(i['sets'][setmode]['figs'])
+            except:
+                pass
+        sessiondict['figstocapture']=figstocapture
+        #if None in session['figstocapture']:
   
     #start process
     logfilepath=safejoin(folder,'logfile')
@@ -1067,240 +1156,5 @@ def imagejavascript(request):
         pathidx=int(methodkey)
     (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(pathidx)
     request.response.content_type='text/javascript'
- 
-    ret="""
-var allDatasets='%s';
-var datasetpath='%i';
-var jspath='site';
 
-var xmlhttp=false;
-
-function getReq(){
-//var xmlhttp=false;
-if(xmlhttp){
-  xmlhttp.abort();
-  return xmlhttp;
-}
-/*@cc_on @*/
-/*@if (@_jscript_version >= 5)
-// JScript gives us Conditional compilation, we can cope with old IE versions.
-// and security blocked creation of the objects.
- try {
-  xmlhttp = new ActiveXObject("Msxml2.XMLHTTP");
- } catch (e) {
-  try {
-   xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
-  } catch (E) {
-   xmlhttp = false;
-  }
- }
-@end @*/
-if (!xmlhttp && typeof XMLHttpRequest!='undefined') {
-	try {
-		xmlhttp = new XMLHttpRequest();
-	} catch (e) {
-		xmlhttp=false;
-	}
-}
-if (!xmlhttp && window.createRequest) {
-	try {
-		xmlhttp = window.createRequest();
-	} catch (e) {
-		xmlhttp=false;
-	}
-}
-return xmlhttp;
-}
-
-function hasString(arr,str){
-  var i=0;
-  for(i=0;i<arr.length;i++)
-    if(arr[i]==str)
-      return true;
-  return false;
-}
-
-var enState=new Object();
-
-function doDisable(objs,field,disable){
-  if(field.length){//string
-    fieldidx=field.split(':');
-    if(fieldidx.length>1){
-      field=fieldidx[0];
-      idxes=fieldidx[1].split(',');
-      f=objs[field];
-      if(f==null)
-        return;
-      for(i=0;i<idxes.length;i++){
-        idx=parseInt(idxes[i]);
-        if(disable && !f[idx].disabled && f[idx].checked && (!enState.hasOwnProperty(field) || !f[enState[field]].disabled)){
-          enState[field]=idx;
-          //f[0].checked=true;
-          setRadio(field,'none');
-        }
-        if(disable && idx==0)
-          f.disabled=true;
-        doDisable(f,idx,disable);
-        if(!disable && idx==0)
-          f.disabled=false;
-        if(!disable && enState.hasOwnProperty(field) && enState[field]==idx)
-          f[idx].checked=true;
-      }
-      return;
-    }
-  }
-
-  var obj=objs[field];
-  if(obj==null)
-    return;
-  var objt;
-  if(obj.length)
-    objt="array";
-  else
-    objt=obj.type.toLowerCase();
-  wasDis=false;
-  if(objt=="array")
-    wasDis=obj[0].disabled;
-  else
-    wasDis=obj.disabled;
-  if(disable==wasDis)
-    return;
-  if(disable){
-    obj.disabled=true;
-    if (objt == "array"){
-      var vi=0;
-      for(i=0;i<obj.length;i++){
-        if(obj[i].checked)
-          vi=i;
-        doDisable(obj,i,true);
-      }
-      enState[field]=vi;
-      obj[0].disabled=false;
-      obj[0].checked=true;
-    }else{
-      obj.disabled=true;
-    }
-  }else{
-    obj.disabled=false;
-    if (objt == "array"){
-      for(i=0;i<obj.length;i++)
-        doDisable(obj,i,false);
-      obj[enState[field]].checked=true;
-    }else{
-      obj.disabled=false;
-    }
-  }
-}
-
-function padString(str,filler,len){
- var ret="";
- while(ret.length+str.length<len)
-   ret=ret+filler;
- ret=ret+str;
- return ret
-}
-
-function beginUpdating(){
-  var itemlist = document.forms[0];
-progressdisplay=document.getElementById('avail_progress');
-progressdisplay.style.display="";
-var sbmt=null;
-for(i=0;i<itemlist.length;i++){
-var tempobj = itemlist.elements[i];
-if (tempobj.type.toLowerCase() == "submit")
-sbmt=tempobj;
-}
-sbmt.disabled=true;
-}
-
-function finishUpdating(){
-progressdisplay=document.getElementById('avail_progress');
-progressdisplay.style.display="none";
-}
-
-var fallbackTimeout=false;
-function sanityCheckSubmit() {
-  itemlist=document.forms[0];
-  var invcount=0;
-  var sbmt=null;
-  for(i=0;i<itemlist.length;i++){
-     var tempobj = itemlist.elements[i];
-     if (tempobj.type.toLowerCase() == "submit")
-       sbmt=tempobj;
-  }
-
-  if(invcount>0){
-    sbmt.disabled=true;
-  }else{
-    sbmt.disabled=false;
-  }
-}
-
-%s
-
-function clearFallback(){
-    if(fallbackTimeout){
-      clearTimeout(fallbackTimeout);
-      fallbackTimeout=false;
-    }
-}
-var countDownSeconds=0;
-var countDownInterval=false;
-
-function countDown(){
-   if(!countDownInterval)
-     countDownInterval=setInterval("countDown()",1000);
-  document.getElementById("countdown").innerHTML = String(countDownSeconds);
-  countDownSeconds=countDownSeconds-1;
-  if(countDownSeconds<0){
-    clearInterval(countDownInterval);
-    countDownInterval=false;
-  }
-}
-
-function checkDataAvailability() {
-  var itemlist = document.forms[0];
-  beginUpdating();
-  //var dbg=itemlist['DEBUG'];
-  var bstr=itemlist['byr'].value + padString(String(itemlist['bmo'].selectedIndex+1),'0',2) + padString(itemlist['bdy'].value,'0',2)  + 'T' + padString(itemlist['bhr'].value,'0',2) + padString(itemlist['bmn'].value,'0',2);
-  var estr=itemlist['eyr'].value + padString(String(itemlist['emo'].selectedIndex+1),'0',2) + padString(itemlist['edy'].value,'0',2)  + 'T' + padString(itemlist['ehr'].value,'0',2) + padString(itemlist['emn'].value,'0',2);
-  var availurl='%s?'+jspath+'='+datasetpath+'&time0='+bstr+'&time1='+estr;
-  //dbg.value=availurl;
-  r=getReq();
-  r.open('GET',availurl,true);
-  r.onreadystatechange=function(){
-    if(r.readyState!=4)
-      return;
-    var availability = r.responseText;
-    clearFallback();
-    countDownSeconds=0;
-    updateFromData(availability);
-    finishUpdating();
-   }
-   clearFallback();
-   countDownSeconds=15;
-   countDown();
-   fallbackTimeout=setTimeout("updateFromData('all')",countDownSeconds*1000);
-   r.send(null);
-}
-
-function setRadio(name,value){
-  var itemlist = document.forms[0];
-  var cb=itemlist[name];
-  for(i=0;i<cb.length;i++)
-    if(cb[i].value==value){
-      if(!cb[i].disabled)
-        cb[i].checked=true;
-      break;
-    }
-}
-
-
-function showCustomEmail(){
-  es=document.getElementById('emailset');
-  es.style.display="none";
-  ec=document.getElementById('emailcustom');
-  ec.style.display="";
-}
-""" % (','.join(instruments),pathidx,jsgen.makeUpdateFromData(jsgen.formsetsForInstruments(instruments,'images')),request.route_path('dataAvailability'))
-    return ret
+    return jsgen.imagejavascriptgen(pathidx,instruments,request.route_path('dataAvailability'))

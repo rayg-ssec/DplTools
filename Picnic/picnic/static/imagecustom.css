@@ -1,0 +1,109 @@
+
+.figure{
+     border: 1px solid black;
+     width: 500px;
+}
+
+.figure_title{
+    background: #CCC;
+    border: 1px solid black;
+    font-style: italic;
+    font-weight:  bold;
+}
+
+
+.item_guid {
+    text-align: right;
+    float:      right;
+}
+.item_modDate {
+    text-align: right;
+    float:      right;
+}
+.item_table {
+    border: none;
+    margin:0em;
+    padding: 0px;
+    width: 800;
+}
+.item_title {
+    text-align: left;
+    color:      #333;
+    background: #FFF;
+    border: 2px outset;
+    padding: 8px;
+    font-weight: bold;
+}
+.item_meta{
+    background: #CCC;
+    border: 1px solid black;
+    font-style: italic;
+     font-size:  x-small;
+}
+.channel_timerange {
+    float:      center;
+    text-align: center;
+}
+.channel_pubDate {
+    float:      left;
+    text-align: left;
+    font-style: italic;
+    font-size:  small;
+}
+.channel_lastBuildDate {
+    float:      right;
+    text-align: right;
+    font-style: italic;
+    font-size:  small;
+}
+.item_pubDate {
+    border-top: 1px solid black;
+    border-left: 1px solid black;
+    float:      none;
+    text-align: left;
+    font-style: italic;
+    font-size:  small;
+}
+.pageright {
+    float:      right;
+    text-align: right;
+    font-weight: bold;
+}
+.pageleft {
+    float:      left;
+    text-align: left;
+    font-weight: bold;
+}
+.item_category {
+    float:      right;
+    text-align: right;
+    font-weight: bold;
+    font-size:  small;
+}
+.item_author {
+    float:      right;
+    text-align: right;
+    font-style: italic;
+    font-weight: bold;
+    font-size:  x-small;
+}
+.channel_copyright {
+    float:      left;
+    text-align: left;
+    font-style: italic;
+    font-weight: bold;
+    font-size:  x-small;
+}
+.channel_webmaster {
+    float:      left;
+    text-align: left;
+    font-style: italic;
+    font-size:  small;
+}
+.item_body {
+    padding: 0.5em 1em 0.5em 3em;
+}
+H1 {
+    text-align: center;
+    font-size: large;
+}

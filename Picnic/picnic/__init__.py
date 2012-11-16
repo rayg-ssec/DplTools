@@ -44,6 +44,8 @@ def main(global_config, **settings):
     config.add_route('status','/status')
     config.add_route('debug','/debug')
     config.add_route('debugsession','/debug/{session}')
+    config.add_route('imagecustom','/imagecustom')
+    config.add_route('generatejson','/jsongen')
 
     config.scan()
     return config.make_wsgi_app()
