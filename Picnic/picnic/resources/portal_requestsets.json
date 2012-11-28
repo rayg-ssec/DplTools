@@ -1,0 +1,113 @@
+{
+     "netcdf":[],
+     "images":
+         [
+            {"name": "HSRL",
+             "default": "most",
+             "enabled": ["lidar"],
+             "sets": {
+                "most": {
+                    "enabled": ["lidar"],
+                    "name": "Bscat, depol, line plots",
+                    "figs": ["backscat_image",  "linear_depol_image","sounding","backscat_profile","backscat_ratio_FIXME","extinction_image","od_profile","depol_profile"]
+                    },
+                "none": {
+                    "name": "None",
+                    "figs": []
+                    },
+                "some": {
+                    "enabled": ["lidar"],
+                    "name": "Att. bscat, bscat, depol",
+                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image"]
+                    },
+                "all": {
+                    "enabled": ["lidar"],
+                    "name": "All figures",
+                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image", "circular_depol_image","sounding","backscat_profile","backscat_ratio_FIXME","extinction_image","od_profile","depol_profile", null]
+                    },
+                "few": {
+                    "enabled": ["lidar"],
+                    "name": "Bscat, depol",
+                    "figs": ["backscat_image", "linear_depol_image"]
+                    }
+                },
+            "order": ["none", "some", "few", "most", "all"],
+            "formname": "lidarfig"
+        }, {"name": "MMCR",
+            "default": "ref",
+            "enabled": ["merge"],
+            "sets": {
+                "none": {
+                    "name": "None",
+                    "figs": []
+                    },
+                "ref": {
+                    "enabled": ["merge"],
+                    "name": "All, Reflectivity(dBz)",
+                    "figs": []
+                    },
+                "bscat": {
+                    "enabled": ["merge"],
+                    "name": "All, Bscat(1/(m sr))",
+                    "figs": []
+                    }
+                },
+            "order": ["none", "ref", "bscat"],
+            "formname": "radarfig"
+        }, {"name": "AERI",
+            "default": "bright",
+            "enabled": ["paeri0", "paeri1", "paeri2", "paeri1pca", "paeri2pca"],
+            "sets": {
+                "none": {
+                    "name": "None",
+                    "figs": []
+                    },
+                "bright": {
+                    "enabled": ["paeri0"],
+                    "name": "Brightness Temp",
+                    "figs": []
+                    },
+                "rad": {
+                    "enabled": ["paeri1", "paeri2", "paeripc1", "paeripc2"],
+                    "name": "Radiance", 
+                    "figs": []
+                    }
+                },
+            "order": ["none", "bright", "rad"],
+            "formname": "aerifig"
+        }, {"name": "MWR",
+            "default": "all",
+            "enabled": ["mwr"],
+            "sets": {
+                "none": {
+                    "name": "None",
+                    "figs": []
+                    },
+                "all": {
+                    "enabled": ["mwr"],
+                    "name": "All",
+                    "figs": []
+                    }
+                },
+            "order": ["none", "all"],
+            "formname": "mwrfig"
+        }, {"name": "Cooperative Quantities",
+            "default": "part",
+            "required": ["lidar", "merge"],
+            "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr",
+            "sets": {
+                "none": {
+                    "name": "None",
+                    "figs": []
+                    },
+                "part": {
+                    "required": ["lidar", "merge"],
+                    "name": "Part. Measurements",
+                    "figs": []
+                    }
+                },
+            "order": ["none", "part"],
+            "formname": "combfig"
+        }
+    ]
+}

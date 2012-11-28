@@ -44,9 +44,9 @@ def dpl_hsrllore_datasetForSite(siteid):
         dataset=0
         for d in datasets:
             if d.Name==i:
-                return dataset
+                return (dataset,site.Instruments[0].lower())
             dataset+=1
-    return -1
+    return (-1,None)
 
 def dpl_hsrllore_simpleThumbPrefixes(siteid):
     pl=plistlib.readPlist('/etc/dataarchive.plist')
@@ -66,7 +66,7 @@ def dpl_hsrllore_simpleDatasets(siteid):
     for i in site.Instruments:
         for t in insts[i].datasets:
             ret.append(t)
-    return (ret,site.Name)
+    return (ret,site.Name,site.Instruments[0].lower())
 
 class dpl_hsrl_imagearchive(object):
     def _findThumbPrefixes(self,insts,instrumentlist):
@@ -304,14 +304,22 @@ class dpl_hsrl_imagearchive(object):
             return None
 
 if __name__ == '__main__':
+    print '*********test 1'
     dplhsrlimage=dpl_hsrl_imagearchive('by_instrument','bagohsrl','bscat',True,datetime.datetime(2012,5,10,0,0,0),datetime.datetime(2012,5,20,0,0,0))
     for i in dplhsrlimage:
         print i
+    print '********test 2'
     dplhsrlimage=dpl_hsrl_imagearchive('by_datasetname','bagohsrl','bscat',True,datetime.datetime(2012,5,10,0,0,0),datetime.datetime(2012,5,20,0,0,0))
     for i in dplhsrlimage:
         print i
+    print '*******test 3'
     dplhsrlimage=dpl_hsrl_imagearchive('by_site','0','bscat_depol',False,datetime.datetime(2004,4,26,0,0,0),datetime.datetime(2004,5,20,0,0,0))
     if hasattr(dplhsrlimage,'SiteName'):
         print dplhsrlimage.SiteName
     #for i in dplhsrlimage:
         #print i
+    print '********test 4'
+    si=dpl_hsrllore_datasetForSite(17)
+    print si
+ 
+

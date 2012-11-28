@@ -1,0 +1,31 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+  <title>HSRL Data Portal Debug</title>
+  <META HTTP-EQUIV="Refresh" CONTENT="120;url=${request.route_path('debug')}">
+  <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
+  <meta name="keywords" content="python web application" />
+  <meta name="description" content="pyramid web application" />
+  <link rel="shortcut icon" href="${request.static_path('picnic:static/favicon.ico')}" />
+  <link rel="stylesheet" href="${request.static_path('picnic:static/pylons.css')}" type="text/css" media="screen" charset="utf-8" />
+  <link rel="stylesheet" href="http://static.pylonsproject.org/fonts/nobile/stylesheet.css" media="screen" />
+  <link rel="stylesheet" href="http://static.pylonsproject.org/fonts/neuton/stylesheet.css" media="screen" />
+  <!--[if lte IE 6]>
+  <link rel="stylesheet" href="${request.static_path('picnic:static/ie6.css')}" type="text/css" media="screen" charset="utf-8" />
+  <![endif]-->
+</head>
+<body>
+<script language="JavaScript">
+<!-- Use the HTML comment to hide JavaScript from old browsers
+setTimeout("self.location.replace('${request.route_path('debug')}')",90000)
+// End hiding JavaScript -->
+</script>
+<center><div id="wrap">
+  <table>
+    <tr tal:repeat="inf simpleinfos">
+      <td>${inf.name}</td><td>${inf.content}</td>
+    </tr>
+  </table>
+</div></center>
+</body>
+</html>

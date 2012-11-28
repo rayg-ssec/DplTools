@@ -1,0 +1,88 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+<Title></Title>
+<link rel="stylesheet" href="${request.static_path('picnic:static/imagecustom.css')}" type="text/css" media="screen" charset="utf-8" />
+<style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
+</head>
+<body>
+<FORM ACTION="${req.route_path('generatejson')}" METHOD="GET">
+<INPUT TYPE="HIDDEN" NAME="jsonprefix" VALUE="${jsonprefix}"/>
+<INPUT TYPE="HIDDEN" NAME="file" VALUE="${file}"/>
+<INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${subpath}"/>
+<INPUT TYPE="SUBMIT" VALUE="Submit"/>
+<div tal:repeat="figname json.keys()" class="entry">
+  <table  tal:condition="'enable' in json[figname]" class="figure" >
+    <tbody>
+      <tr>
+        <td class="figure_title">
+          <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/>${figname}
+        </td>
+      </tr>
+      <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname]" >
+        <td>
+          <span tal:condition="'x min' in json[figname]">
+            X Min:
+            <input type="text" name="${jsonprefix}.${figname}.x min" value="${json[figname]['x min']}"/>
+          </span>
+          <span tal:condition="'x max' in json[figname]">
+            X Max:
+            <input type="text" name="${jsonprefix}.${figname}.x max" value="${json[figname]['x max']}"/>
+          </span>
+        </td>
+      </tr>
+      <tr tal:condition="'y max' in json[figname] or 'y min' in json[figname]" >
+        <td>
+         <span tal:condition="'y min' in json[figname]">
+            Y Min:
+            <input type="text" name="${jsonprefix}.${figname}.y min" value="${json[figname]['y min']}"/>
+          </span>
+          <span tal:condition="'y max' in json[figname]">
+            Y Max:
+            <input type="text" name="${jsonprefix}.${figname}.y max" value="${json[figname]['y max']}"/>
+          </span>
+        </td>
+      </tr>
+      <tr tal:condition="'lo_color_lmt' in json[figname] or 'hi_color_lmt' in json[figname]" >
+        <td>
+         <span tal:condition="'lo_color_lmt' in json[figname]">
+            Color Min:
+            <input type="text" name="${jsonprefix}.${figname}.lo_color_lmt" value="${json[figname]['lo_color_lmt']}"/>
+          </span>
+          <span tal:condition="'hi_color_lmt' in json[figname]">
+            Color Max:
+            <input type="text" name="${jsonprefix}.${figname}.hi_color_lmt" value="${json[figname]['hi_color_lmt']}"/>
+          </span>
+        </td>
+      </tr>
+      <tr tal:condition="'mol_lost_level' in json[figname]" >
+        <td>
+         <span tal:condition="'mol_lost_level' in json[figname]">
+            Color Min:
+            <input type="text" name="${jsonprefix}.${figname}.mol_lost_level" value="${json[figname]['mol_lost_level']}"/>
+          </span>
+        </td>
+      </tr>
+      <tr tal:condition="'high' in json[figname]" >
+        <td>
+         <span tal:condition="'high' in json[figname]">
+            Highest Value:
+            <input type="text" name="${jsonprefix}.${figname}.high" value="${json[figname]['high']}"/>
+          </span>
+        </td>
+      </tr>
+      <tr tal:condition="'max alt(km)' in json[figname]" >
+        <td>
+         <span tal:condition="'max alt(km)' in json[figname]">
+            Alt Max:
+            <input type="text" name="${jsonprefix}.${figname}.max alt(km)" value="${json[figname]['max alt(km)']}"/>
+          </span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+<INPUT TYPE="SUBMIT" VALUE="Submit"/>
+</FORM>
+</body>
+</html>

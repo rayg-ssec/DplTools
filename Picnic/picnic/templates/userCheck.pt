@@ -1,0 +1,30 @@
+<HTML>
+<HEAD>
+<TITLE>Data Retrieval Registration</TITLE>
+</HEAD>
+<BODY>
+<TABLE>
+  <TR>
+    <TD>
+      <H2>Please Register for Custom Data access</H2>
+      <FORM id="userCheck" action="${MYURL}" method="POST">
+      <INPUT TYPE="HIDDEN" NAME="URL" VALUE="${URL}"/><INPUT TYPE="HIDDEN" NAME="PARAMS" VALUE="${PARAMS}"/>
+      <TABLE>
+        
+        <TR tal:repeat="f fields">
+          <TD align="right"><font color="#cc0000" tal:condition="f in reqfields">*</font>${fielddesc[f]}</TD><TD align="left"><INPUT TYPE="TEXT" NAME="${f}" VALUE="${'' if (f not in info) or (info[f]==None) else info[f]}"/></TD>
+        </TR>  
+        <TR><TD align="center" colspan="2"><INPUT TYPE="SUBMIT" NAME="Continue"></TD></TR>
+      </TABLE>
+      </FORM>
+    </TD><TD align=right>
+      <I>Note:</I> If you have cookies enabled, this page will<BR>only appear when information needs to be updated.
+    </TD></TR>
+    <TR><TD colspan=2>
+      <IFRAME src="http://lidar.ssec.wisc.edu/syst/ahsrl/userreg.htm" frameborder="1" align="left" width=800 height=600></IFRAME>
+    </TD>
+  </TR>
+</TABLE>
+</BODY>
+</HTML>
+    

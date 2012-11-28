@@ -3,13 +3,13 @@
 <head>
 <Title>${sitename} Real-Time RTI Generation</Title>
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
-<script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?js=yes&site=${site}"></script>
+<script language="javascript" src="${req.route_path('imagejavascript',accesstype=request.matchdict['accesstype'],access=request.matchdict['access'])}"></script>
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM ACTION="http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi" METHOD="GET">
-<INPUT TYPE="HIDDEN" NAME="URL" VALUE="/cgi-bin/ahsrldisplay/exportmatlabfigs.cgi">
-<INPUT TYPE="HIDDEN" NAME="site" value="${site}">
+<FORM ACTION="${usercheckurl}" METHOD="GET">
+<INPUT TYPE="HIDDEN" NAME="URL" VALUE="${imagedestinationurl}"/>
+<INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
 <P>
 <div align="center">
 <B>${sitename}<BR/><BR/>
@@ -21,7 +21,7 @@ year<select NAME="byr" SIZE="1" onchange="freshentop();checkDataAvailability();"
 <option  tal:repeat="byear range(2012,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
 </select>
 month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value monthnames[bmonth];selected bdate.month==bmonth"/>
+<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value bmonth;selected bdate.month==bmonth"/>
 </select>
 day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
 <option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value '%02i' % bday;selected bdate.day==bday"/>
@@ -38,7 +38,7 @@ year<select NAME="eyr" SIZE="1" onchange="freshenbottom();checkDataAvailability(
 <option  tal:repeat="eyear range(2012,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
 </select>
 month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value monthnames[emonth];selected edate.month==emonth"/>
+<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value emonth;selected edate.month==emonth"/>
 </select>
 day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
 <option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value '%02i' % eday;selected edate.day==eday"/>
@@ -51,72 +51,36 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 </select>
 <P><B><TT>Altitude(km)</TT></B><BR>  Min:
 <select name="lheight" size="1" >
-<option value="0" selected="true">0</option>
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="5">5</option>
-<option value="6">6</option>
-<option value="7">7</option>
-<option value="8">8</option>
-<option value="9">9</option>
-<option value="10">10</option>
-<option value="11">11</option>
-<option value="12">12</option>
-<option value="13">13</option>
-<option value="14">14</option>
-<option value="15">15</option>
-<option value="20">20</option>
-<option value="25">25</option>
-<option value="30">30</option>
+<option tal:repeat="h alts" tal:content="'%i' % h" tal:attributes="value h;selected h==altrange[0]" />
 </select>
   Max:
 <select name="height" size="1" >
-<option value="1">1</option>
-<option value="2">2</option>
-<option value="3">3</option>
-<option value="4">4</option>
-<option value="5">5</option>
-<option value="6">6</option>
-<option value="7">7</option>
-<option value="8">8</option>
-<option value="9">9</option>
-<option value="10">10</option>
-<option value="11">11</option>
-<option value="12">12</option>
-<option value="13">13</option>
-<option value="14">14</option>
-<option value="15" selected="true">15</option>
-<option value="20">20</option>
-<option value="25">25</option>
-<option value="30">30</option>
+<option tal:repeat="h alts" tal:content="'%i' % h" tal:attributes="value h;selected h==altrange[1]" />
 </select>
 </div><BR>
-<TABLE border="true" align="center" >
-<TR><TD colspan="1" align="center"><B>Select desired figure layout</B>
+<TABLE border="4" align="center" >
+<TR><TD colspan="${len(imagesets)}" align="center"><B>Select desired figure layout</B>
 </TD></TR>
 <TR valign="top">
-<TD><TABLE>
-<TR><TD>HSRL</TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="0"><span class="radiolink"><a href="javascript: setRadio('lidarfig',0)">None</a></span></TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="1"><span class="radiolink"><a href="javascript: setRadio('lidarfig',1)">Att. bscat, bscat, depol</a></span></TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="2"><span class="radiolink"><a href="javascript: setRadio('lidarfig',2)">Bscat, depol</a></span></TD></TR>
-<TR><TD><INPUT type="radio" name="lidarfig" value="5"><span class="radiolink"><a href="javascript: setRadio('lidarfig',5)">Bscat, depol, line plots</a></span></TD></TR>
-<TR><TD><INPUT type="radio" checked name="lidarfig" value="3"><span class="radiolink"><a href="javascript: setRadio('lidarfig',3)">All figures</a></span></TD></TR>
+<TD tal:repeat="imset imagesets"><TABLE>
+<TR><TD><span tal:condition="'link' not in imset">${imset.name}</span><span tal:condition="'link' in imset"><a href="${imset.link}">${imset.name}</a></span></TD></TR>
+<TR tal:repeat="setname imset.order"><TD>
+  <INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
+  <span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
+</TD></TR>
 </TABLE></TD>
 </TR></TABLE>
 <BR><div align="center">
-E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""></span>
-<INPUT TYPE="SUBMIT" VALUE="Submit"><P>
+E-Mail: <span id="emailset" tal:condition="'datauser' in req.cookies"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" tal:attributes="style 'display: none' if 'datauser' in req.cookies else ''"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>
+<INPUT TYPE="SUBMIT" VALUE="Submit"/><P>
 <span id="avail_progress" style="display: none"><font color="#cc0000">updating options based on availability... (Timeout <span id="countdown">0</span>)</font></span> <BR/>
 <script type="text/javascript"><!--
 checkDataAvailability();
 --></script>
 </FORM>
 <div align="center">
-<a href="/syst/ahsrl/about_image.htm">About the images</a><br />
-<a href="/syst/ahsrl/ahsrl_data.htm">Back to AHSRL Data homepage</a><br />
+<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/about_image.htm">About the images</a><br />
+<a href="${request.route_path('home')}">Back to HSRL Data Portal</a><br />
 </div>
 </body>
 </html>
