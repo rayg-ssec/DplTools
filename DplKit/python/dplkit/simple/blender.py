@@ -1,13 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-package.module
-~~~~~~~~~~~~~
+dplkit.simple.blender
+~~~~~~~~~~~~~~~~~~~~~
 
-
-A description which can be long and explain the complete
-functionality of this module even with indented code examples.
-Class/Function however should not be documented here.
 
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
@@ -42,6 +38,7 @@ class Merge(aBlender):
 
 def test():
     """ """
+    # FIXME 
     pass
 
 
