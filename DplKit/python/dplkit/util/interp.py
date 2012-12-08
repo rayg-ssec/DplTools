@@ -62,13 +62,13 @@ class TimeSeriesPolyInterp(object):
         if len(self._pool) > self._max_pool_len:
             del self._pool[:-self._max_pool_len]
             del self._times[:-self._max_pool_len]
-        if (no_older_than_this is not None) and (len(self._pool)>0):
+        if (no_older_than_this is not None) and (len(self._pool)>=self._order):
             n = 0
-            while self._times[0] > when:
+            while self._times[n] > when:
                 n += 1
             del self._times[:n]
             del self._pool[:n]
-        if len(self._polys) > 2 * len(self._pool):
+        if len(self._polys) > len(self._pool):
             times = set(x.when for x in self._pool)
             self._polys = dict((k,v) for (k,v) in self._pool.items() if (v.start in times) or (v.end in times))
 
@@ -92,15 +92,16 @@ class TimeSeriesPolyInterp(object):
 
     @property
     def span(self):
-        if len(self._pool) <= self._order: return None, None
+        if len(self._pool) <= self._order: 
+            return None, None
         return self._pool[self._order - 1].when, self._pool[-1].when
 
     def __contains__(self, when):
-        if (len(self._pool) < (self._order+1)):
+        if len(self._pool) <= self._order:
             return False
         start, end = self.span
         # for order > 1, we only allow interpolation between last two segments of a given grouping, to enforce ~continuity
-        if (when < start) or (when >= end):
+        if (when < start) or (when > end):
             return False
         return True
 
@@ -124,20 +125,19 @@ class TimeSeriesPolyInterp(object):
 
     def _poly_for_time(self, when):
         # find the offset within the pool
-        dex = bisect.bisect_left(self._times, when)
+        assert(len(self._times) == len(self._pool))
+        # find index we would insert at, such that everything left of this index is <=when
+        dex = bisect.bisect_right(self._times, when)
         # get the time key for the poly we want to use, if it exists in the poly cache
         # any given polynomial only interpolates for the last two time points used to generate it
         key = self._pool[dex].when
-        # assert(len(self._pool) == len(self._times))
-        # assert(self._pool[dex].when == self._times[dex])
-        # assert(self._times[dex] <= when)
-        # assert(self._pool[dex+1].when > when)
-        # assert(self._times[dex+1] > when)
-        LOG.debug('found %s after %s @ %d' % (when, key, dex))
+        assert(self._pool[dex].when == self._times[dex])
+        assert(self._times[dex] > when)
+        LOG.debug('found %s before %s @ %d/%d' % (when, key, dex, len(self._times)))
         poly = self._polys.get(key, None)
         if poly is None:  # grab the right block of pool data, e.g. 0:2 for order 1
-            poly = self._generate_poly(self._pool[dex - (self._order-1) : dex + 2])
-            self._polys[poly.start] = poly
+            poly = self._generate_poly(self._pool[dex - self._order : dex + 1])
+            self._polys[poly.end] = poly
             # assert(a.when == poly.start)
         return poly
 
@@ -147,7 +147,7 @@ class TimeSeriesPolyInterp(object):
             raise ValueError("cannot extrapolate to time %s, coverage is %s ~ %s" % (when, s,e))
         poly = self._poly_for_time(when)
         data = self._apply_poly(poly, when)
-        # FIXME self._drain(when)
+        self._drain()
         return data
 
     def __str__(self):
@@ -170,7 +170,7 @@ class testInterp(unittest.TestCase):
     tspi = 1
 
     def setUp(self):
-        self.tspi = TimeSeriesPolyInterp()
+        self.tspi = TimeSeriesPolyInterp(order=2, max_pool_len=64)
         self.start = when = datetime.utcnow()
         delta = timedelta(seconds=10)
         t = [when - delta, when]
@@ -184,6 +184,9 @@ class testInterp(unittest.TestCase):
         print y
         self.tspi += list((a,np.array(b, dtype=np.float32)) for (a,b) in zip(t,y))
         self.reference = dict(zip(t,y))
+        self.t = t
+        self.y = y
+        self.ts = [(x - t[0]).total_seconds() for x in t]
         print str(self.reference)
         self.end = t[-1]
 
@@ -196,6 +199,33 @@ class testInterp(unittest.TestCase):
             self.assertEqual(np.round(q), self.reference[when])
             # self.assertTrue(np.abs(q - self.reference[when]) < 0.0005)
             when += timedelta(seconds=20)
+
+    def testPlots(self):
+        import matplotlib.pyplot as plt
+        t = self.start
+        xs = []
+        ys = []
+        incr = timedelta(seconds=1, microseconds=431539)
+        while t < self.end:
+            print "++ %s %s~%s" % ( (t, ) + self.tspi.span )
+            y = self.tspi(t)
+            print t, y
+            x = (t - self.t[0]).total_seconds()
+            xs.append(x)
+            ys.append(y)
+            t += incr
+        fig = plt.figure()
+        ax = plt.axes()
+        ax.plot(xs, ys, 'go')
+        ax.plot(self.ts, self.y, 'bx-')
+        plt.draw()
+        fn = '/tmp/interp.png'
+        fig.savefig(fn, dpi=200)
+        print "wrote " + fn
+        return None
+
+
+
 
 
 # def suite():
