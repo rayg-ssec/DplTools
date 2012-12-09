@@ -571,8 +571,8 @@ def month_view(request):
             'thistime':thismonth,
             'lasttime':validPriorTime(methodtype,methodkey,currenttime),
             'caltypes':caltypes,'monthnames':calendar.month_name,
-            'missingimageurl':staticurlfor(request,'missing_thumb.jpg',safejoin('/data/web_temp/clients/null','missing_thumb.jpg')),
-            'blankimageurl':staticurlfor(request,'blank_thumb.jpg',safejoin('/data/web_temp/clients/null','blank_thumb.jpg')),
+            'missingimageurl':request.static_path('picnic:static/missing_thumb.jpg'),#staticurlfor(request,'missing_thumb.jpg',safejoin('/data/web_temp/clients/null','missing_thumb.jpg')),
+            'blankimageurl':request.static_path('picnic:static/blank_thumb.jpg'),#staticurlfor(request,'blank_thumb.jpg',safejoin('/data/web_temp/clients/null','blank_thumb.jpg')),
             'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
 
 def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
@@ -1041,7 +1041,22 @@ optionalfields=("org",)
 
 @view_config(route_name='userCheck',renderer='templates/userCheck.pt')
 def userCheck(request):
-    import cgi_datauser
+    try:
+        import cgi_datauser
+    except:
+        parms=''
+        jumpurl=''
+        if "PARAMS" in request.params:
+            parms='?'+request.params.getone('PARAMS')
+        if len(parms)<=1:
+            parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
+        if "URL" in request.params:
+            jumpurl=request.params.getone('URL')
+        if len(jumpurl)<=0:
+            jumpurl='/'
+            parms=''
+        dest=jumpurl + parms
+        return HTTPTemporaryRedirect(location=dest)
     dbc=cgi_datauser.lidarwebdb()
     info={};
     doForm=True
