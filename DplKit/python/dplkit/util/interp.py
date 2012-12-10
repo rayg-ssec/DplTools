@@ -36,24 +36,38 @@ pool_poly = namedtuple('pool_poly', 'start end coeffs')
 
 class TimeSeriesPolyInterp(object):
     """
-    Piecewise interpolation for order 1 and up for numpy array data on a datetime sequence
-    Given a time-ordered series of (datetime, numpy-array) pairs
-    maintain a pool of recent values to interpolate between the mid-times
+    Piecewise interpolation for order 1 and up for arbitrary-dimension numpy array data on a datetime sequence.
+    Given a time-ordered series of (datetime, numpy-array) pairs,
+    maintain a pool of recent values to interpolate between.
+    Also generate polynomial fits on-demand, with each polynomial segment using (order+1) 
+    data points and interpolating between the last two points.
+    If the input time is outside the current pool of data, 
+    Pool has a high-water mark and a low-water mark, as data is added it gets drained to the low-water mark when
+    the high-water mark is encountered 
 
     inputs must consistently have the same shape and type
     times must be monotonic    
     """
     shape = None  # uniform shape of the output
     dtype = None  # dtype of the output
-    _order = None
+    order = None
     _pool_lowwater = None
     _pool_highwater = None
     _times = None
     _pool = None   # list of pool_data tuples, at least order+1 long to be useful
     _polys = None  # dict of (start,end) : pool_poly tuples
 
-    def __init__(self, order = 1, pool_high = 64, pool_low = 16):
-        self._order = order
+    def __init__(self, order = 1, shape=None, dtype=None, pool_high = 64, pool_low = 16):
+        """
+        :param order: the order of the polynomial to use, e.g. 1 for linear, 2 for quadratic. Implies order+1 points needed.
+        :param pool_high: depth the data/polynomial cache can get before it gets drained
+        :param pool_low: depth that the cache will get drained to (discarding content earlier in time first) 
+        :param shape: shape of the numpy array to be generated (default to using that of first data value)
+        :param dtype: dtype of the numpy array to be generated (default to using that of first data value)
+        """
+        self.shape = shape
+        self.dtype = dtype
+        self.order = order
         self._pool_highwater = pool_high
         self._pool_lowwater = pool_low
         self._times = []
@@ -67,7 +81,7 @@ class TimeSeriesPolyInterp(object):
         if len(self._pool) > self._pool_highwater:
             del self._pool[:-self._pool_lowwater]
             del self._times[:-self._pool_lowwater]
-        if (no_older_than_this is not None) and (len(self._pool)>=self._order):
+        if (no_older_than_this is not None) and (len(self._pool)>=self.order):
             n = 0
             while self._times[n] > when:
                 n += 1
@@ -91,9 +105,17 @@ class TimeSeriesPolyInterp(object):
         norn[:] = np.nan
         return norn
 
+    def _conformant(self, data):
+        if not hasattr(data, 'dtype') or self.dtype != data.dtype:
+            LOG.warning('copying data due to different dtype')
+            data = np.array(data, dtype=self.dtype)
+        return data
+
     def append(self, time_data_tuple):
         """
-        Add data to the interpolator in time-increasing order.
+        Add a data point to the interpolator in time-increasing order.
+        Data is copied to an internal cache, in order to ensure immutability.
+        A ValueError is raised if the data does not match the expected/configured data shape.
         :param time_data_tuple: Pair of (datetime, numpy-array) containing new data.
         """
         when, data = time_data_tuple
@@ -102,17 +124,21 @@ class TimeSeriesPolyInterp(object):
         if self.shape is None:
             self.shape = data.shape
             self.dtype = data.dtype
+        if self.shape != data.shape:
+            raise ValueError('shape does not match configured shape of %r' % self.shape)
         self._pool.append(pool_data(when, data))
         self._times.append(when)  # used for bisect search
 
     def __iadd__(self, seq):
         """
         Add an iterable, increasing sequence of (datetime, numpy-array) data to the interpolator.
+        Data is copied to an internal cache, in order to ensure immutability.
+        :param seq: an iterable sequence of (datetime, numpy-array) pairs
         """
-        group = list(pool_data(when,np.array(data)) for (when,data) in seq)
+        group = list(pool_data(when, np.array(data)) for (when,data) in seq)
         self._pool += group
         self._times += [item.when for item in group]
-        # FUTURE: check that time is ever-increasing i.e. monotonic
+        # FUTURE: check that time is ever-increasing i.e. monotonic, n
         if self.shape is None and self._pool:
             self.shape = self._pool[0].data.shape
             self.dtype = self._pool[0].data.dtype
@@ -120,12 +146,18 @@ class TimeSeriesPolyInterp(object):
 
     @property
     def span(self):
-        if len(self._pool) <= self._order: 
+        """
+        The (start, end) timespan currently available to interpolate data.
+        """
+        if len(self._pool) <= self.order: 
             return None, None
-        return self._pool[self._order - 1].when, self._pool[-1].when
+        return self._pool[self.order - 1].when, self._pool[-1].when
 
     def __contains__(self, when):
-        if len(self._pool) <= self._order:
+        """
+        Return whether a given datetime can be interpolated. If this routine returns False, expect NaNs to be returned.
+        """
+        if len(self._pool) <= self.order:
             return False
         start, end = self.span
         # for order > 1, we only allow interpolation between last two segments of a given grouping, to enforce ~continuity
@@ -141,7 +173,7 @@ class TimeSeriesPolyInterp(object):
         ys = np.hstack([q.data.ravel() for q in pool_datas])
         LOG.debug(repr(xs))
         LOG.debug(repr(ys))
-        coeffs = np.polyfit(xs, ys, self._order)
+        coeffs = np.polyfit(xs, ys, self.order)
         return pool_poly(pool_datas[-2].when, pool_datas[-1].when, coeffs)
 
     def _apply_poly(self, poly, when):
@@ -164,12 +196,24 @@ class TimeSeriesPolyInterp(object):
         LOG.debug('found %s before %s @ %d/%d' % (when, key, dex, len(self._times)))
         poly = self._polys.get(key, None)
         if poly is None:  # grab the right block of pool data, e.g. 0:2 for order 1
-            poly = self._generate_poly(self._pool[dex - self._order : dex + 1])
+            poly = self._generate_poly(self._pool[dex - self.order : dex + 1])
             self._polys[poly.end] = poly
             # assert(a.when == poly.start)
         return poly
 
     def __call__(self, when):
+        """
+        Interpolate data to a given time, returning a properly-sized NaN array in the case that it's outside the active span.
+        Piecewise interpolation is done such that for order O, an (O+1)-value piece is used, with the requested time fitting 
+        within the last two times of the piece.
+
+        Polynomials are generated as needed and cached, in case the data is only needed sparsely.
+
+        In the case that no valid pieces are available in the cache, an array of like-shaped NaNs is returned.
+        You can test the available timespan using .span or "time in object" syntax (i.e. __contains__)
+
+        :param when: a datetime object such that  .span[0] <= when <= .span[1]
+        """
         if when not in self:
             s,e = self.span
             LOG.warning("cannot extrapolate to time %s, coverage is %s ~ %s; returning nans" % (when, s,e))
