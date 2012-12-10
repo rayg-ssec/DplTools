@@ -31,6 +31,11 @@ class struct(object):
     """
     meta = None    # mapping describing the channels available in this frame, typically assigned by the narrator
 
+    @property 
+    def span(self):
+        "compute the time width of the frame, this gets replaced in frames that provide it"
+        return self.end - self.start
+
     @staticmethod
     def from_dict(mapping):
         "create a struct from a mapping / dictionary"
@@ -74,6 +79,10 @@ class struct(object):
         return dv
 
 frame = struct
+
+def as_struct(x):
+    "convert a dict-like frame into a struct-like frame, otherwise pass-through"
+    return struct.from_dict(x) if isinstance(x, dict) else x
 
 
 def test():

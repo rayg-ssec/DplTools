@@ -20,13 +20,29 @@ import datetime
 LOG = logging.getLogger(__name__)
 
 
-start = dict( longname = "datetime object expressing the start time of a frame",
-              type = datetime.datetime 
-              )
+start = { 'longname' : "datetime object expressing the start time of a frame",
+          'shortname' : 'start',
+          'type' : datetime.datetime
+          'units' : 'time'
+          }
 
-width = dict( longname = "timedelta object representing the width of a frame, such that start <= T < (start + width)"
-              type = datetime.timedelta
-              )
+span = { 'longname' : "timedelta object representing the width of a frame, such that start <= T < (start + span); typically frames have either width or end but not both",
+          'shortname' : 'span',
+          'type': datetime.timedelta,
+          'units' : 'time'
+          }
+
+end = { 'longname' : "datetime object representing the end of a frame, such that start <= T < end; typically frames should either have width or end but not both",
+          'shortname' : 'end',
+          'type': datetime.datetime,
+          'units' : 'time'
+          }
+
+is_rolling = { 'longname' : 'whether or not this frame represents a rolling view of the input; if not present assume False'
+            'shortname': 'is_rolling',
+            'type': bool,
+            'units': 'boolean'
+            }
 
 
 
