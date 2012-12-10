@@ -43,51 +43,79 @@ class TimeSeriesPolyInterp(object):
     inputs must consistently have the same shape and type
     times must be monotonic    
     """
+    shape = None  # uniform shape of the output
+    dtype = None  # dtype of the output
     _order = None
-    _max_pool_len = None
+    _pool_lowwater = None
+    _pool_highwater = None
     _times = None
     _pool = None   # list of pool_data tuples, at least order+1 long to be useful
     _polys = None  # dict of (start,end) : pool_poly tuples
-    _shape = None  # uniform shape of the output
 
-    def __init__(self, order = 1, max_pool_len = 16):
+    def __init__(self, order = 1, pool_high = 64, pool_low = 16):
         self._order = order
-        self._max_pool_len = max_pool_len
+        self._pool_highwater = pool_high
+        self._pool_lowwater = pool_low
         self._times = []
         self._pool = []  # matches _times
         self._polys = {}
+        assert(pool_low > order)
+        assert(pool_high > pool_low)
 
     def _drain(self, no_older_than_this=None):
-        "remove polygons from poly-table that no longer are relevant"
-        if len(self._pool) > self._max_pool_len:
-            del self._pool[:-self._max_pool_len]
-            del self._times[:-self._max_pool_len]
+        "periodically remove polygons from poly-table that no longer are relevant, draining pool from high-mark to low-mark"
+        if len(self._pool) > self._pool_highwater:
+            del self._pool[:-self._pool_lowwater]
+            del self._times[:-self._pool_lowwater]
         if (no_older_than_this is not None) and (len(self._pool)>=self._order):
             n = 0
             while self._times[n] > when:
                 n += 1
             del self._times[:n]
             del self._pool[:n]
-        if len(self._polys) > len(self._pool):
+        if len(self._polys) >= len(self._pool):   
             times = set(x.when for x in self._pool)
             self._polys = dict((k,v) for (k,v) in self._pool.items() if (v.start in times) or (v.end in times))
 
+    @property
+    def nan(self):
+        """a nan in the shape and type of the data we're interpolating. 
+        This property is returned in the case that "input-time not in interpolator"
+        We create a new nan-array every time in case downstream likes to mutate output
+        """
+        if self.shape is None or self.dtype is None:
+            raise AssertionError('data cannot be returned prior to data being added')
+        if len(self.shape) == 0:
+            return np.nan
+        norn = np.empty(self.shape, dtype=self.dtype)
+        norn[:] = np.nan
+        return norn
+
     def append(self, time_data_tuple):
+        """
+        Add data to the interpolator in time-increasing order.
+        :param time_data_tuple: Pair of (datetime, numpy-array) containing new data.
+        """
         when, data = time_data_tuple
         data = np.array(data)
         assert(len(self._pool)==0 or when > self._pool[-1].when)
-        if self._shape is None:
-            self._shape = data.shape
+        if self.shape is None:
+            self.shape = data.shape
+            self.dtype = data.dtype
         self._pool.append(pool_data(when, data))
         self._times.append(when)  # used for bisect search
 
     def __iadd__(self, seq):
-        seq = tuple(seq)
-        self._pool += list(pool_data(when,np.array(data)) for (when,data) in seq)
-        self._times += list(when for (when,data) in seq)
-        # FIXME: check that time is ever-increasing i.e. monotonic
-        if self._shape is None and self._pool:
-            self._shape = self._pool[0].data.shape
+        """
+        Add an iterable, increasing sequence of (datetime, numpy-array) data to the interpolator.
+        """
+        group = list(pool_data(when,np.array(data)) for (when,data) in seq)
+        self._pool += group
+        self._times += [item.when for item in group]
+        # FUTURE: check that time is ever-increasing i.e. monotonic
+        if self.shape is None and self._pool:
+            self.shape = self._pool[0].data.shape
+            self.dtype = self._pool[0].data.dtype
         return self
 
     @property
@@ -121,7 +149,7 @@ class TimeSeriesPolyInterp(object):
         col = np.polyval(poly.coeffs, s)
         LOG.debug('s=%f' % s)
         # reshape to match original data
-        return col.reshape(self._shape)
+        return col.reshape(self.shape)
 
     def _poly_for_time(self, when):
         # find the offset within the pool
@@ -144,7 +172,8 @@ class TimeSeriesPolyInterp(object):
     def __call__(self, when):
         if when not in self:
             s,e = self.span
-            raise ValueError("cannot extrapolate to time %s, coverage is %s ~ %s" % (when, s,e))
+            LOG.warning("cannot extrapolate to time %s, coverage is %s ~ %s; returning nans" % (when, s,e))
+            return self.nan
         poly = self._poly_for_time(when)
         data = self._apply_poly(poly, when)
         self._drain()
@@ -161,7 +190,7 @@ class TimeSeriesPolyInterp(object):
 
 
 
-class testInterp(unittest.TestCase):
+class testLinearFibonacciInterp(unittest.TestCase):
     """
     guh
     wuh
@@ -170,7 +199,7 @@ class testInterp(unittest.TestCase):
     tspi = 1
 
     def setUp(self):
-        self.tspi = TimeSeriesPolyInterp(order=2, max_pool_len=64)
+        self.tspi = TimeSeriesPolyInterp(order=1)
         self.start = when = datetime.utcnow()
         delta = timedelta(seconds=10)
         t = [when - delta, when]
@@ -219,11 +248,66 @@ class testInterp(unittest.TestCase):
         ax.plot(xs, ys, 'go')
         ax.plot(self.ts, self.y, 'bx-')
         plt.draw()
+        plt.title('linear interpolation of fibonacci series')
         fn = '/tmp/interp.png'
         fig.savefig(fn, dpi=200)
         print "wrote " + fn
         return None
 
+
+class testQuadraticSineInterp(unittest.TestCase):
+    """
+    Test interpolation of a sine wave, including nan returns in starting segment
+    """
+    tspi = 1
+
+    def _sin(self, dt):
+        x = (dt - self.start).total_seconds() * self.dx
+        return x, np.sin(x)
+
+    def setUp(self):
+        self.tspi = TimeSeriesPolyInterp(order=2)
+        self.start = when = datetime.utcnow()
+        N = 17
+        self.dx = dx = np.pi*5 / N  # each 1s increment has this much value
+        self.x = x = np.array([dx * i for i in range(N)])
+        self.y = y = np.sin(x)
+        delta = timedelta(seconds=1)
+        self.t = t = [(when + delta*i) for i in range(N)]
+
+        self.tspi += [(a,np.array(b)) for (a,b) in zip(t,y)]
+
+        print self.tspi
+        self.end = t[-1]
+
+    def testPlots(self):
+        import matplotlib.pyplot as plt
+        t = self.start
+        xs = []
+        ys = []
+        dy = []
+        incr = timedelta(seconds=0, microseconds=131539)
+        while t < self.end:
+            print "++ %s %s~%s" % ( (t, ) + self.tspi.span )
+            y = self.tspi(t)
+            print t, y
+            rx,ry = self._sin(t)
+            xs.append(rx)
+            ys.append(y)
+            dy.append(y-ry)
+            t += incr
+        fig = plt.figure()
+        ax = plt.axes()
+        ax.plot(xs, ys, 'go')
+        ax.plot(self.x, self.y, 'bx-')
+        ax.plot(xs, dy, 'r-')
+        plt.legend(['interp', 'input', 'diff-from-calc'])
+        plt.title('quadratic interpolation of sine wave')
+        plt.draw()
+        fn = '/tmp/interp2.png'
+        fig.savefig(fn, dpi=200)
+        print "wrote " + fn
+        return None
 
 
 
