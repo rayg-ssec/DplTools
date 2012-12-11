@@ -291,7 +291,17 @@ def makecalendar(req,gen):
         entryvec.append({'dayurl':dayurl,'imageurl':imageurl})
     return entryvec
 
-@view_config(route_name='home',renderer='templates/portaltemplate.pt')
+from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
+
+@view_config(route_name='home',renderer='templates/portaldpltemplate.pt')
+def dplportal_view(request):
+    lib=HSRLImageArchiveLibrarian()
+    return { 
+        'lib':lib,
+        'pagename':'HSRL Data Portal'
+        }
+
+#@view_config(route_name='home',renderer='templates/portaltemplate.pt')
 def portal_view(request):
     pl=plistlib.readPlist('/etc/dataarchive.plist')
     dirs=pl.Sites
@@ -861,8 +871,57 @@ def imagerequest(request):
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
 
+from hsrl.dpl_netcdf.HSRLLibrarian import HSRLLibrarian
+
 @view_config(route_name='dataAvailability')
 def dataAvailability(request):
+    site=request.params.getone('site')
+    starttime=request.params.getone('time0')
+    endtime=request.params.getone('time1')
+    starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')
+    endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
+    retval=''
+
+    print 'checking site ' , site , ' with time range ' , (starttime,endtime)
+
+    times=[]
+    fn=None
+    t=None
+
+    srchres=HSRLLibrarian(site=int(site))(start=starttime,end=endtime)
+    for x in srchres:
+        times.append(srchres.parseTimeFromFile(x))
+        if len(times)==2:
+            break
+        fn=x
+        t=times[0]
+
+    success=False
+    if len(times)==0:
+        success=False
+    elif len(times)>=2:
+        success=True
+    elif t>=starttime and t<=endtime:
+        success=True
+    elif 'data' in x and (starttime-t).total_seconds()<(60*60):
+        success=True
+    elif (starttime-t).total_seconds()<(3*60*60):
+        success=True
+
+    if success:
+        retval="lidar"
+
+    print "Success = " , success
+    
+    response=request.response
+    response.content_type='text/plain'
+       
+    response.body=retval
+    return response
+ 
+
+#@view_config(route_name='dataAvailability')
+def olddataAvailability(request):
     site=request.params.getone('site')
     starttime=request.params.getone('time0')
     endtime=request.params.getone('time1')
