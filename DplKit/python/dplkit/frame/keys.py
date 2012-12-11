@@ -20,19 +20,20 @@ import datetime
 LOG = logging.getLogger(__name__)
 
 
-start = { 'longname' : "datetime object expressing the start time of a frame",
+start = { 'longname' : "datetime.datetime object expressing the start time of a frame",
           'shortname' : 'start',
           'type' : datetime.datetime
           'units' : 'time'
           }
 
-span = { 'longname' : "timedelta object representing the width of a frame, such that start <= T < (start + span); typically frames have either width or end but not both",
-          'shortname' : 'span',
+# We prefer start + width, since most instruments will have a constant span, and that's one less thing to compute.
+width = { 'longname' : "datetime.timedelta object representing the width of a frame, such that start <= T < (start + width); typically frames have either width or end but not both",
+          'shortname' : 'width',
           'type': datetime.timedelta,
           'units' : 'time'
           }
 
-end = { 'longname' : "datetime object representing the end of a frame, such that start <= T < end; typically frames should either have width or end but not both",
+end = { 'longname' : "datetime.datetime object representing the end of a frame, such that start <= T < end; typically frames should either have width or end but not both",
           'shortname' : 'end',
           'type': datetime.datetime,
           'units' : 'time'

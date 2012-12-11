@@ -32,9 +32,9 @@ class struct(object):
     meta = None    # mapping describing the channels available in this frame, typically assigned by the narrator
 
     @property 
-    def span(self):
-        "compute the time width of the frame, this gets replaced in frames that provide it"
-        return self.end - self.start
+    def end(self):
+        "compute the end-time of the frame using .start and .width, this gets replaced in frames that provide it"
+        return self.start + self.width
 
     @staticmethod
     def from_dict(mapping):
@@ -52,6 +52,7 @@ class struct(object):
         if 'meta' in self._data_ and 'meta' not in kwargs:
             self.meta = self._data_['meta']
 
+    # FIXME: properly support hasattr()
 
     def __getattr__(self, name):        
         if name not in self._data_:

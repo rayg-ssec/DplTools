@@ -68,6 +68,8 @@ class TimeSeriesPolyInterp(object):
         self.shape = shape
         self.dtype = dtype
         self.order = order
+        if pool_high <= pool_low: 
+            pool_high = 2*pool_low
         self._pool_highwater = pool_high
         self._pool_lowwater = pool_low
         self._times = []
