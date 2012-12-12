@@ -79,7 +79,7 @@ class SineNarrator(aNarrator):
             frame = {'start': when,
                      'width': self.width,
                      'waveform': y, 
-                     "_x": x}
+                     "_x": t}
             yield frame
             when += self.width
             n -= 1
@@ -93,7 +93,7 @@ class testSimple(unittest.TestCase):
     """
 
     def setUp(self):
-        self.it = SineNarrator(N=32)
+        self.it = SineNarrator(N=512, width=timedelta(microseconds=5000), skew=np.array([0.0, np.pi/2, np.pi]))
 
     def testPlots(self):
         import matplotlib.pyplot as plt
@@ -102,7 +102,7 @@ class testSimple(unittest.TestCase):
         ax = plt.axes()
         xs = np.array([f['_x'] for f in frames])
         ys = np.array([f['waveform'] for f in frames])
-        ax.plot(xs, ys, 'go-')
+        ax.plot(xs, ys)
         plt.title('sine wave')
         plt.draw()
         fn = '/tmp/waveform.png'
