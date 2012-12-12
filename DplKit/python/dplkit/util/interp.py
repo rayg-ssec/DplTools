@@ -33,6 +33,10 @@ pool_poly = namedtuple('pool_poly', 'start end coeffs')
 
 
 
+# FUTURE: Implement a TimeSeriesRollingMean that has a similar interface to this, 
+# which might be useful to pass as an alternative into dplkit.simple.resampler.TimeInterpolatingMerge?? 
+# That would be most useful if you're merging a secondary source with a high relative framerate
+
 
 class TimeSeriesPolyInterp(object):
     """

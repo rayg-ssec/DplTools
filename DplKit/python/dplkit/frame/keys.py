@@ -22,7 +22,7 @@ LOG = logging.getLogger(__name__)
 
 start = { 'longname' : "datetime.datetime object expressing the start time of a frame",
           'shortname' : 'start',
-          'type' : datetime.datetime
+          'type' : datetime.datetime,
           'units' : 'time'
           }
 
@@ -39,7 +39,7 @@ end = { 'longname' : "datetime.datetime object representing the end of a frame, 
           'units' : 'time'
           }
 
-is_rolling = { 'longname' : 'whether or not this frame represents a rolling view of the input; if not present assume False'
+is_rolling = { 'longname' : 'whether or not this frame represents a rolling view of the input; if not present assume False',
             'shortname': 'is_rolling',
             'type': bool,
             'units': 'boolean'
