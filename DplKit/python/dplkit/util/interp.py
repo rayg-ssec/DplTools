@@ -82,6 +82,7 @@ class TimeSeriesPolyInterp(object):
         assert(pool_low > order)
         assert(pool_high > pool_low)
 
+    # FUTURE: add a test pattern that tests drain
     def _drain(self, no_older_than_this=None):
         "periodically remove polygons from poly-table that no longer are relevant, draining pool from high-mark to low-mark"
         if len(self._pool) > self._pool_highwater:
@@ -95,7 +96,7 @@ class TimeSeriesPolyInterp(object):
             del self._pool[:n]
         if len(self._polys) >= len(self._pool):   
             times = set(x.when for x in self._pool)
-            self._polys = dict((k,v) for (k,v) in self._pool.items() if (v.start in times) or (v.end in times))
+            self._polys = dict((k,v) for (k,v) in self._polys.items() if (v.start in times) or (v.end in times))
 
     @property
     def nan(self):
@@ -198,11 +199,13 @@ class TimeSeriesPolyInterp(object):
         dex = bisect.bisect_right(self._times, when)
         # get the time key for the poly we want to use, if it exists in the poly cache
         # any given polynomial only interpolates for the last two time points used to generate it
+        if (dex >= len(self._pool)) and (when==self._times[-1]): 
+            dex = len(self._pool)-1
         LOG.debug('need polynomial ending at index %d' % dex)
-        LOG.debug(repr(self._times))
+        # LOG.debug(repr(self._times))
         key = self._pool[dex].when
         assert(self._pool[dex].when == self._times[dex])
-        assert(self._times[dex] > when)
+        assert(self._times[dex] >= when)
         LOG.debug('found %s before %s @ %d/%d' % (when, key, dex, len(self._times)))
         poly = self._polys.get(key, None)
         if poly is None:  # grab the right block of pool data, e.g. 0:2 for order 1
@@ -224,6 +227,7 @@ class TimeSeriesPolyInterp(object):
 
         :param when: a datetime object such that  .span[0] <= when <= .span[1]
         """
+        LOG.debug('interpolating to time %s' % when)
         if when not in self:
             s,e = self.span
             LOG.warning("cannot extrapolate to time %s, coverage is %s ~ %s; returning nans" % (when, s,e))

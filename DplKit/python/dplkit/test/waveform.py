@@ -100,11 +100,12 @@ class testSimple(unittest.TestCase):
     """
 
     def setUp(self):
-        self.it = SineNarrator(N=512, width=timedelta(microseconds=5000), skew=np.array([0.0, np.pi/2, np.pi]))
+        self.it = SineNarrator(N=1000, period=timedelta(seconds=1, microseconds=570796), width=timedelta(microseconds=1000), skew=np.array([0.0, np.pi/2, np.pi]))
 
     def testPlots(self):
         import matplotlib.pyplot as plt
         frames = list(self.it)
+        assert(len(frames)==1000)
         fig = plt.figure()
         ax = plt.axes()
         xs = np.array([f['_x'] for f in frames])

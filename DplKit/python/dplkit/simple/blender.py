@@ -73,6 +73,7 @@ class TimeInterpolatedMerge(aBlender):
     _iters = None   # dictionary of { source: function-fetching-next-frame }
     _tsips = None   # interpolator dictionary { channel: TimeSeriesPolyInter}
     _primary = None
+    _consumed = None  # bookkeeping information on how many frames consumed from each source
 
     @staticmethod
     def _generate_meta_from_sequence(channel_seq, channels_ignore, *sources):
@@ -158,7 +159,8 @@ class TimeInterpolatedMerge(aBlender):
 
         self._primary = primary
         self._tsips = dict((channel, TimeSeriesPolyInterp(order=order, pool_low=pool_depth)) for (channel,_) in self.provides.items())
-        self._allow_nans = allow_nans
+        self._allow_nans = allow_nans  # FIXME, use this
+        self._consumed = defaultdict(int)
 
 
     def _eat_next_frame(self, source, data = None):
@@ -167,8 +169,14 @@ class TimeInterpolatedMerge(aBlender):
         LOG.debug('eating frame from %s' % source)
         if data is None:
             it = self._iters[source]
-            data = it.next()
-            LOG.debug(repr(data))
+            try:
+                data = it.next()
+            except StopIteration:
+                # FIXME: if this throws a StopIteration, we have a secondary source that ran out of track
+                # we should let the interpolator for the source's channels generate nans for everything from here on out
+                LOG.warning('source %s is out of data, future version should handle this by providing NaNs for this source' % source)
+                raise
+                LOG.debug(repr(data))
             data = as_struct(data)
         start, t, width = center_time(data)
         LOG.debug('using frame center time of %s' % (t))
@@ -186,6 +194,7 @@ class TimeInterpolatedMerge(aBlender):
                 s = ts
             if (te is not None) and ((e is None) or (e > te)): 
                 e = te
+        self._consumed[source] += 1
         return s,e 
 
 
@@ -276,16 +285,19 @@ class testOne(unittest.TestCase):
         from dplkit.test.waveform import SineNarrator
         from datetime import datetime, timedelta
         self.start = nau = datetime.utcnow()
-        self.a = a = SineNarrator(N=512, start=nau, width=timedelta(microseconds=5000), skew=np.array([0.0, np.pi/2, np.pi]), channel_name='a')
-        self.b = b = SineNarrator(N=400, start=nau-timedelta(microseconds=500000), width=timedelta(microseconds=6750), channel_name='b' )
-        self.c = c = SineNarrator(N=6, start=nau-timedelta(seconds=1), period=timedelta(seconds=6), width=timedelta(seconds=1), channel_name='c' )
+        self.a = a = SineNarrator(N=512, start=nau, width=timedelta(microseconds=5000), period=timedelta(microseconds=175114), skew=np.array([0.0, np.pi/2, np.pi]), channel_name='a')
+        self.b = b = SineNarrator(N=4500, start=nau-timedelta(microseconds=63000), period=timedelta(microseconds=400000), width=timedelta(microseconds=16750), channel_name='b')
+        self.c = c = SineNarrator(N=6, start=nau-timedelta(seconds=1), period=timedelta(seconds=3), width=timedelta(microseconds=250000), channel_name='c')
         assert(c.channel_name == 'c')
-        self.it = TimeInterpolatedMerge(a, [b, c])        
+        self.it = TimeInterpolatedMerge(a, [b, c])
 
     def testPlots(self):
         import matplotlib.pyplot as plt
         frames = list(self.it)
-        assert(512==list(frames))
+        print len(frames)
+        # assert(512==list(frames))
+        from pprint import pprint
+        pprint(list(self.it._consumed.items()))
         x = np.array([(q['start']-self.start).total_seconds() for q in frames])
         def gety(name, frames=frames):
             return np.array([q[name] for q in frames])
@@ -294,9 +306,10 @@ class testOne(unittest.TestCase):
         c = gety('c')
         fig = plt.figure()
         ax = plt.axes()
-        ax.plot(x,a)
-        ax.plot(x,b)
-        ax.plot(x,c)
+        ax.plot(x,a, '.')
+        ax.plot(x,b, '.')
+        ax.plot(x,c, '.')
+        plt.grid()
         plt.legend(['a1', 'a2', 'a3', 'b', 'c'])
         plt.title('linear time interpolation test')
         plt.draw()
