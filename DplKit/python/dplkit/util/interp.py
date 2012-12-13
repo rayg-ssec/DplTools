@@ -126,7 +126,9 @@ class TimeSeriesPolyInterp(object):
         """
         when, data = time_data_tuple
         data = np.array(data)
-        assert(len(self._pool)==0 or when > self._pool[-1].when)
+        LOG.debug('adding %s' % when)
+        if (len(self._pool)>0) and (when <= self._pool[-1].when): 
+            raise ValueError('%s is not greater than %s' % (when, self._pool[-1].when))
         if self.shape is None:
             self.shape = data.shape
             self.dtype = data.dtype
@@ -176,9 +178,9 @@ class TimeSeriesPolyInterp(object):
         base = pool_datas[-2].when        
         xs = np.array([(x.when - base).total_seconds() for x in pool_datas])
         # stack data as horizontal columns corresponding to the time offset columns
-        ys = np.hstack([q.data.ravel() for q in pool_datas])
+        ys = np.vstack([q.data.ravel() for q in pool_datas])
         LOG.debug(repr(xs))
-        LOG.debug(repr(ys))
+        LOG.debug(repr(ys))        
         coeffs = np.polyfit(xs, ys, self.order)
         return pool_poly(pool_datas[-2].when, pool_datas[-1].when, coeffs)
 
@@ -196,6 +198,8 @@ class TimeSeriesPolyInterp(object):
         dex = bisect.bisect_right(self._times, when)
         # get the time key for the poly we want to use, if it exists in the poly cache
         # any given polynomial only interpolates for the last two time points used to generate it
+        LOG.debug('need polynomial ending at index %d' % dex)
+        LOG.debug(repr(self._times))
         key = self._pool[dex].when
         assert(self._pool[dex].when == self._times[dex])
         assert(self._times[dex] > when)

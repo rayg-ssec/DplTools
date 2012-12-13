@@ -56,7 +56,7 @@ class struct(object):
 
     def __getattr__(self, name):        
         if name not in self._data_:
-            LOG.debug('invalid name requested from dict2workspace object, must be in %r' % tuple(self._data_.keys()))
+            LOG.debug('invalid name requested from dict2workspace object, must be in %s' % repr(tuple(self._data_.keys())))
             raise NameError('%s not in frame' % name)
         q = self._data_[name]
         setattr(self, name, q)

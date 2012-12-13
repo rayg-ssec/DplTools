@@ -31,25 +31,24 @@ from dplkit.role.narrator import aNarrator
 LOG = logging.getLogger(__name__)
 
 sine_info = {'longname': 'generated test waveform',
-             'shortname': 'waveform',
              'units': '1'}
 
 class SineNarrator(aNarrator):
     """
-    A sine-wave generator capable of multdimensional output using a 
+    A sine-wave generator capable of multdimensional output using an optional skew array
     """
     period = None
     width = None
-    provides = {'start': keys.start, 'width': keys.width, 'waveform': sine_info}
+    provides = None
 
     def __init__(self, period=timedelta(seconds=1), width=timedelta(microseconds=123456), start=None, 
-                shape=(1,), skew=0.0, wave=np.sin, factor=None, N = None):
+                shape=(1,), skew=0.0, wave=np.sin, factor=None, N = None, channel_name='waveform'):
         """
         :param period: timedelta period for the sinusoid
         :param width: timedelta increment for the value of every frame in seconds
         :param start: starting datetime, defaults to current UTC
         :param shape: shape of the output array, defaults to (1,); if skew is an array this is ignored
-        :param skew: skew value or skew array which is used to offset the x-value going into the wave function
+        :param skew: skew increment scalar, or skew array which is used to offset the x-value going into the wave function
         :param wave: wave function taking a numpy array, defaults to numpy.sin
         :param factor: multiply factor for converting seconds to xvalue, defaults to computing based on period
         :param N: number of frames to return, default None implies unlimited
@@ -67,7 +66,15 @@ class SineNarrator(aNarrator):
         if factor is None:
             factor = 2*np.pi / self.period.total_seconds()
         self.factor = factor
+        self.channel_name = channel_name
+        self.provides = {'start': keys.start, 'width': keys.width, channel_name: sine_info}
         self.N = N
+
+    def __repr__(self):
+        return "SineNarrator(period=%(period)r, width=%(width)r, start=%(start)r, shape=%(shape)r, skew=%(skew)r, wave=%(wave)r, factor=%(factor)r, N=%(N)s, channel_name=%(channel_name)r)" % vars(self)
+
+    def __str__(self):
+        return "<SineNarrator '%s' from '%r' with period %s width %s>" % (self.channel_name, self.wave, self.period, self.width)
 
     def read(self, *args, **kwargs):
         when = self.start
@@ -78,7 +85,7 @@ class SineNarrator(aNarrator):
             y = self.wave(x)
             frame = {'start': when,
                      'width': self.width,
-                     'waveform': y, 
+                     self.channel_name: y, 
                      "_x": t}
             yield frame
             when += self.width
