@@ -44,9 +44,13 @@ def main(global_config, **settings):
     config.add_route('userCheck', '/userCheck')#
     config.add_route('select_month','/selectmonth')
     config.add_route('select_day','/selectday')
+
+    #debug/status pages
     config.add_route('status','/status')
     config.add_route('debug','/debug')
     config.add_route('debugsession','/debug/{session}')
+
+    #json modification
     config.add_route('imagecustom','/imagecustom')
     config.add_route('generatejson','/jsongen')
 

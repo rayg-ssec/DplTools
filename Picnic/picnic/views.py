@@ -7,6 +7,7 @@ import os
 import sys
 import calendar
 import plistlib
+import time
 import multiprocessing
 
 import jsgen
@@ -632,10 +633,10 @@ def imagerequest(request):
                      int(request.params.getone('ehr')),
                      int(request.params.getone('emn')),
                      0)
-    timeres=(endtime-starttime).total_seconds()/640 #640 pixels wide
+    timeres=None#timedelta((endtime-starttime).total_seconds()/640) #640 pixels wide
     altmin=float(request.params.getone('lheight'))*1000
     altmax=float(request.params.getone('height'))*1000
-    altres=(altmax-altmin)/480 # 480 pixels high
+    altres=None#(altmax-altmin)/480 # 480 pixels high
     #contstruct dpl
     datinfo=lib(method,methodkey)
     instruments=datinfo['Instruments']
@@ -680,7 +681,7 @@ def imagerequest(request):
     #start process
     logfilepath=safejoin(folder,'logfile')
     stdt=file(logfilepath,'w')
-    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp_images,sessiondict,dp_images_setup))
+    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timeres,endtime-starttime,altmin,altmax,altres],dp_images,sessiondict,dp_images_setup))
     sessiondict['comment']='started'
     sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
     #sv=lib('dataset',datasetname)['DatasetID']
@@ -756,7 +757,18 @@ def progresspage(request):
     #if sessionid not in tasks:
     #    return HTTPNotFound('Invalid session')
     folder=safejoin('.','sessions',sessionid);
-    session=json.load(file(safejoin(folder,"session.json")))
+    session=None
+    retry=10
+    while session==None and retry>0:
+        try:
+            session=json.load(file(safejoin(folder,"session.json")))
+        except:
+            time.sleep(.05)
+            session=None
+            retry=retry-1
+    if session==None:
+        return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+
     if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
         #load intermediate if not
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
