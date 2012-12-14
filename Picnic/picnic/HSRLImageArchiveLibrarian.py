@@ -5,12 +5,13 @@ import json
 import os
 import re
 
+def modTime(filepath):
+    return os.stat(filepath).st_mtime
+
 class HSRLImageArchiveSearchResultIterator:
     def _getpathfordate(self,date):
         return os.path.join(self.path,'%i' % date.year, '%02i' % date.month, '%02i' % date.day, 'images')
 
-    def modTime(self,filepath):
-        return os.stat(filepath).st_mtime
 
     def __init__(self,host):
         self.host=host
@@ -39,7 +40,7 @@ class HSRLImageArchiveSearchResultIterator:
                     #print f
                     #print m
                     if m!=None:
-                        mt= self.modTime(os.path.join(d,f))
+                        mt= modTime(os.path.join(d,f))
                         if newesttime==None or newesttime>mt:
                             newestfile=f
                             newesttime=mt
@@ -224,6 +225,13 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
             dayno+=daysinmonth
         return datetime(yearno,monthno,dayno,hourno,minuteno,0)   
 
+    def archive(self):
+        mt=modTime(self.dataarchive_path)
+        if mt!=self._archivemodtime:
+            self._archive=plistlib.readPlist(self.dataarchive_path)
+            self._archivemodtime=mt
+        return self._archive
+
     def __init__(self, defaultsearchtype='site', defaultsearchbase=None, dataarchive_path=None):
         """ Initializer determines types of searches that this will be doing
             :param dataarchive_path: location of dataarchive.plist, default is /etc/dataarchive.plist
@@ -240,6 +248,9 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
         self.defaultsearchtype=defaultsearchtype
         if self.dataarchive_path==None:
             self.dataarchive_path="/etc/dataarchive.plist"
+        self._archive=None
+        self._archivemodtime=None
+        self.archive()
         self.defaultsearchbase=defaultsearchbase
         self.defaultwindows=None
         if self.defaultsearchtype=='site' and self.defaultsearchbase!=None:
@@ -264,7 +275,7 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
                         name
         """
 
-        ins=plistlib.readPlist(self.dataarchive_path)['Instruments']
+        ins=self.archive()['Instruments']
         k=ins.keys()
         kl=[x.lower() for x in k]
         nl=name.lower()
@@ -324,7 +335,7 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
                 return ret
             if searchtype=='dataset':
                 ret=[]
-                dsets=plistlib.readPlist(self.dataarchive_path)['Datasets']
+                dsets=self.archive()['Datasets']
                 for dsetidx in range(len(dsets)):
                     dset=dsets[dsetidx]
                     dset['DatasetID']=dsetidx
@@ -355,7 +366,7 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
                         searchsite=int(searchbase)
                     except:
                         raise RuntimeError("%s parameter %s not found" %(searchtype,searchbase))
-                sites=plistlib.readPlist(self.dataarchive_path)['Sites']
+                sites=self.archive()['Sites']
                 for siteidx in range(len(sites)):
                     site=sites[siteidx]
                     site['SiteID']=siteidx
