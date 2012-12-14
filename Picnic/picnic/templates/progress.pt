@@ -21,7 +21,7 @@ setTimeout("self.location.replace('${progresspage}')",5000)
 // End hiding JavaScript -->
 </script>
 <center><div id="wrap">
-  loading
+  <div tal:omit-tag="" tal:content="'loading' if 'comment' not in session else session.comment"></div>
   <BR/>
   <FORM action="${destination}" METHOD="GET">
   <INPUT TYPE="HIDDEN" NAME="skip" VALUE="on">

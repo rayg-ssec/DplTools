@@ -1,18 +1,18 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
 <head>
-  <title>${pagename} -- Full Month view</title>
+  <title>${lib().Name} -- Archive Image view</title>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
   <meta name="keywords" content="python web application" />
   <meta name="description" content="pyramid web application" />
 </head>
-<body>
+<body tal:define="duration timedelta(days=.5);closeprevdate lib.validLaterTime(thistime-duration);prevdate (closeprevdate if closeprevdate!=None and closeprevdate<thistime else lib.validPriorTime(thistime-duration));nextdate thistime+duration;endtime lib.validPriorTime(thistime+duration);lasttime lib.validPriorTime(datetime.utcnow());firsttime lib.validLaterTime(datetime(1990,1,1,0,0,0));ampm_range '00:00 - 12:00' if thistime.hour<12 else '12:00 - 00:00'">
 <div id="wrap">
   <table align="center"><tbody>
     <tr>
-      <td align="left" width="150"><a href="${prevlink}" tal:condition="prevlink">Previous</a></td>
-      <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
-      <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next</a></td>
+      <td align="left" width="150"><a tal:condition="prevdate!=None and prevdate<thistime and prevdate>=firsttime" href="${request.route_path(request.matched_route.name,accesstype=methodtype,access=methodkey,year=prevdate.year,month='%02i' % prevdate.month,day='%02i' % prevdate.day,ampm='am' if prevdate.hour<12 else 'pm')}">Previous</a></td>
+      <td align="center" width="500">${lib().Name}<BR>${thistime.strftime('%B %e, %Y ') + ampm_range}</td>
+      <td align="right" width="150"><a tal:condition="nextdate!=None and nextdate>=endtime and nextdate<lasttime" href="${request.route_path(request.matched_route.name,accesstype=methodtype,access=methodkey,year=nextdate.year,month='%02i' % nextdate.month,day='%02i' % nextdate.day,ampm='am' if nextdate.hour<12 else 'pm')}">Next</a></td>
     </tr>
     <tr>
       <td></td>
@@ -33,17 +33,19 @@
               <input type="submit" value="Multi-View"/>
               </form>
             </td>
-            <td tal:repeat="cal caltypes">
-              <form name="${cal.name}" action="${newmonthform}">
-              <input type="hidden" name="type" value="${cal.prefix}"/>
-              <input type="hidden" name="day" value="${thistime.day}"/>
-              <input type="hidden" name="month" value="${thistime.month}"/>
-              <input type="hidden" name="year" value="${thistime.year}"/>
-              <input type="hidden" name="accessby" value="${methodtype}"/>
-              <input type="hidden" name="accessto" value="${methodkey}"/>
-              <input type="submit" value="${cal.name}"/>
-              </form>
-            </td>
+            <div tal:repeat="instrument lib().Instruments" tal:omit-tag="">
+              <td tal:repeat="thumbtype lib.instrument(instrument).thumbsets">
+                <form name="${thumbtype.prefix}" action="${newmonthform}">
+                <input type="hidden" name="type" value="${thumbtype.prefix}"/>
+                <input type="hidden" name="day" value="${thistime.day}"/>
+                <input type="hidden" name="month" value="${thistime.month}"/>
+                <input type="hidden" name="year" value="${thistime.year}"/>
+                <input type="hidden" name="accessby" value="${methodtype}"/>
+                <input type="hidden" name="accessto" value="${methodkey}"/>
+                <input type="submit" value="${instrument} ${thumbtype.name}"/>
+                </form>
+              </td>
+            </div>
           </tr>
         </tbody></table>
       </td>
@@ -57,12 +59,23 @@
     <tr>
       <td></td>
       <td align="center">
-        <table><tbody>
+        <table><tbody tal:define="formbuttons {'Custom Image':'imagegen','Custom NetCDF':'netcdfgen','Show LogBook':'logbook'};forminputs {
+                      'byr':'%i' % thistime.year,
+                      'bmo':'%i' % thistime.month,
+                      'bdy':'%i' % thistime.day,
+                      'bhr':'%i' % thistime.hour,
+                      'bmn':'%i' % thistime.minute,
+                      'eyr':'%i' % nextdate.year,
+                      'emo':'%i' % nextdate.month,
+                      'edy':'%i' % nextdate.day,
+                      'ehr':'%i' % nextdate.hour,
+                      'emn':'%i' % nextdate.minute,
+                      'minalt':'0','maxalt':'15'}">
           <td>
-            <tr tal:repeat="formbutton redirectbuttons">
-              <form name="${formbutton.submit}" action="${formbutton.url}" method="get">
-              <input type="hidden" tal:repeat="forminput formbutton.inputs" tal:attributes="name forminput.name;value forminput.value"/>
-              <input type="submit" value="${formbutton.submit}" />
+            <tr tal:repeat="formbutton ['Custom Image','Custom NetCDF','Show LogBook']">
+              <form name="${formbutton}" action="${request.route_path(formbuttons[formbutton],accesstype=methodtype,access=methodkey)}" method="get">
+              <input type="hidden" tal:repeat="forminput forminputs.keys()" tal:attributes="name forminput;value forminputs[forminput]"/>
+              <input type="submit" value="${formbutton}" />
               </form>
             </tr>
           </td>
@@ -72,11 +85,15 @@
     <tr><td colspan="3">
       <table cellspacing="3">
         <tbody>
-          <tr tal:repeat="entry entries">
-            <td>
-              <a tal:attributes="href entry.calurl"><img tal:attributes="src entry.imageurl"></a>
-            </td>
-          </tr>
+          <div tal:repeat="imgrec lib(start=thistime,isthumb=False)" tal:omit-tag="">
+            <tr tal:condition="imgrec.filename!=None">
+              <td>
+                <a tal:attributes="href request.route_path('month',accesstype=methodtype,access=methodkey,year=imgrec.time.year,month=imgrec.time.month,thumbtype=lib.instrument(imgrec.instrument).thumbsets[0].prefix)">
+                  <img tal:attributes="src request.route_path('image_resource',accesstype=methodtype,access=methodkey,year=imgrec.time.year,month=imgrec.time.month,day=imgrec.time.day,filename=imgrec.filename)"/>
+                </a>
+              </td>
+            </tr>
+          </div>
         </tbody>
       </table>
     </td></tr>

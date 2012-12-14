@@ -18,9 +18,12 @@ def main(global_config, **settings):
     config.add_route('imagegen', '/{accesstype}/{access}/custom_rti/')
     config.add_route('imagejavascript', '/{accesstype}/{access}/custom_rti/req.js')
 
-    #netcdf gen
+    #netcdf gen redirect
     config.add_route('netcdfreq', '/netcdf_request/')#
     config.add_route('netcdfgen', '/{accesstype}/{access}/custom_netcdf/')
+
+    #logbook redirect
+    config.add_route('logbook', '/{accesstype}/{access}/logbook/')
 
     #month
     config.add_route('thumb', '/{accesstype}/{access}/{thumbtype}/')#goes to month

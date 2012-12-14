@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
 <head>
-  <title>${pagename} -- Full Month view</title>
+  <title>${lib().Name} - ${'Multi-View' if selectedtype==None else ''.join([''.join([('' if thumb['prefix']!=selectedtype else (thumb['instrument'] + ' ' + thumb['name']) ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib()['Instruments']] for thumb in thumblist]),' Full Month View'])}</title>
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
   <meta name="keywords" content="python web application" />
   <meta name="description" content="pyramid web application" />
@@ -24,23 +24,25 @@ function checkViewType() {
 </SCRIPT>
 
 </head>
-<body>
+<body tal:define="lineduration_days 4;lineduration timedelta(days=lineduration_days);forwardduration lineduration if selectedtype==None else timedelta(days=calendar.monthrange(thistime.year,thistime.month)[1]);backwardduration lineduration if selectedtype==None else timedelta(days=calendar.monthrange((thistime-timedelta(days=1)).year,(thistime-timedelta(days=1)).month)[1]);closeprevdate lib.validLaterTime(thistime-backwardduration);prevdate (closeprevdate if closeprevdate!=None and closeprevdate<thistime else lib.validPriorTime(thistime-backwardduration));nextdate lib.validLaterTime(thistime+forwardduration);endtime lib.validPriorTime(thistime+forwardduration);lasttime lib.validPriorTime(datetime.utcnow());firsttime lib.validLaterTime(datetime(1990,1,1,0,0,0))">
 <div id="wrap">
   <table align="center"><tbody>
     <tr>
-      <td align="left" width="150"><a href="${prevlink}" tal:condition="prevlink">Previous</a></td>
-      <td align="center" width="500">${pagename}<BR>${pagedesc}</td>
-      <td align="right" width="150"><a href="${nextlink}" tal:condition="nextlink">Next</a></td>
+      <td align="left" width="150"><a tal:condition="prevdate!=None and prevdate!=thistime" href="${request.route_path(request.matched_route.name,accesstype=methodtype,access=methodkey,year=prevdate.year,month='%02i' % prevdate.month,day='%02i' % prevdate.day,thumbtype=selectedtype)}">Previous</a></td>
+      <td align="center" width="500">${lib().Name} - ${'Multi-View' if selectedtype==None else ''.join([''.join([('' if thumb['prefix']!=selectedtype else (thumb['instrument'] + ' ' + thumb['name']) ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib()['Instruments']] for thumb in thumblist]),' Full Month View'])}<BR>pagedesc</td>
+      <td align="right" width="150"><a tal:condition="nextdate!=None and nextdate>=endtime" href="${request.route_path(request.matched_route.name,accesstype=methodtype,access=methodkey,year=nextdate.year,month='%02i' % nextdate.month,day='%02i' % nextdate.day,thumbtype=selectedtype)}">Next</a></td>
     </tr>
     <tr><td></td><td align="center">
-      <form name="newmonth" action="${newmonthform}">
+      <form name="newmonth" action="${request.route_path('select_month')}">
       <table>
         <tbody>
           <tr>
             <td align="center">
               <select name="type" onchange="checkViewType();">
-                <option value="all" tal:attributes="selected 'all'==selectedtype" >Multi-View</option>
-                <option tal:repeat="thumbtype caltypes" tal:content="thumbtype.name" tal:attributes="value thumbtype.prefix;selected thumbtype.prefix==selectedtype" />
+                <option value="all" tal:attributes="selected None==selectedtype" >Multi-View</option>
+                <div tal:repeat="instrument lib().Instruments" tal:omit-tag="">
+                  <option tal:repeat="thumbtype lib.instrument(instrument).thumbsets" tal:content="instrument + ' ' + thumbtype.name" tal:attributes="value thumbtype.prefix;selected thumbtype.prefix==selectedtype" />
+                </div>
               </select>
           </td>
             <td align="center">
@@ -52,8 +54,7 @@ function checkViewType() {
             </td>
             <td align="center">
              <select name="month">
-               <option tal:condition="lasttime.year!=firsttime.year" tal:repeat="damonth range(1,13)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
-                <option tal:condition="lasttime.year==firsttime.year" tal:repeat="damonth range(firsttime.month,lasttime.month+1)" tal:content="monthnames[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
+               <option tal:repeat="damonth range(firsttime.month,lasttime.month+1) if lasttime.year==firsttime.year else range(1,13) " tal:content="calendar.month_name[damonth]" tal:attributes="value damonth;selected damonth==thistime.month"/>
              </select>
             </td>
             <td>
@@ -74,18 +75,24 @@ function checkViewType() {
     <tr><td></td><td align="center"><a href="${request.route_path('home')}">Return to Data Portal</a></td></tr>
     <tr><td colspan="3">
       <table cellspacing="3">
-        <tbody tal:define="customfillerimageurl None;imwidth 8 if len(allentries)<=1 else 50">
-        <div tal:repeat="ent range(len(allentries))">
-          <tr tal:repeat="i range((len(allentries[ent])+imwidth-1)/imwidth)" tal:define="entries allentries[ent]">
-            <td tal:condition="len(entrynames)>1">${entrynames[ent]}</td>
-            <td tal:repeat="j range(imwidth*i,min(imwidth*(i+1),len(entries)))">
-              <img tal:attributes="src entries[j].imageurl" tal:condition="not entries[j].dayurl and entries[j].imageurl" tal:define="global customfillerimageurl entries[j].imageurl or customfillerimageurl">
-              <a tal:attributes="href entries[j].dayurl" tal:condition="entries[j].dayurl and entries[j].imageurl"><img tal:attributes="src entries[j].imageurl" tal:define="global customfillerimageurl None"></a>
-              <img tal:attributes="src missingimageurl" tal:condition="not entries[j].imageurl and (j==(i*imwidth) or entries[j-1].imageurl) and not customfillerimageurl">
-              <img tal:attributes="src customfillerimageurl" tal:condition="not entries[j].imageurl and j==(i*imwidth) and customfillerimageurl">
-              <img tal:attributes="src blankimageurl" tal:condition="not entries[j].imageurl and not j==(i*imwidth) and (not entries[j-1].imageurl or customfillerimageurl)">
+        <tbody tal:define="global customfillerimageurl None;global priorHigh False">
+        <div tal:repeat="instrument lib().Instruments" tal:omit-tag="">
+          <div tal:repeat="thumbtype lib.instrument(instrument).thumbsets" tal:omit-tag="">
+          <tr tal:condition="selectedtype==None or thumbtype.prefix==selectedtype" tal:repeat="thisrowtime [(thistime + timedelta(seconds=thisrow)) for thisrow in range(0,int((endtime-thistime).total_seconds()),int(lineduration.total_seconds()))]">
+            <td tal:condition="selectedtype==None">${instrument + ' ' + thumbtype.name}</td>
+            <td tal:repeat="imgrec lib(start=thisrowtime,end=(thisrowtime+lineduration) if (thisrowtime+lineduration)<endtime else endtime,prefix=thumbtype.prefix,isthumb=True)">
+              <a tal:attributes="href request.route_path('date',accesstype=methodtype,access=methodkey,year='%04i' % imgrec.time.year,month='%02i' % imgrec.time.month,day='%02i' % imgrec.time.day,ampm=imgrec.ampm)" tal:condition="imgrec.filename!=None" tal:omit-tag="not imgrec.hasHighres" tal:define="imgurl request.route_path('image_resource',accesstype=methodtype,access=methodkey,year=imgrec.time.year,month=imgrec.time.month,day=imgrec.time.day,filename=imgrec.filename)">
+                <img tal:attributes="src imgurl" tal:define="global customfillerimageurl None if imgrec.hasHighres else imgurl"/>
+              </a>
+              <span tal:condition="imgrec.filename==None" tal:omit-tag="">
+                <img tal:attributes="src missingimageurl" tal:condition="(imgrec.time==thisrowtime or priorHigh) and not customfillerimageurl"/>
+                <img tal:attributes="src customfillerimageurl" tal:condition="imgrec.time==thisrowtime and customfillerimageurl"/>
+                <img tal:attributes="src blankimageurl" tal:condition="imgrec.time!=thisrowtime and (not priorHigh or customfillerimageurl)"/>
+              </span>
+              <span tal:define="global priorHigh imgrec.hasHighres" tal:omit-tag=""/>
             </td>
           </tr>
+          </div>
         </div>
         </tbody>
       </table>

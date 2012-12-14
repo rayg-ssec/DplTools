@@ -1,5 +1,4 @@
 from pyramid.view import view_config
-from dpl_hsrl_imagearchive import *
 from datetime import datetime,timedelta
 from pyramid.httpexceptions import HTTPNotFound, HTTPTemporaryRedirect
 from webob import Response
@@ -11,6 +10,10 @@ import plistlib
 import multiprocessing
 
 import jsgen
+import json
+
+from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
+lib=HSRLImageArchiveLibrarian()
 
 def safejoin(*args):
     tmp=os.path.abspath(args[0])
@@ -89,9 +92,9 @@ def validdate(yearno,monthno,dayno=1,hourno=0,minuteno=0):
     return datetime(yearno,monthno,dayno,hourno,minuteno,0)
 
 def monthurlfor(req,atype,access,imtype,date):
-    if imtype=='all':
-        return req.route_path('multiview',accesstype=atype,access=access,year=date.year,month=date.month,day=date.day)
-    return req.route_path('month',accesstype=atype,access=access,thumbtype=imtype,year=date.year,month=date.month)
+    if imtype==None or imtype=='all':
+        return req.route_path('multiview',accesstype=atype,access=access,year=date.year,month='%02i' % date.month,day='%02i' % date.day)
+    return req.route_path('month',accesstype=atype,access=access,thumbtype=imtype,year=date.year,month='%02i' % date.month)
 
 @view_config(route_name='select_month')
 def select_month(request):
@@ -102,6 +105,8 @@ def select_month(request):
                                                                     access=request.params.getone('accessto'),
                                                                     thumbtype=request.params.getone('type')))
         selected=validdate(int(request.params.getone('year')),int(request.params.getone('month')))
+        if 'day' in request.params:
+            selected += timedelta(days=int(request.params.getone('day'))-1)
         return HTTPTemporaryRedirect(location=monthurlfor(request,
                                                           request.params.getone('accessby'),
                                                           request.params.getone('accessto'),
@@ -115,7 +120,11 @@ def redirect_month(request):
     #try:
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
-        subtypekey=request.matchdict['thumbtype']
+        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        if 'thumbtype' in request.matchdict and request.matchdict['thumbtype']!='all':
+            subtypekey=request.matchdict['thumbtype']
+        else:
+            subtypekey=None
         nowtime=datetime.utcnow()
         if 'year' in request.matchdict:
             yearno=int(request.matchdict['year'])
@@ -126,19 +135,13 @@ def redirect_month(request):
         else:
             monthno=nowtime.month
         if 'day' in request.matchdict:
-            dayno=int(request.matchdict['month'])
-        elif monthno==nowtime.month and yearno==nowtime.year and subtypekey=='all':
-            dayno=nowtime.day-3
-            if dayno<=0:
-                monthno-=1
-                if monthno<=0:
-                    monthno+=12
-                    yearno-=1
-                (dummy,daysinmonth)=calendar.monthrange(yearno,monthno)
-                dayno+=daysinmonth
+            dayno=int(request.matchdict['day'])
+        elif monthno==nowtime.month and yearno==nowtime.year and subtypekey==None:
+            dayno=nowtime.day
         else:
             dayno=1
-        besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,0,0,0))
+        d=validdate(yearno,monthno,dayno,0,0)
+        besttime=mylib.validClosestTime(d)
         return HTTPTemporaryRedirect(location=monthurlfor(request,methodtype,methodkey,subtypekey,besttime))
     #except:
     #return HTTPTemporaryRedirect(location=request.route_path("home"))        
@@ -149,7 +152,7 @@ def dayurlfor(req,atype,access,date):
     else:
         hour='pm'
     return req.route_path('date',accesstype=atype,access=access,
-                         year=date.year,month=date.month,day=date.day,ampm=hour)
+                         year=date.year,month='%02i' % date.month,day='%02i' % date.day,ampm=hour)
 
 @view_config(route_name='select_day')
 def select_day(request):
@@ -172,6 +175,7 @@ def redirect_day(request):
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
         nowtime=datetime.utcnow()
+        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
         if 'year' in request.matchdict:
             yearno=int(request.matchdict['year'])
         else:
@@ -192,13 +196,13 @@ def redirect_day(request):
                 hourno=12
         else:
             hourno=nowtime.hour
-        besttime=validClosestTime(methodtype,methodkey,datetime(yearno,monthno,dayno,hourno,0,0))
+        besttime=mylib.validClosestTime(datetime(yearno,monthno,dayno,hourno,0,0))
         return HTTPTemporaryRedirect(location=dayurlfor(request,methodtype,methodkey,besttime))
     except:
         return HTTPTemporaryRedirect(location=request.route_path('home'))
 
 imagepathcache={}
-imagepathcacheage=None
+#imagepathcacheage=None
 
 def moddateoffile(f):
     return os.stat(f).st_mtime
@@ -218,17 +222,16 @@ def session_resource(request):
         monthno=int(request.matchdict['month'])
         dayno=int(request.matchdict['day'])
         #FIXME HACKY CACHY
-        md=moddateoffile("/etc/dataarchive.plist")
-        if imagepathcacheage==None or imagepathcacheage!=md:
-            imagepathcacheage=md
-            imagepathcache.clear()
+        #md=moddateoffile("/etc/dataarchive.plist")
+        #if imagepathcacheage==None or imagepathcacheage!=md:
+        #    imagepathcacheage=md
+        #    imagepathcache.clear()
         if methodtype not in imagepathcache or methodkey not in imagepathcache[methodtype]:
-            if len(imagepathcache)==0:
-                imagepathcacheage=moddateoffile("/etc/dataarchive.plist")
-            tmpdp=dpl_hsrl_imagearchive(methodtype,methodkey,None,False,datetime(yearno,monthno,dayno,0,0,0),datetime(yearno,monthno,dayno,1,0,0))
+            #if len(imagepathcache)==0:
+            #    imagepathcacheage=moddateoffile("/etc/dataarchive.plist")
             if methodtype not in imagepathcache:
                 imagepathcache[methodtype]={}
-            imagepathcache[methodtype][methodkey]=tmpdp.basepath
+            imagepathcache[methodtype][methodkey]=lib(methodtype[3:],methodkey)['Path']
             
         f=safejoin(imagepathcache[methodtype][methodkey],'%04i' % yearno,'%02i' % monthno, '%02i' % dayno,'images',fn)
     else:
@@ -286,110 +289,15 @@ def makecalendar(req,gen):
             if i['is_valid']: #is not a custom missing image
                 dayurl=dayurlfor(req,req.matchdict['accesstype'],req.matchdict['access'],i['time'])
             imageurl=req.route_path('image_resource',accesstype=req.matchdict['accesstype'],access=req.matchdict['access'],
-                                    year=i['time'].year,month=i['time'].month,day=i['time'].day,filename=i['filename'])
+                                    year=i['time'].year,month='%02i' % i['time'].month,day='%02i' % i['time'].day,filename=i['filename'])
             #print i[4]
         entryvec.append({'dayurl':dayurl,'imageurl':imageurl})
     return entryvec
 
-from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
-
-@view_config(route_name='home',renderer='templates/portaldpltemplate.pt')
+@view_config(route_name='home',renderer='templates/portaltemplate.pt')
 def dplportal_view(request):
-    lib=HSRLImageArchiveLibrarian()
     return { 
         'lib':lib,
-        'pagename':'HSRL Data Portal'
-        }
-
-#@view_config(route_name='home',renderer='templates/portaltemplate.pt')
-def portal_view(request):
-    pl=plistlib.readPlist('/etc/dataarchive.plist')
-    dirs=pl.Sites
-    insts=pl.Instruments
-    activeSites=[]
-    activeSiteInfo={}
-    activesites=[]
-    inactivesites=[]
-
-    siteid=0
-    for site in dirs:
-        if 'Windows' not in site or len(site.Windows)==0 or 'End' not in site.Windows[len(site.Windows)-1]:
-            activeSites.append(siteid)
-            activeSiteInfo[siteid]=site
-        siteid+=1
-        
-    defaultaccesstype='by_site'
-    for siteid in reversed(activeSites):
-        n=activeSiteInfo[siteid]
-        entry={}
-        entry['name']=n.Name;
-        linkset=[]
-        linkarr=[]
-        linkset.append({'name':"Archive:",'link':None})
-        linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype='all'),'name':'Multi-View'})
-
-        ins=n.Instruments
-        for i in ins:
-            if i not in insts:
-                continue
-            inst=insts[i]
-            if 'thumbsets' in inst and len(inst.thumbsets)>0:
-                linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype=inst.thumbsets[0].prefix),'name':i})
-        linkarr.append(linkset)
-        instlinks=len(linkset)
-        linkset=[]
-        if instlinks>3:
-            imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid
-        else:
-            imlink=request.route_path('imagegen',accesstype=defaultaccesstype,access=siteid)
-        if instlinks>0:
-            nclink="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid
-        else:
-            nclink=request.route_path('netcdfgen',accesstype=defaultaccesstype,access=siteid)
-        linkarr.append([{'link':imlink,'name':"Custom Images"}])
-        linkarr.append([{'link':nclink,'name':"Custom NetCDF"}])
-        entry['linkarray']=linkarr
-        activesites.append(entry)
-
-    # activesites=reversed(activesites)
-
-    siteid=len(dirs)
-    for n in reversed(dirs):
-        siteid-=1
-        if siteid in activeSiteInfo:
-            continue
-        entry={}
-        entry['name']=n.Name;
-        linkset=[]
-        linkarr=[]
-        linkset.append({'name':"Archive:",'link':None})
-        linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype='all'),'name':'Multi-View'})
-
-        ins=n.Instruments
-        for i in ins:
-            if i not in insts:
-                continue
-            inst=insts[i]
-            if 'thumbsets' in inst and len(inst.thumbsets)>0:
-                linkset.append({'link':request.route_path('thumb',accesstype=defaultaccesstype,access=siteid,thumbtype=inst.thumbsets[0].prefix),'name':i})
-        linkarr.append(linkset)
-        instlinks=len(linkset)
-        linkset=[]
-        if instlinks>3:
-            imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?site=%i" % siteid
-        else:
-            imlink=request.route_path('imagegen',accesstype=defaultaccesstype,access=siteid)
-        if instlinks>0:
-            nclink="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?site=%i" % siteid
-        else:
-            nclink=request.route_path('netcdfgen',accesstype=defaultaccesstype,access=siteid)
-        linkarr.append([{'link':imlink,'name':"Custom Images"}])
-        linkarr.append([{'link':nclink,'name':"Custom NetCDF"}])
-        entry['linkarray']=linkarr
-        inactivesites.append(entry)
-    
-    return { 
-        'activesites':activesites,'inactivesites':inactivesites,
         'pagename':'HSRL Data Portal'
         }
 
@@ -397,109 +305,42 @@ def portal_view(request):
 def date_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
+    mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
     yearno=int(request.matchdict['year'])
     monthno=int(request.matchdict['month'])
     dayno=int(request.matchdict['day'])
     ampm=request.matchdict['ampm']
-    neg_ampm=None
+    hourno=-1
     ampm_range=None
     if ampm=='am':
         hourno=0
         ampm_range='00:00-12:00'
-    else:
+    elif ampm=='pm':
         hourno=12
         ampm_range='12:00-00:00'
-    selectdate=validdate(yearno,monthno,dayno,hourno)
-    priordate=validdate(selectdate.year,selectdate.month,selectdate.day,selectdate.hour-12)
-    nextdate=validdate(selectdate.year,selectdate.month,selectdate.day,selectdate.hour+12)
-    vdate=None
     try:
-        vdate=validClosestTime(methodtype,methodkey,selectdate)
-    except:
-        pass
-    if vdate==None or vdate<selectdate or vdate>=nextdate:
+        selectdate=datetime(yearno,monthno,dayno,hourno)
+        #print selectdate
+        realtime=mylib.validClosestTime(selectdate)
+        #print realtime
+        if realtime.year!=yearno or realtime.month!=monthno or realtime.day!=dayno or realtime.hour!=hourno:
+            return redirect_day(request)
+    except ValueError, e:
+        print e
         return redirect_day(request)
-    priorlinkdate=validLaterTime(methodtype,methodkey,priordate)
-    if priorlinkdate>=selectdate:
-        priorlinkdate=validPriorTime(methodtype,methodkey,priordate)
-    nextlinkdate=validLaterTime(methodtype,methodkey,nextdate)
-    pagename='%s' % (methodkey)
-    pagedesc=None
-    pagedesc=selectdate.strftime('%B %e, %Y ') + ampm_range
-    hightothumb={
-        'bscat_depol':'bscat'
-    }
-    highimage=('bscat_depol')
-    tgen=dpl_hsrl_imagearchive(methodtype,methodkey,None,False,selectdate,nextdate)
-    if hasattr(tgen,'availableImagePrefixes'):
-        highimage=tgen.availableImagePrefixes
-    caltypes=None
-    if hasattr(tgen,'availableThumbPrefixes'):
-        caltypes=tgen.availableThumbPrefixes
-    currenttime=datetime.utcnow();
-    entries=[]
-    for i in highimage:
-        img=None
-        try:
-            gen=dpl_hsrl_imagearchive(methodtype,methodkey,i,False,selectdate,nextdate)
-            if hasattr(gen,'SiteName'):
-                pagename = gen.SiteName
-            if hasattr(gen,'lowresform'):
-                hightothumb[i]=gen.lowresform
-            elif i not in hightothumb:
-                hightothumb[i]=None
-            for newimg in gen:
-                img=newimg
-        except KeyError as e:
-            return HTTPNotFound(e)
-        if img:
-            calurl=monthurlfor(request,methodtype,methodkey,hightothumb[i],selectdate)
-            imageurl=request.route_path('image_resource',accesstype=methodtype,access=methodkey,year=img['time'].year,month=img['time'].month,day=img['time'].day,filename=img['filename'])
-            entries.append({'calurl':calurl,'imageurl':imageurl})
-    nextlink=None
-    prevlink=None
-    if currenttime>nextdate and nextlinkdate:
-        nextlink=dayurlfor(request,methodtype,methodkey,nextlinkdate)
-    if priorlinkdate:
-        prevlink=dayurlfor(request,methodtype,methodkey,priorlinkdate)
-    ds=dpl_hsrllore_datasetForSite(int(methodkey))
-    if len(entries)>1:
-        imlink="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi"
-    else:
-        imlink=request.route_path('imagegen',accesstype=methodtype,access=methodkey)
-    if len(entries)>0:
-        nclink="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi"
-    else:
-        nclink=request.route_path('netcdfgen',accesstype=methodtype,access=methodkey)
-    redirectbuttons=[]
-    redirectbuttons.append(makeformbutton("Customize Image",imlink,selectdate,nextdate))
-    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})#if nclink becomes from here, this parameter isn't needed
-    redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
-    redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
-    redirectbuttons.append(makeformbutton("Generate NetCDF",nclink,selectdate,nextdate))
-    redirectbuttons[-1]['inputs'].append({'name':'site','value':methodkey})#if nclink becomes from here, this parameter isn't needed
-    redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
-    redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
-    redirectbuttons.append(makeformbutton("Show LogBook","http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi",selectdate,nextdate))
-    redirectbuttons[-1]['inputs'].append({'name':'minalt','value':'0'})
-    redirectbuttons[-1]['inputs'].append({'name':'maxalt','value':'15'})
-    redirectbuttons[-1]['inputs'].append({'name':'dataset','value':'%i' % ds[0]})
-    return { 
-        'entries':entries,'caltypes':caltypes,
+    return { 'lib':mylib,
+        'calendar':calendar,'timedelta':timedelta,'datetime':datetime,
         'newmonthform':request.route_path("select_month"),'methodtype':methodtype,'methodkey':methodkey,
-        'thistime':selectdate,'redirectbuttons':redirectbuttons,
-        'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
+        'thistime':selectdate}
+ 
 
 @view_config(route_name='month',renderer='templates/monthtemplate.pt')
 @view_config(route_name='multiview',renderer='templates/monthtemplate.pt')
 def month_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
-    if 'thumbtype' in request.matchdict:
-        subtypekey=request.matchdict['thumbtype']
-    else:
-        subtypekey='all'
-    isMulti=(subtypekey=='all')
+    isMulti='thumbtype' not in request.matchdict or request.matchdict['thumbtype']=='all'
+    mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
     yearno=int(request.matchdict['year'])
     monthno=int(request.matchdict['month'])
     dayno=1
@@ -509,99 +350,71 @@ def month_view(request):
         dayno=int(request.matchdict['day'])
     elif isMulti:
         return redirect_month(request)
-    datasetdesc=methodkey
-    imagedesc=subtypekey
-    thismonth=validdate(yearno,monthno,dayno)
-    if isMulti:
-        pagedesc=thismonth.strftime('%B %e, %Y')+' - '+validdate(thismonth.year,thismonth.month,thismonth.day+3).strftime('%B %e, %Y')
-        nextmonth=validdate(thismonth.year,thismonth.month,thismonth.day+4)
-        prevmonth=validdate(thismonth.year,thismonth.month,thismonth.day-4)
-    else:
-        pagedesc=thismonth.strftime('%B %Y')
-        nextmonth=validdate(thismonth.year,thismonth.month+1)
-        prevmonth=validdate(thismonth.year,thismonth.month-1)
-    vdate=None
+    #datasetdesc=methodkey
+    #imagedesc=subtypekey
+    #print request.matched_route.__dict__.keys()
     try:
-        vdate=validClosestTime(methodtype,methodkey,thismonth)
-    except:
-        pass
-    if vdate==None or vdate<thismonth or vdate>=nextmonth:
+        thismonth=datetime(yearno,monthno,dayno)
+        #print thismonth
+        realtime=mylib.validClosestTime(thismonth)
+        #print realtime
+        if realtime.year!=yearno or realtime.month!=monthno or (isMulti and realtime.day!=dayno):
+            return redirect_month(request)
+    except ValueError, e:
+        print e
         return redirect_month(request)
-    priorlinkdate=validLaterTime(methodtype,methodkey,prevmonth)
-    if priorlinkdate>=thismonth:
-        priorlinkdate=validPriorTime(methodtype,methodkey,prevmonth)
-    nextlinkdate=validLaterTime(methodtype,methodkey,nextmonth)
-    currenttime=datetime.utcnow();
-    endthismonth=nextmonth
-    if subtypekey=='depol' or subtypekey=='bscat':
-        pagedesc+=' 0-15km'
-    nextlink=None
-    prevlink=None
-    
-    if currenttime<=nextmonth:
-        endthismonth=currenttime
-    elif nextlinkdate:
-        nextlink=monthurlfor(request,request.matchdict['accesstype'],methodkey,subtypekey,nextlinkdate)
-    if priorlinkdate:
-        prevlink=monthurlfor(request,request.matchdict['accesstype'],methodkey,subtypekey,priorlinkdate)
-
-    caltypes=[]
-    arr=[]
-    entrynames=[]
-    if isMulti:
-        thumbs=dpl_hsrllore_simpleThumbPrefixes(int(methodkey))
+    if not isMulti:#'thumbtype' in request.matchdict:
+        selectedtype=request.matchdict['thumbtype']
     else:
-        thumbs=(subtypekey,)
-
-    for thumbtype in thumbs:
-      try:
-        usewindowstart=validLaterTime(methodtype,methodkey,thismonth)
-        usewindowend=validPriorTime(methodtype,methodkey,endthismonth)
-        #print 'range'
-        #print usewindowstart
-        #print usewindowend
-        gen=dpl_hsrl_imagearchive(methodtype,methodkey,thumbtype,True,usewindowstart,usewindowend)
-        if hasattr(gen,'SiteName'):
-            datasetdesc=gen.SiteName
-        if hasattr(gen,'ImageName'):
-            imagedesc=gen.ImageName
-        if hasattr(gen,'availableThumbPrefixes'):
-            caltypes=gen.availableThumbPrefixes
-      except KeyError as e:
-        return HTTPNotFound(e)
-      pagename='%s - %s' % (datasetdesc,imagedesc)
-      entrynames.append(imagedesc)
-      arr.append(makecalendar(request,gen))
-    if subtypekey=="all":
-        pagename='%s - Multi-View' % datasetdesc
-    return {'project':'Picnic',
-            'allentries':arr,'entrynames':entrynames,'newmonthform':request.route_path("select_month"),
-            'selectedtype':subtypekey,'methodtype':methodtype,'methodkey':methodkey,
-            'firsttime':validLaterTime(methodtype,methodkey,datetime(1990, 1, 1, 0, 0, 0)),
+        selectedtype=None
+    return {'lib':mylib,####### endtime is validprior(now + x), nextdate is validnext(now+x)
+            #'allentries':arr,'entrynames':entrynames,
+            #'newmonthform':request.route_path("select_month"), get it itself
+            'selectedtype':selectedtype,'methodtype':methodtype,'methodkey':methodkey,
+            #'firsttime':validLaterTime(methodtype,methodkey,datetime(1990, 1, 1, 0, 0, 0)),
             'thistime':thismonth,
-            'lasttime':validPriorTime(methodtype,methodkey,currenttime),
-            'caltypes':caltypes,'monthnames':calendar.month_name,
+            #'lasttime':validPriorTime(methodtype,methodkey,currenttime),
+            #'caltypes':caltypes, from generator. thumb prefixes
+            'calendar':calendar,'timedelta':timedelta,'datetime':datetime,
             'missingimageurl':request.static_path('picnic:static/missing_thumb.jpg'),#staticurlfor(request,'missing_thumb.jpg',safejoin('/data/web_temp/clients/null','missing_thumb.jpg')),
-            'blankimageurl':request.static_path('picnic:static/blank_thumb.jpg'),#staticurlfor(request,'blank_thumb.jpg',safejoin('/data/web_temp/clients/null','blank_thumb.jpg')),
-            'prevlink':prevlink,'nextlink':nextlink,'pagename':pagename, 'pagedesc':pagedesc}
+            'blankimageurl':request.static_path('picnic:static/blank_thumb.jpg')}#,#staticurlfor(request,'blank_thumb.jpg',safejoin('/data/web_temp/clients/null','blank_thumb.jpg')),
+            #'prevlink':prevlink,'nextlink':nextlink,dynamically generated in the template. prev includes windows, next includes windows end and now
+            #'pagename':pagename, 'pagedesc':pagedesc} extracted from generator
+
+def updateSessionComment(sessionid,value):
+    folder=safejoin('.','sessions',sessionid);
+    #sessiontask=tasks[sessionid]
+    #session=sessiontask['session']
+    #scan session folder for images
+    session=json.load(file(safejoin(folder,"session.json")))
+    session['comment']=value
+    json.dump(session,file(safejoin(folder,'session.json'),'w'))
+
 
 def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
     os.dup2(mystdout.fileno(),sys.stdout.fileno())
     os.dup2(mystdout.fileno(),sys.stderr.fileno())
     t=datetime.utcnow();
+    sessionid=session['sessionid']
+    updateSessionComment(sessionid,'loading DPL')
     from hsrl.dpl_experimental.dpl_rti import dpl_rti
     print t
     if precall!=None:
-        precall(session,dplparameters)
+       updateSessionComment(sessionid,'loading setup')
+       precall(session,dplparameters)
     print 'DPL_RTI Init Parameters:'
     print dplparameters
+    updateSessionComment(sessionid,'initializing DPL')
     dplc=dpl_rti(*dplparameters)
+    updateSessionComment(sessionid,'processing with DPL')
     processingfunction(dplc,session)
     print datetime.utcnow()
     print (datetime.utcnow()-t).total_seconds()
 
 #this will load the parameters from the session to create a json, or load and configure a premade one
 def dp_images_setup(session,dplparms):
+    sessionid=session['sessionid']
+    updateSessionComment(sessionid,'setup')
     import hsrl.data_stream.display_utilities as du
     (disp,conf)=du.get_display_defaults(session['display_defaults_file'])
     #else:#fixme should this be enable_all()?
@@ -625,20 +438,23 @@ def dp_images_setup(session,dplparms):
     dplparms[9]=data_req
 
 def dp_images(dplc,session):
+    sessionid=session['sessionid']
+    updateSessionComment(sessionid,'loading graphics toolkits')
     import hsrl.data_stream.open_config as oc
     import hsrl.data_stream.display_utilities as du
     import hsrl.calibration.cal_read_utilities as cru
-    import json
     import hsrl.graphics.graphics_toolkit as gt
     instrument=session['dataset']
-    sessionid=session['sessionid']
+    #sessionid=session['sessionid']
     disp=session['display_defaults']
 
     folder=safejoin('.','sessions',sessionid);
+    updateSessionComment(sessionid,'processing')
     
     rs=None
     for n in dplc:
         #print 'loop'
+        updateSessionComment(sessionid,'rendering figures')
         figs=du.show_images(instrument,n,dplc.rs_init.sounding,
                             dplc.rs_init.rs_constants,
                             dplc.rs_static.processing_defaults,
@@ -665,6 +481,7 @@ def dp_images(dplc,session):
             figname=safejoin(folder,'figure%04i_%s.png' % (fignum,x))
             fignum = fignum + 1
         #      print 'updating  %d' % x.num
+            updateSessionComment(sessionid,'capturing figure ' + x)
             if x not in figs:
                 f=file(figname,'w')
                 f.close()
@@ -820,9 +637,15 @@ def imagerequest(request):
     altmax=float(request.params.getone('height'))*1000
     altres=(altmax-altmin)/480 # 480 pixels high
     #contstruct dpl
-    (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(int(methodkey))
+    datinfo=lib(method,methodkey)
+    instruments=datinfo['Instruments']
+    name=datinfo['Name']
+    datasetname=instruments[0].lower()
     #print figstocapture
-
+    datasets=[]
+    for inst in instruments:
+        datasets.extend(lib.instrument(inst)['datasets'])
+ 
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
     folder=safejoin('.','sessions',sessionid);
@@ -841,7 +664,7 @@ def imagerequest(request):
         sessiondict['figstocapture']=[None]
     else:
         sessiondict['display_defaults_file']='all_plots.json'
-        imagesetlist=jsgen.formsetsForInstruments(instruments,'images')
+        imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         
         figstocapture=[]
         for i in imagesetlist:
@@ -858,14 +681,15 @@ def imagerequest(request):
     logfilepath=safejoin(folder,'logfile')
     stdt=file(logfilepath,'w')
     tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres],dp_images,sessiondict,dp_images_setup))
-    tasks[sessionid].start()
-    stdt.close()
+    sessiondict['comment']='started'
     sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
-    sv=dpl_hsrllore_datasetForSite(methodkey)
+    #sv=lib('dataset',datasetname)['DatasetID']
     #print sv
-    sessiondict['logbookurl']='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?dataset=%i&rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (sv[0],starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
+    sessiondict['logbookurl']=request.route_path('logbook',accesstype=method,access=methodkey)+'?rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
 
     json.dump(sessiondict,file(safejoin(folder,'session.json'),'w'))
+    tasks[sessionid].start()
+    stdt.close()
     
     #redirect to the progress page
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
@@ -882,7 +706,7 @@ def dataAvailability(request):
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
     retval=''
 
-    print 'checking site ' , site , ' with time range ' , (starttime,endtime)
+    #print 'checking site ' , site , ' with time range ' , (starttime,endtime)
 
     times=[]
     fn=None
@@ -911,7 +735,7 @@ def dataAvailability(request):
     if success:
         retval="lidar"
 
-    print "Success = " , success
+    #print "Success = " , success
     
     response=request.response
     response.content_type='text/plain'
@@ -919,27 +743,6 @@ def dataAvailability(request):
     response.body=retval
     return response
  
-
-#@view_config(route_name='dataAvailability')
-def olddataAvailability(request):
-    site=request.params.getone('site')
-    starttime=request.params.getone('time0')
-    endtime=request.params.getone('time1')
-    p, childStdout = os.pipe()
-    pid=os.fork()
-    if pid==0:
-        os.close(p)
-        os.dup2(childStdout,sys.stdout.fileno())
-        os.execv("/home/jpgarcia/hsrl.git/ahsrl/compressedread/dataAvailability",("/home/jpgarcia/hsrl.git/ahsrl/compressedread/dataAvailability",'p',site,starttime,endtime))
-        sys.exit()
-    os.close(childStdout)
-    os.waitpid(pid,0)
-    response=request.response
-    response.content_type='text/plain'
-    
-    response.body=os.read(p,4096)
-    os.close(p)
-    return response
     
 @view_config(route_name='progress')
 def progress_getlastid(request):
@@ -956,19 +759,36 @@ def progresspage(request):
     session=json.load(file(safejoin(folder,"session.json")))
     if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
         #load intermediate if not
-        return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),'sessionid':sessionid,'destination':session['finalpage']}
+        return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
+            'sessionid':sessionid,'destination':session['finalpage'],'session':session}
     #load next page if complete
     return HTTPTemporaryRedirect(location=session['finalpage'])
+
+@view_config(route_name='logbook')
+def logbook(request):
+    methodtype=request.matchdict['accesstype']
+    methodkey=request.matchdict['access']
+    datasetid=lib('dataset',lib(methodtype[3:],methodkey)['Instruments'][0])['DatasetID']
+    parms={'dataset':'%i' % datasetid}
+    for f in ['byr','bmo','bdy','bhr','bmn','eyr','emo','edy','ehr','emn','rss']:
+        if f in request.params:
+            parms[f]=request.params.getone(f)
+    return HTTPTemporaryRedirect(location='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?'+'&'.join([(k + '=' + parms[k]) for k in parms.keys()]))
+
 
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
 def form_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
-    if methodtype=='by_site':
-        pathname='site'
-        pathidx=int(methodkey)
-    (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(pathidx)
+    mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+    st=mylib()
+    instruments=st['Instruments']
+    instcount=len(instruments)
+    name=st['Name']
+    datasets=[]
+    for inst in instruments:
+        datasets.extend(lib.instrument(inst)['datasets'])
 
     try:
         starttime=validdate(int(request.params.getone('byr')),
@@ -989,9 +809,29 @@ def form_view(request):
         #print request.GET
         minalt=0
         maxalt=15
-        lasttime=validClosestTime(methodtype,methodkey,datetime.utcnow())
+        lasttime=mylib.validClosestTime(datetime.utcnow())
         endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
         starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
+
+    oldformparmsdict={methodtype[3:]:methodkey,
+                      'byr':'%i' % starttime.year,
+                      'bmo':'%i' % starttime.month,
+                      'bdy':'%i' % starttime.day,
+                      'bhr':'%i' % starttime.hour,
+                      'bmn':'%i' % starttime.minute,
+                      'eyr':'%i' % endtime.year,
+                      'emo':'%i' % endtime.month,
+                      'edy':'%i' % endtime.day,
+                      'ehr':'%i' % endtime.hour,
+                      'emn':'%i' % endtime.minute,
+                      'minalt':'%i' % minalt,'maxalt':'%i' % maxalt}
+    oldformparams='&'.join((k+'='+oldformparmsdict[k]) for k in oldformparmsdict.keys())
+    #print oldformparams
+
+    if request.matched_route.name=='netcdfgen' and instcount>0:
+        return HTTPTemporaryRedirect(location="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?%s" % (oldformparams))
+    if request.matched_route.name=='imagegen' and instcount>3: #more than HSRL
+        return HTTPTemporaryRedirect(location="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?%s" % (oldformparams))
 
     #print request
     # used in both forms, but simplifies template
@@ -1016,9 +856,9 @@ def form_view(request):
             'altrange':[minalt,maxalt],'alts':alts,
             'timeresvals':timeresvals,'altresvals':altresvals,
             'timeres':timeres,'altres':altres,
-            'imagesets':jsgen.formsetsForInstruments(instruments,'images'),
-            'netcdfsets':jsgen.formsetsForInstruments(instruments,'netcdf'),
-            'datasets':instruments,pathname:pathidx,
+            'imagesets':jsgen.formsetsForInstruments(datasets,'images'),
+            'netcdfsets':jsgen.formsetsForInstruments(datasets,'netcdf'),
+            'datasets':datasets,methodtype[3:]:methodkey,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
             'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
@@ -1225,10 +1065,9 @@ def userCheck(request):
 def imagejavascript(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
-    if methodtype=='by_site':
-        pathname='site'
-        pathidx=int(methodkey)
-    (instruments,name,datasetname)=dpl_hsrllore_simpleDatasets(pathidx)
     request.response.content_type='text/javascript'
+    datasets=[]
+    for inst in lib(methodtype[3:],methodkey)['Instruments']:
+        datasets.extend(lib.instrument(inst)['datasets'])
 
-    return jsgen.imagejavascriptgen(pathidx,instruments,request.route_path('dataAvailability'))
+    return jsgen.imagejavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
