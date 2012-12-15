@@ -40,22 +40,6 @@ staticresources={}
 
 tasks={}
 
-def makeformbutton(label,cgiurl,bdate,edate):
-    return {'submit':label,'url':cgiurl,
-            'inputs':[
-                {'name':'byr','value':'%i' % bdate.year},
-                {'name':'bmo','value':'%i' % bdate.month},
-                {'name':'bdy','value':'%i' % bdate.day},
-                {'name':'bhr','value':'%i' % bdate.hour},
-                {'name':'bmn','value':'%i' % bdate.minute},
-                {'name':'eyr','value':'%i' % edate.year},
-                {'name':'emo','value':'%i' % edate.month},
-                {'name':'edy','value':'%i' % edate.day},
-                {'name':'ehr','value':'%i' % edate.hour},
-                {'name':'emn','value':'%i' % edate.minute}
-                ]
-            }
-
 def validdate(yearno,monthno,dayno=1,hourno=0,minuteno=0):
     while minuteno>=60:
         minuteno-=60
@@ -121,7 +105,11 @@ def redirect_month(request):
     #try:
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
-        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        try:
+            mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        except RuntimeError:
+            return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+#            return HTTPTemporaryRedirect(location=request.route_path("home"))
         if 'thumbtype' in request.matchdict and request.matchdict['thumbtype']!='all':
             subtypekey=request.matchdict['thumbtype']
         else:
@@ -176,7 +164,11 @@ def redirect_day(request):
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
         nowtime=datetime.utcnow()
-        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        try:
+            mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        except RuntimeError:
+            return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+
         if 'year' in request.matchdict:
             yearno=int(request.matchdict['year'])
         else:
@@ -232,7 +224,12 @@ def session_resource(request):
             #    imagepathcacheage=moddateoffile("/etc/dataarchive.plist")
             if methodtype not in imagepathcache:
                 imagepathcache[methodtype]={}
-            imagepathcache[methodtype][methodkey]=lib(methodtype[3:],methodkey)['Path']
+            try:
+                imagepathcache[methodtype][methodkey]=lib(methodtype[3:],methodkey)['Path']
+            except RuntimeError:
+                return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+#  return HTTPNotFound("File doesn't exist")
+
             
         f=safejoin(imagepathcache[methodtype][methodkey],'%04i' % yearno,'%02i' % monthno, '%02i' % dayno,'images',fn)
     else:
@@ -306,7 +303,11 @@ def dplportal_view(request):
 def date_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
-    mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+    try:
+        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+    except RuntimeError:
+        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+#        return HTTPTemporaryRedirect(location=request.route_path("home"))
     yearno=int(request.matchdict['year'])
     monthno=int(request.matchdict['month'])
     dayno=int(request.matchdict['day'])
@@ -341,7 +342,11 @@ def month_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     isMulti='thumbtype' not in request.matchdict or request.matchdict['thumbtype']=='all'
-    mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+    try:
+        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+    except RuntimeError:
+        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+#        return HTTPTemporaryRedirect(location=request.route_path("home"))
     yearno=int(request.matchdict['year'])
     monthno=int(request.matchdict['month'])
     dayno=1
@@ -780,7 +785,11 @@ def progresspage(request):
 def logbook(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
-    datasetid=lib('dataset',lib(methodtype[3:],methodkey)['Instruments'][0])['DatasetID']
+    try:
+        datasetid=lib('dataset',lib(methodtype[3:],methodkey)['Instruments'][0])['DatasetID']
+    except RuntimeError:
+        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+#        return HTTPTemporaryRedirect(location=request.route_path("home"))
     parms={'dataset':'%i' % datasetid}
     for f in ['byr','bmo','bdy','bhr','bmn','eyr','emo','edy','ehr','emn','rss']:
         if f in request.params:
@@ -793,7 +802,11 @@ def logbook(request):
 def form_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
-    mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+    try:
+        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+    except RuntimeError:
+        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+#        return HTTPTemporaryRedirect(location=request.route_path("home"))
     st=mylib()
     instruments=st['Instruments']
     instcount=len(instruments)
@@ -840,9 +853,9 @@ def form_view(request):
     oldformparams='&'.join((k+'='+oldformparmsdict[k]) for k in oldformparmsdict.keys())
     #print oldformparams
 
-    if request.matched_route.name=='netcdfgen' and instcount>0:
+    if request.matched_route.name=='netcdfgen' and instcount>0: #all netcdf processing is currently 
         return HTTPTemporaryRedirect(location="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?%s" % (oldformparams))
-    if request.matched_route.name=='imagegen' and instcount>3: #more than HSRL
+    if request.matched_route.name=='imagegen' and instcount>3: #more than just HSRL
         return HTTPTemporaryRedirect(location="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?%s" % (oldformparams))
 
     #print request
@@ -1079,7 +1092,9 @@ def imagejavascript(request):
     methodkey=request.matchdict['access']
     request.response.content_type='text/javascript'
     datasets=[]
-    for inst in lib(methodtype[3:],methodkey)['Instruments']:
-        datasets.extend(lib.instrument(inst)['datasets'])
-
+    try:
+        for inst in lib(methodtype[3:],methodkey)['Instruments']:
+            datasets.extend(lib.instrument(inst)['datasets'])
+    except RuntimeError:
+        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
     return jsgen.imagejavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))

@@ -255,6 +255,7 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
         self.defaultwindows=None
         if self.defaultsearchtype=='site' and self.defaultsearchbase!=None:
             self.defaultwindows=self.search()['Windows']
+        self.defaultsite=self()
  
     def __repr__(self):
         if self.defaultsearchbase:
