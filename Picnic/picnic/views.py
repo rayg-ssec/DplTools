@@ -701,52 +701,73 @@ def imagerequest(request):
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
 
-from hsrl.dpl_netcdf.HSRLLibrarian import HSRLLibrarian
-
 @view_config(route_name='dataAvailability')
 def dataAvailability(request):
-    site=request.params.getone('site')
+    #site=request.params.getone('site')
     starttime=request.params.getone('time0')
     endtime=request.params.getone('time1')
+    srctypes=['site','dataset','instrument'] 
+    mode = None
+    for srctype in srctypes:
+        if srctype in request.params:
+            mode=srctype
+            modeval=request.params.getone(mode)
+            break
+    if mode == None:
+        return HTTPNotFound('unknown data storage search method')
+    datasets=[]
+    if 'datasets' in request.params:
+        datasets.extend(request.params.getone('datasets').split(','))
+    else:
+        try:
+            instruments=lib(mode,modeval)['Instruments']
+            for inst in instruments:
+                datasets.extend(lib.instrument(inst)['datasets'])
+        except RuntimeError:
+            return HTTPNotFound("unknown data storage search method 2")
     starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
-    retval=''
+    retval=[]
 
     #print 'checking site ' , site , ' with time range ' , (starttime,endtime)
+    if 'lidar' in datasets:
+        times=[]
+        fn=None
+        t=None
 
-    times=[]
-    fn=None
-    t=None
+        from hsrl.dpl_netcdf.HSRLLibrarian import HSRLLibrarian
+        datalib=HSRLLibrarian(**{mode:modeval})
+        srchres=datalib(start=starttime,end=endtime)
+        for x in srchres:
+            times.append(srchres.parseTimeFromFile(x))
+            if len(times)==2:
+                break
+            fn=x
+            t=times[0]
 
-    srchres=HSRLLibrarian(site=int(site))(start=starttime,end=endtime)
-    for x in srchres:
-        times.append(srchres.parseTimeFromFile(x))
-        if len(times)==2:
-            break
-        fn=x
-        t=times[0]
-
-    success=False
-    if len(times)==0:
         success=False
-    elif len(times)>=2:
-        success=True
-    elif t>=starttime and t<=endtime:
-        success=True
-    elif 'data' in x and (starttime-t).total_seconds()<(60*60):
-        success=True
-    elif (starttime-t).total_seconds()<(3*60*60):
-        success=True
+        if len(times)==0:
+            success=False
+        elif len(times)>=2:
+            success=True
+        elif t>=starttime and t<=endtime:
+            success=True
+        elif 'data' in x and (starttime-t).total_seconds()<(60*60):
+            success=True
+        elif (starttime-t).total_seconds()<(3*60*60):
+            success=True
 
-    if success:
-        retval="lidar"
+        if success:
+            retval.append("lidar")
 
-    #print "Success = " , success
+        #print "Success = " , success
+
+    print 'data availability check for ' , mode, '-', modeval, ' src = ', datasets, ' , result = ', retval
     
     response=request.response
     response.content_type='text/plain'
        
-    response.body=retval
+    response.body=','.join(retval)
     return response
  
     
