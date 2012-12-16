@@ -19,7 +19,7 @@
   <B>University of Wisconsin - Madison HSRL Data Archives</B>
   <UL>
     <B><I>Active Sites:</I></B>
-    <LI tal:repeat="site reversed(lib('site',isactive=True))"><B>${site.Name}</B>
+    <LI tal:repeat="site reversed(lib(index='site',isactive=True))"><B>${site.Name}</B>
     <UL>
        <LI>Archive: <A HREF="${request.route_path('thumb',accesstype='by_site',access=site.SiteID,thumbtype='all')}">Multi-View</A>
        <span tal:repeat="instname site.Instruments">
@@ -38,7 +38,7 @@
     </LI>
     <BR>
     <B><I>Archived Sites:</I></B>
-    <LI tal:repeat="site reversed(lib('site',isactive=False))"><B>${site.Name}</B>
+    <LI tal:repeat="site reversed(lib(index='site',isactive=False))"><B>${site.Name}</B>
     <UL>
       <LI>Archive: <A HREF="${request.route_path('thumb',accesstype='by_site',access=site.SiteID,thumbtype='all')}">Multi-View</A>
        <span tal:repeat="instname site.Instruments">

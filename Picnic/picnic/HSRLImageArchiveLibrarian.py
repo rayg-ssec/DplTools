@@ -232,7 +232,7 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
             self._archivemodtime=mt
         return self._archive
 
-    def __init__(self, defaultsearchtype='site', defaultsearchbase=None, dataarchive_path=None):
+    def __init__(self, defaultsearchtype='site', defaultsearchbase=None, dataarchive_path=None,site=None,instrument=None,dataset=None,indexdefault=None):
         """ Initializer determines types of searches that this will be doing
             :param dataarchive_path: location of dataarchive.plist, default is /etc/dataarchive.plist
             :param defaultsearchtype: default searchtype for finding data
@@ -243,19 +243,35 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
 
         super(HSRLImageArchiveLibrarian,self).__init__()
         self.dataarchive_path=dataarchive_path
-        if defaultsearchtype!=None and defaultsearchtype not in ['instrument','dataset','site']:
-            raise KeyError('invalid method type ' + defaultsearchtype)
         self.defaultsearchtype=defaultsearchtype
+        self.defaultsearchbase=defaultsearchbase
+        if site!=None:
+            self.defaultsearchtype='site'
+            self.defaultsearchbase=site
+        if instrument!=None:
+            self.defaultsearchtype='instrument'
+            self.defaultsearchbase=instrument
+        if dataset!=None:
+            self.defaultsearchtype="dataset"
+            self.defaultsearchbase=dataset
+        if indexdefault!=None:
+            self.defaultsearchtype=indexdefault
+            self.defaultsearchbase=None
+
+        if self.defaultsearchtype!=None and self.defaultsearchtype not in ['instrument','dataset','site']:
+            raise KeyError('invalid method type ' + self.defaultsearchtype)
         if self.dataarchive_path==None:
             self.dataarchive_path="/etc/dataarchive.plist"
         self._archive=None
         self._archivemodtime=None
         self.archive()
-        self.defaultsearchbase=defaultsearchbase
         self.defaultwindows=None
-        if self.defaultsearchtype=='site' and self.defaultsearchbase!=None:
-            self.defaultwindows=self.search()['Windows']
         self.defaultsite=self()
+        try:
+            if 'Windows' in self.defaultsite:
+                self.defaultwindows=self.defualtsite['Windows']
+        except AttributeError:
+            pass
  
     def __repr__(self):
         if self.defaultsearchbase:
@@ -282,9 +298,9 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
         nl=name.lower()
         return ins[k[kl.index(nl)]]
 
-    def search(self, searchtype=None,searchbase=None,start=None,end=None,isactive=None,prefix=None,isthumb=None):
+    def search(self, searchtype=None,searchbase=None,start=None,end=None,isactive=None,prefix=None,isthumb=None,site=None,instrument=None,dataset=None,index=None):
         """ This is the primary interface of the Librarian, exposing all personalities of the dataarchive list
-            meta searchtype with searchbase=None and defaultsearchbase=None (def):
+            meta searchtype with searchbase=None and defaultsearchbase=None (def): #FIXME these will probably change to actual instrument/dataset/site parameters. This will be specifying one of those 3 to a new parameter "index"
                None        - use init default
                instrument  - using hsrl_python, list all matching instruments
                dataset     - using dataarchive, list all matching instruments
@@ -298,11 +314,10 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
                         Instruments - list of instruments (can be used with "instrument" search)
                         SiteID - (site only) site index
                         DatasetID - (dataset only)
-            data searchtype with searchbase set:
+            data searchtype with searchbase set: # fixme with index unset, one of these must be set
                 None          - use init default
                 instrument    - name an instrument
                 dataset       - name an instrument (string) or integer instrument index (int)
-                datasetindex  - same as by_dataset
                 site          - integer site index
                 additional keys:
                     searchbase - key used in the searchtype.
@@ -319,6 +334,18 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
             searchtype=self.defaultsearchtype
         if searchbase==None:#default init value
             searchbase=self.defaultsearchbase
+        if site!=None:
+            searchtype='site'
+            searchbase=site
+        if instrument!=None:
+            searchtype='instrument'
+            searchbase=instrument
+        if dataset!=None:
+            searchtype="dataset"
+            searchbase=dataset
+        if index!=None:
+            searchtype=index
+            searchbase=None
         if prefix==None and isthumb==None:#want a list of disk catalogs, or a specified catalog (not an imagesearch)
             if searchtype=='instrument':
                 from hsrl.data_stream.open_config import open_config

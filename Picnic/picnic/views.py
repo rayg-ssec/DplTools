@@ -14,7 +14,7 @@ import jsgen
 import json
 
 from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
-lib=HSRLImageArchiveLibrarian()
+lib=HSRLImageArchiveLibrarian(indexdefault='site')
 
 def safejoin(*args):
     tmp=os.path.abspath(args[0])
@@ -106,7 +106,7 @@ def redirect_month(request):
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
         try:
-            mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+            mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
         except RuntimeError:
             return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
 #            return HTTPTemporaryRedirect(location=request.route_path("home"))
@@ -165,7 +165,7 @@ def redirect_day(request):
         methodkey=request.matchdict['access']
         nowtime=datetime.utcnow()
         try:
-            mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+            mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
         except RuntimeError:
             return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
 
@@ -225,7 +225,7 @@ def session_resource(request):
             if methodtype not in imagepathcache:
                 imagepathcache[methodtype]={}
             try:
-                imagepathcache[methodtype][methodkey]=lib(methodtype[3:],methodkey)['Path']
+                imagepathcache[methodtype][methodkey]=lib(**{methodtype[3:]:methodkey})['Path']
             except RuntimeError:
                 return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
 #  return HTTPNotFound("File doesn't exist")
@@ -304,7 +304,7 @@ def date_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
     except RuntimeError:
         return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
@@ -343,7 +343,7 @@ def month_view(request):
     methodkey=request.matchdict['access']
     isMulti='thumbtype' not in request.matchdict or request.matchdict['thumbtype']=='all'
     try:
-        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
     except RuntimeError:
         return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
@@ -643,7 +643,7 @@ def imagerequest(request):
     altmax=float(request.params.getone('height'))*1000
     altres=None#(altmax-altmin)/480 # 480 pixels high
     #contstruct dpl
-    datinfo=lib(method,methodkey)
+    datinfo=lib(**{method:methodkey})
     instruments=datinfo['Instruments']
     name=datinfo['Name']
     datasetname=instruments[0].lower()
@@ -720,7 +720,7 @@ def dataAvailability(request):
         datasets.extend(request.params.getone('datasets').split(','))
     else:
         try:
-            instruments=lib(mode,modeval)['Instruments']
+            instruments=lib(**{mode:modeval})['Instruments']
             for inst in instruments:
                 datasets.extend(lib.instrument(inst)['datasets'])
         except RuntimeError:
@@ -807,7 +807,7 @@ def logbook(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        datasetid=lib('dataset',lib(methodtype[3:],methodkey)['Instruments'][0])['DatasetID']
+        datasetid=lib('dataset',lib(**{methodtype[3:]:methodkey})['Instruments'][0])['DatasetID']
     except RuntimeError:
         return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
@@ -824,7 +824,7 @@ def form_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        mylib=HSRLImageArchiveLibrarian(methodtype[3:],methodkey)
+        mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
     except RuntimeError:
         return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
@@ -1114,7 +1114,7 @@ def imagejavascript(request):
     request.response.content_type='text/javascript'
     datasets=[]
     try:
-        for inst in lib(methodtype[3:],methodkey)['Instruments']:
+        for inst in lib(**{methodtype[3:]:methodkey})['Instruments']:
             datasets.extend(lib.instrument(inst)['datasets'])
     except RuntimeError:
         return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
