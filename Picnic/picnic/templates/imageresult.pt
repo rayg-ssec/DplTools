@@ -1,16 +1,17 @@
 <html>
 <head>
-<title>${sitename} RTI ${timespan} , range ${rangespan} km</title>
+<title>${session.name} RTI ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime('%B %e, %Y %H:%M') + ' - ' + session.endtime.strftime('%H:%M' if session.starttime.date()==session.endtime.date() else '%B %e, %Y %H:%M'))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }</title>
 </head>
 <body>
 <center>
 <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/about_image.htm">About these images</a><br />
-</center><a href="${logbookurl}">logbook entry</a><br /><center>
+${session.name} RTI<BR/>${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime('%B %e, %Y %H:%M') + ' - ' + session.endtime.strftime('%H:%M' if session.starttime.date()==session.endtime.date() else '%B %e, %Y %H:%M'))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }
+</center><a tal:condition="'logbookurl' in session" tal:attributes="href session.logbookurl">logbook entry</a><br /><center>
 <div tal:repeat="imurl imageurls">
   <img tal:attributes="src imurl">
   <br /><br /><br /><br />
 </div>
 </center>
-<a href="${logfileurl}">&lambda;</a>
+<a tal:condition="'logfileurl' in session" tal:attributes="href session.logfileurl">&lambda;</a>
 </body>
 </html>

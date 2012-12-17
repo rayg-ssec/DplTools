@@ -13,6 +13,8 @@ import multiprocessing
 import jsgen
 import json
 
+json_dateformat='%Y.%m.%dT%H:%M:%S'
+
 from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
 lib=HSRLImageArchiveLibrarian(indexdefault='site')
 
@@ -325,7 +327,7 @@ def date_view(request):
         #print selectdate
         realtime=mylib.validClosestTime(selectdate)
         #print realtime
-        if realtime.year!=yearno or realtime.month!=monthno or realtime.day!=dayno or realtime.hour!=hourno:
+        if realtime.date()!=selectdate.date() or realtime.hour!=hourno:
             return redirect_day(request)
     except ValueError, e:
         print e
@@ -364,7 +366,7 @@ def month_view(request):
         #print thismonth
         realtime=mylib.validClosestTime(thismonth)
         #print realtime
-        if realtime.year!=yearno or realtime.month!=monthno or (isMulti and realtime.day!=dayno):
+        if (isMulti and realtime.date()!=thismonth.date()) or (not isMulti and (realtime.year!=yearno or realtime.month!=monthno)):
             return redirect_month(request)
     except ValueError, e:
         print e
@@ -521,10 +523,12 @@ def imageresult(request):
         if f.endswith('.json'):
             jsonfiles.append(request.route_path('session_resource',session=sessionid,filename=f))
     ims.sort()
+    if 'starttime' in session:
+        session['starttime']=datetime.strptime(session['starttime'],json_dateformat)
+    if 'endtime' in session:
+        session['endtime']=datetime.strptime(session['endtime'],json_dateformat)
     #send to template
-    return { 'imageurls':ims, 'logfileurl':session['logfileurl'],'logbookurl':session['logbookurl'],
-             'sitename':session['name'], 'site':session['site'] ,
-             'timespan':'FIXMEtimespan', 'rangespan':'FIXMErangespan' } 
+    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session } 
 
 def setdictval(d,ks,v):
     if len(ks)==1:
@@ -663,6 +667,10 @@ def imagerequest(request):
     sessiondict['name']=name
     sessiondict['site']=methodkey
     sessiondict['sessionid']=sessionid
+    sessiondict['starttime']=starttime.strftime(json_dateformat)
+    sessiondict['endtime']=endtime.strftime(json_dateformat)
+    sessiondict['altmin']=altmin
+    sessiondict['altmax']=altmax
     if 'display_defaults_file' in request.params:
         sessiondict['display_defaults_file']=request.params.getone('display_defaults_file')
         if os.path.sep in sessiondict['display_defaults_file']:
