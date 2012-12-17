@@ -748,21 +748,28 @@ def dataAvailability(request):
         success=False
         if len(times)==0:
             success=False
+            #print 'no data'
         elif len(times)>=2:
             success=True
+            #print 'more than 1'
         elif t>=starttime and t<=endtime:
             success=True
+            #print 'time in range'
+        elif starttime>datetime.utcnow():
+            success=False
         elif 'data' in x and (starttime-t).total_seconds()<(60*60):
             success=True
-        elif (starttime-t).total_seconds()<(3*60*60):
+            #print 'data time may intersect'
+        elif 'data' not in x and (starttime-t).total_seconds()<(3*60*60):
             success=True
+            #print 'cal time may intersect'
 
         if success:
             retval.append("lidar")
 
         #print "Success = " , success
-
-    print 'data availability check for ' , mode, '-', modeval, ' src = ', datasets, ' , result = ', retval
+    # if other sets, add checks here using librarians
+    #print 'data availability check for ' , mode, '-', modeval, ' src = ', datasets, ' , result = ', retval
     
     response=request.response
     response.content_type='text/plain'
