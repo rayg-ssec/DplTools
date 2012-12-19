@@ -3,6 +3,7 @@
 <head>
 <Title>${sitename} Processed Data Retreival</Title>
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
+<script language="javascript" src="${req.route_path('netcdfjavascript',accesstype=request.matchdict['accesstype'],access=request.matchdict['access'])}"></script>
 <script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?js=yes&site=${site}"></script>
 <style type="text/css">.checklink A:link {color: #000000; text-decoration: none} .checklink A:visited {text-decoration: none} .checklink A:active {text-decoration: none} .checklink A:hover {text-decoration: underline;}</style>
 </head>
@@ -19,16 +20,16 @@ year<select NAME="byr" SIZE="1" onchange="freshentop();checkDataAvailability();"
 <option  tal:repeat="byear range(2012,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
 </select>
 month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value monthnames[bmonth];selected bdate.month==bmonth"/>
+<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value bmonth;selected bdate.month==bmonth"/>
 </select>
 day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value '%02i' % bday;selected bdate.day==bday"/>
+<option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value bday;selected bdate.day==bday"/>
 </select>
 hour<select NAME="bhr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bhour range(0,24)" tal:content="'%02i' % bhour" tal:attributes="value '%02i' % bhour;selected bdate.hour==bhour"/>
+<option  tal:repeat="bhour range(0,24)" tal:content="'%02i' % bhour" tal:attributes="value bhour;selected bdate.hour==bhour"/>
 </select>
 minute<select NAME="bmn" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bmin range(0,60,5)" tal:content="'%02i' % bmin" tal:attributes="value '%02i' % bmin;selected bdate.minute==bmin"/>
+<option  tal:repeat="bmin range(0,60,5)" tal:content="'%02i' % bmin" tal:attributes="value bmin;selected bdate.minute==bmin"/>
 </select>
 <P/><P/>
 <B><TT>To:    </TT></B><P/>
@@ -36,16 +37,16 @@ year<select NAME="eyr" SIZE="1" onchange="freshenbottom();checkDataAvailability(
 <option  tal:repeat="eyear range(2012,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
 </select>
 month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value monthnames[emonth];selected edate.month==emonth"/>
+<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value emonth;selected edate.month==emonth"/>
 </select>
 day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value '%02i' % eday;selected edate.day==eday"/>
+<option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value eday;selected edate.day==eday"/>
 </select>
 hour<select NAME="ehr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="ehour range(0,24)" tal:content="'%02i' % ehour" tal:attributes="value '%02i' % ehour;selected edate.hour==ehour"/>
+<option  tal:repeat="ehour range(0,24)" tal:content="'%02i' % ehour" tal:attributes="value ehour;selected edate.hour==ehour"/>
 </select>
 minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="emin range(0,60,5)" tal:content="'%02i' % emin" tal:attributes="value '%02i' % emin;selected edate.minute==emin"/>
+<option  tal:repeat="emin range(0,60,5)" tal:content="'%02i' % emin" tal:attributes="value emin;selected edate.minute==emin"/>
 </select>
 <INPUT TYPE="HIDDEN" NAME="fill" value="on"/></div><div align="center">
 <TABLE border="2"><TR><TD>
@@ -71,7 +72,7 @@ km
 Time Resolution: 
 </TD><TD align="right">
 <select name="timeres" size="1"  onchange="checkGridSize();" >
-<option tal:repeat="x timeresvals" tal:content="'%f' % x" tal:attributes="value x;selected x==timeres" />
+<option tal:repeat="x timeresvals" tal:content="('%g'%(x)) if x<60 else (('%i:%02g' % (int(x/60),x%60)) if x<(60*60) else ('%i:%02i:%02i' % (x/(60*60),(x/60)%60,x%60)))" tal:attributes="value x;selected x==timeres" />
 </select>
 </TD><TD align="left">
 seconds/record
@@ -79,7 +80,7 @@ seconds/record
 Altitude Resolution: 
 </TD><TD align="right">
 <select name="altres" size="1"  onchange="checkGridSize();" >
-<option tal:repeat="x altresvals" tal:content="'%f' % x" tal:attributes="value x;selected x==altres" />
+<option tal:repeat="x altresvals" tal:content="'%g' % x" tal:attributes="value x;selected x==altres" />
 </select>
 </TD><TD align="left">
 meters/point
@@ -89,7 +90,7 @@ meters/point
 <A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#filemode"  TARGET="lidarwebdoc">File Mode:</A> 
 </TD><TD align="left">
 <span id="filemoderecommend" style="display: none"><font color="#cc0000">Grid size is huge.<BR/>Recommend breaking into multiple smaller files.<BR/></font></span>
-<select name="filemode" size="1"  onchange="updateFMVisibilities();checkOverpassCount();checkGridSize();sanityCheckSubmit();" >
+<select name="filemode" size="1" disabled="true" disabled_onchange="updateFMVisibilities();checkOverpassCount();checkGridSize();sanityCheckSubmit();" >
 <option value="single" selected="true">single</option>
 <option value="satellite">satellite</option>
 <option value="routine">routine</option>
@@ -99,19 +100,19 @@ meters/point
 <option value="week">week</option>
 <option value="month">month</option>
 </select>
-</TD></TR><TR id="fm_multi"><TD align="right" style="background-color: transparent" >
+</TD></TR><TR id="fm_multi" tal:condition="False"><TD align="right" style="background-color: transparent" >
 Username: 
 </TD><TD align="left">
 <INPUT TYPE="TEXT" NAME="username" value="" size="10" maxsize="16" onchange="sanityCheckSubmit();"/><BR/>(4 or more characters)
 </TD></TR></TABLE>
 
-<TABLE><TR id="overhead_mins"><TD colspan="2">
+<TABLE tal:condition="False"><TR id="overhead_mins"><TD colspan="2">
 Minutes Per File:<INPUT TYPE="TEXT" NAME="sat_windowsize" value="60" size="5" maxsize="10"/>
-</TD></TR><TR id="satelliteselect"><TD colspan="2"  id="overpasscount_hi">
+</TD></TR><TR id="satelliteselect" tal:condition="False"><TD colspan="2"  id="overpasscount_hi">
 Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5" maxsize="10" onchange="checkOverpassCount();"/>km
 <BR/>Satellite:
 
-<select name="satellite" size="1"  onchange="checkOverpassCount();" >
+<select name="satellite" size="1"  onchange="checkOverpassCount();">
 <option value="AQUA" selected="true">AQUA</option>
 <option value="AURA">AURA</option>
 <option value="CALIPSO">CALIPSO</option>
@@ -152,7 +153,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 <option value="TRMM">TRMM</option>
 </select>
 <BR/>Counted <span id="overpasscount">X</span> intervals. <span id="overpass_progress" style="display: none"><font color="#cc0000">(loading...)</font></span><BR/><input type="button" name="satlist" value="Preview Data Intervals (Incomplete)" onclick="previewSatList();" alt="" />
-</TD></TR><TR id="overhead_times"><TD id="sat_times_hi"><TABLE><TR>
+</TD></TR><TR id="overhead_times" tal:condition="False"><TD id="sat_times_hi"><TABLE tal:condition="False"><TR>
 <TD rowspan="5"><select NAME="sat_times" MULTIPLE="true" SIZE="7" onchange="updateFMVisibilities();"></select><INPUT TYPE="hidden" NAME="sat_timeslist" VALUE=""/></TD><TD>Routine File<BR/>Midpoint Times (UT):</TD></TR><TR><TD>
 <select NAME="sat_hour" SIZE="1" >
 <option tal:repeat="x range(0,24)" tal:content="'%02i' % x" tal:attributes="value x;selected x==0"/>
@@ -163,7 +164,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 </TD></TR><TR><TD><A HREF="javascript: remSatTime();"> <input type="button" name="sat_rem" value="Remove" onclick="remSatTime();" alt="" /></A><A HREF="javascript: addSatTime();"> <input type="button" name="sat_add" value="Add" onclick="addSatTime();" alt="" /></A></TD></TR></TABLE></TD></TR>
 </TABLE>
 </TD></TR></TABLE>
-<TABLE border="2"><TR><TD colspan="2" align="center"><A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#masking" TARGET="lidarwebdoc">Data Quality Masking</A>  (Leave blank to disable)</TD></TR><TR>
+<TABLE tal:condition="False" border="2"><TR><TD colspan="2" align="center"><A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#masking" TARGET="lidarwebdoc">Data Quality Masking</A>  (Leave blank to disable)</TD></TR><TR>
 <TD><TABLE>
 <TR><TD align="right">Minimum Radar Backscatter</TD><TD><INPUT TYPE="TEXT" NAME="qc_params.min_radar_backscat" value="1e-15" size="7" MAXSIZE="15" onchange="bscs2rUpdate();"/>
 </TD><TD>1/(m str) </TD></TR>
@@ -190,11 +191,11 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 </TABLE></TD>
 </TR></TABLE>
 </div>
-
+<input type="hidden" name="cdltemplatename" value="hsrl_nomenclature.cdl">
 <DIV ALIGN="CENTER"><font color="#cc0000">under construction</font></DIV> <BR/>
 <DIV ALIGN="CENTER"><a href="http://lidar.ssec.wisc.edu/syst/ahsrl/export_netcdf_help.html">Documentation</a><p/></DIV>
-<DIV ALIGN="CENTER"><BIG><BIG>Select your desired datasets:</BIG></BIG></DIV>
-  <TABLE ALIGN="CENTER" CELLSPACING="5">
+<DIV ALIGN="CENTER" tal:condition="False"><BIG><BIG>Select your desired datasets:</BIG></BIG></DIV>
+  <TABLE ALIGN="CENTER" CELLSPACING="5" tal:condition="False">
 
 <TR>
 <TD colspan="2" align="left"><BIG>Derived Quantities</BIG></TD>
@@ -374,7 +375,7 @@ updateVisibilities();changePSET();bscs2rUpdate();updateFMVisibilities();checkDat
 </FORM>
 <br />
 <div align="center">
-<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/ahsrl_data.htm">Back to AHSRL Data homepage</a><br />
+<a href="${request.route_path('home')}">Back to HSRL Data Portal</a><br />
 </div>
 </body>
 </html>

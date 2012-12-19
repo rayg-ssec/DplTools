@@ -248,6 +248,8 @@ def session_resource(request):
         m='text/plain'
     if fn.endswith('.json'):
         m='application/json'
+    if fn.endswith('.nc') or fn.endswith('.cdf'):
+        m='application/x-netcdf'
 
     if m==None:
         return HTTPNotFound("File inaccessible")
@@ -396,7 +398,8 @@ def updateSessionComment(sessionid,value):
     #scan session folder for images
     session=json.load(file(safejoin(folder,"session.json")))
     session['comment']=value
-    json.dump(session,file(safejoin(folder,'session.json'),'w'))
+    print 'Updating Session Comment :',value
+    json.dump(session,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
 
 
 def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
@@ -413,7 +416,7 @@ def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
     print 'DPL_RTI Init Parameters:'
     print dplparameters
     updateSessionComment(sessionid,'initializing DPL')
-    dplc=dpl_rti(*dplparameters)
+    dplc=dpl_rti(**dplparameters)
     updateSessionComment(sessionid,'processing with DPL')
     processingfunction(dplc,session)
     print datetime.utcnow()
@@ -441,17 +444,15 @@ def dp_images_setup(session,dplparms):
         data_req= 'images housekeeping'
 
     session['display_defaults']=disp
-    while len(dplparms)<10:
-        dplparms.append(None)
-    dplparms[9]=data_req
+    dplparms['data_request']=data_req
 
 def dp_images(dplc,session):
     sessionid=session['sessionid']
     updateSessionComment(sessionid,'loading graphics toolkits')
-    import hsrl.data_stream.open_config as oc
+    #import hsrl.data_stream.open_config as oc
     import hsrl.data_stream.display_utilities as du
-    import hsrl.calibration.cal_read_utilities as cru
-    import hsrl.graphics.graphics_toolkit as gt
+    #import hsrl.calibration.cal_read_utilities as cru
+    #import hsrl.graphics.graphics_toolkit as gt
     instrument=session['dataset']
     #sessionid=session['sessionid']
     disp=session['display_defaults']
@@ -502,6 +503,103 @@ def dp_images(dplc,session):
             fig.canvas.draw()
             #fig.canvas.
             fig.savefig(figname,format='png',bbox_inches='tight')
+        updateSessionComment(sessionid,'done')
+    
+def dp_netcdf(dplc,session):
+    sessionid=session['sessionid']
+    updateSessionComment(sessionid,'loading toolkits')
+    #import hsrl.data_stream.open_config as oc
+    from hsrl.utils.locate_file import locate_file
+    from netCDF4 import Dataset
+    #import hsrl.data_stream.display_utilities as du
+    #import hsrl.calibration.cal_read_utilities as cru
+    #import hsrl.graphics.graphics_toolkit as gt
+    ncformat="NETCDF4"
+    if session['template'] in ['hsrl_cfradial.cdl']:
+        import hsrl.dpl_experimental.dpl_create_cfradial as dpl_ctnc
+    else:
+        import hsrl.dpl_experimental.dpl_create_templatenetcdf as dpl_ctnc
+        if '3' in session['template']:
+            ncformat="NETCDF3_CLASSIC"
+
+    folder=safejoin('.','sessions',sessionid);
+    updateSessionComment(sessionid,'opening blank netcdf file')
+    
+    ncfilename=safejoin(folder,session['filename'])
+    v=None
+    n=Dataset(ncfilename,'w',clobber=True,format=ncformat)
+ 
+    updateSessionComment(sessionid,'processing')
+ 
+    rs=None
+    for i in dplc:
+        #print 'loop'
+        if v==None:
+            updateSessionComment(sessionid,'creating template netcdf file')
+            v=dpl_ctnc.dpl_create_templatenetcdf(locate_file(session['template']),n,i)
+        timewindow='blank'
+        findTimes=['rs_raw','rs_mean','rs_inv']
+        for f in findTimes:
+            if hasattr(i,f) and hasattr(getattr(i,f),'times') and len(getattr(i,f).times)>0:
+                t=getattr(i,f).times
+                timewindow=t[0].strftime('%Y.%m.%d %H:%M') + ' - ' + t[-1].strftime('%Y.%m.%d %H:%M')
+
+        updateSessionComment(sessionid,'appending data %s' % (timewindow))
+ 
+        v.appendtemplatedata(i)
+        n.sync()
+ 
+        updateSessionComment(sessionid,'processing more')
+    n.close()
+
+    v=None
+
+    if len(session['figstocapture'])>0:
+        updateSessionComment(sessionid,'done. capturing images')
+        import hsrl.data_stream.display_utilities as du
+        # read whole file into structure
+        v=dpl_ctnc.dpl_read_templatenetcdf(ncfilename)
+
+    if v!=None:
+      for n in v:
+        instrument=session['dataset']
+        figs=du.show_images(instrument,n,None,{},process_defaults,disp,None,None,None)
+        #print n.rs_inv.beta_a_backscat_par
+        #print n.rs_inv.times
+        # force a redraw
+        rs=n
+        fignum=0
+
+        alreadycaptured=[]
+
+        for x in session['figstocapture']:#plt._pylab_helpers.Gcf.get_all_fig_managers():
+            if x in alreadycaptured:
+                continue
+            alreadycaptured.append(x)
+            if x == None:
+                tmp=[ f for f in figs ];
+                tmp.sort()
+                session['figstocapture'].extend(tmp)
+                continue
+            figname=safejoin(folder,'figure%04i_%s.png' % (fignum,x))
+            fignum = fignum + 1
+        #      print 'updating  %d' % x.num
+            updateSessionComment(sessionid,'capturing figure ' + x)
+            if x not in figs:
+                f=file(figname,'w')
+                f.close()
+                continue
+        
+            fig = figs.figure(x)#plt.figure(x.num)
+        
+      # QApplication.processEvents()
+            
+            fig.canvas.draw()
+            #fig.canvas.
+            fig.savefig(figname,format='png',bbox_inches='tight')
+
+    updateSessionComment(sessionid,'done.')
+   
     
 @view_config(route_name='imageresult',renderer='templates/imageresult.pt')
 def imageresult(request):
@@ -519,16 +617,44 @@ def imageresult(request):
         fl=[]
     for f in fl:
         if f.endswith('.png'):
-            ims.append( request.route_path('session_resource',session=sessionid,filename=f) )
+            ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
         if f.endswith('.json'):
-            jsonfiles.append(request.route_path('session_resource',session=sessionid,filename=f))
+            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
     ims.sort()
     if 'starttime' in session:
         session['starttime']=datetime.strptime(session['starttime'],json_dateformat)
     if 'endtime' in session:
         session['endtime']=datetime.strptime(session['endtime'],json_dateformat)
     #send to template
-    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session } 
+    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'timedelta':timedelta } 
+
+@view_config(route_name='netcdfresult',renderer='templates/netcdfresult.pt')
+def netcdfresult(request):
+    sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
+    folder=safejoin('.','sessions',sessionid);
+    #sessiontask=tasks[sessionid]
+    #session=sessiontask['session']
+    #scan session folder for images
+    session=json.load(file(safejoin(folder,"session.json")))
+    ims = []
+    jsonfiles=[]
+    try:
+        fl=os.listdir(folder)
+    except:
+        fl=[]
+    for f in fl:
+        if f.endswith('.png'):
+            ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
+        if f.endswith('.json'):
+            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
+    ims.sort()
+    if 'starttime' in session:
+        session['starttime']=datetime.strptime(session['starttime'],json_dateformat)
+    if 'endtime' in session:
+        session['endtime']=datetime.strptime(session['endtime'],json_dateformat)
+    #send to template
+    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'timedelta':timedelta } 
+
 
 def setdictval(d,ks,v):
     if len(ks)==1:
@@ -694,14 +820,114 @@ def imagerequest(request):
     #start process
     logfilepath=safejoin(folder,'logfile')
     stdt=file(logfilepath,'w')
-    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,[datasetname,starttime,endtime,timeres,endtime-starttime,altmin,altmax,altres],dp_images,sessiondict,dp_images_setup))
+    dplparams={
+        'instrument':datasetname,
+        'start_time_datetime':starttime,
+        'end_time_datetime':endtime,
+        'timeres_timedelta':timeres,
+        'maxtimeslice_timedelta':timedelta(seconds=60*60*2),
+        'min_alt_m':altmin,
+        'max_alt_m':altmax,
+        'altres_m':altres}
+    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,dplparams,dp_images,sessiondict,dp_images_setup))
     sessiondict['comment']='started'
     sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
     #sv=lib('dataset',datasetname)['DatasetID']
     #print sv
     sessiondict['logbookurl']=request.route_path('logbook',accesstype=method,access=methodkey)+'?rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
 
-    json.dump(sessiondict,file(safejoin(folder,'session.json'),'w'))
+    json.dump(sessiondict,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
+    tasks[sessionid].start()
+    stdt.close()
+    
+    #redirect to the progress page
+    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+
+@view_config(route_name='netcdfreq')
+def netcdfrequest(request):
+    session=request.session
+    sessionid=session.new_csrf_token()
+    sessiondict={}
+    #sessionid=request.POST['csrf_token']
+    #add task status to list
+    #print request.route_path('imageresult')
+    sessiondict['finalpage']=request.route_path('netcdfresult',session=sessionid);
+    tasks[sessionid]=None
+    #load parameters
+    #print request.params
+
+    method='site'
+    methodkey=int(request.params.getone(method));
+    starttime=datetime(int(request.params.getone('byr')),
+                       int(request.params.getone('bmo')),
+                       int(request.params.getone('bdy')),
+                       int(request.params.getone('bhr')),
+                       int(request.params.getone('bmn')),
+                       0)
+    endtime=datetime(int(request.params.getone('eyr')),
+                     int(request.params.getone('emo')),
+                     int(request.params.getone('edy')),
+                     int(request.params.getone('ehr')),
+                     int(request.params.getone('emn')),
+                     0)
+    timeres=timedelta(seconds=float(request.params.getone('timeres')))
+    altmin=float(request.params.getone('lheight'))*1000
+    altmax=float(request.params.getone('height'))*1000
+    altres=float(request.params.getone('altres'))
+    #contstruct dpl
+    datinfo=lib(**{method:methodkey})
+    instruments=datinfo['Instruments']
+    name=datinfo['Name']
+    datasetname=instruments[0].lower()
+    #print figstocapture
+    datasets=[]
+    for inst in instruments:
+        datasets.extend(lib.instrument(inst)['datasets'])
+ 
+    #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+
+    folder=safejoin('.','sessions',sessionid);
+    os.mkdir(folder)
+
+    #dplc=dpl_rti(datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres);#alt in m
+    #construct image generation parameters
+    sessiondict['dataset']=datasetname
+    sessiondict['name']=name
+    sessiondict['site']=methodkey
+    sessiondict['sessionid']=sessionid
+    sessiondict['starttime']=starttime.strftime(json_dateformat)
+    sessiondict['endtime']=endtime.strftime(json_dateformat)
+    sessiondict['altmin']=altmin
+    sessiondict['altmax']=altmax
+    sessiondict['template']=request.params.getone('cdltemplatename')
+    sessiondict['filename']=datasetname+starttime.strftime('_%Y%m%dT%H%M')+endtime.strftime('_%Y%m%dT%H%M') + ('_%gs_%gm.nc' % (timeres.total_seconds(),altres))
+    sessiondict['figstocapture']=[]
+
+
+    #start process
+
+    logfilepath=safejoin(folder,'logfile')
+    stdt=file(logfilepath,'w')
+    dplparams={
+        'instrument':datasetname,
+        'start_time_datetime':starttime,
+        'end_time_datetime':endtime,
+        'timeres_timedelta':timeres,
+        'maxtimeslice_timedelta':timedelta(seconds=60*60*2),
+        'min_alt_m':altmin,
+        'max_alt_m':altmax,
+        'altres_m':altres,
+        #'process_defaults'
+        'data_request':'images housekeeping'}
+
+    tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,dplparams,dp_netcdf,sessiondict))
+    sessiondict['comment']='started'
+    sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
+    #sv=lib('dataset',datasetname)['DatasetID']
+    #print sv
+    sessiondict['logbookurl']=request.route_path('logbook',accesstype=method,access=methodkey)+'?rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
+
+    json.dump(sessiondict,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
     tasks[sessionid].start()
     stdt.close()
     
@@ -1123,7 +1349,8 @@ def userCheck(request):
 
 
 @view_config(route_name='imagejavascript',renderer='string')
-def imagejavascript(request):
+@view_config(route_name='netcdfjavascript',renderer='string')
+def formjavascript(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     request.response.content_type='text/javascript'
@@ -1133,4 +1360,6 @@ def imagejavascript(request):
             datasets.extend(lib.instrument(inst)['datasets'])
     except RuntimeError:
         return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
-    return jsgen.imagejavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
+    if request.matched_route.name=='imagejavascript':
+        return jsgen.imagejavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
+    return jsgen.netcdfjavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))

@@ -24,13 +24,13 @@ month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();
 <option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value bmonth;selected bdate.month==bmonth"/>
 </select>
 day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value '%02i' % bday;selected bdate.day==bday"/>
+<option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value bday;selected bdate.day==bday"/>
 </select>
 hour<select NAME="bhr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bhour range(0,24)" tal:content="'%02i' % bhour" tal:attributes="value '%02i' % bhour;selected bdate.hour==bhour"/>
+<option  tal:repeat="bhour range(0,24)" tal:content="'%02i' % bhour" tal:attributes="value bhour;selected bdate.hour==bhour"/>
 </select>
 minute<select NAME="bmn" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="bmin range(0,60,5)" tal:content="'%02i' % bmin" tal:attributes="value '%02i' % bmin;selected bdate.minute==bmin"/>
+<option  tal:repeat="bmin range(0,60,5)" tal:content="'%02i' % bmin" tal:attributes="value bmin;selected bdate.minute==bmin"/>
 </select>
 <P><P>
 <B><TT>To:    </TT></B><P>
@@ -41,13 +41,13 @@ month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability
 <option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value emonth;selected edate.month==emonth"/>
 </select>
 day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value '%02i' % eday;selected edate.day==eday"/>
+<option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value eday;selected edate.day==eday"/>
 </select>
 hour<select NAME="ehr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="ehour range(0,24)" tal:content="'%02i' % ehour" tal:attributes="value '%02i' % ehour;selected edate.hour==ehour"/>
+<option  tal:repeat="ehour range(0,24)" tal:content="'%02i' % ehour" tal:attributes="value ehour;selected edate.hour==ehour"/>
 </select>
 minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="emin range(0,60,5)" tal:content="'%02i' % emin" tal:attributes="value '%02i' % emin;selected edate.minute==emin"/>
+<option  tal:repeat="emin range(0,60,5)" tal:content="'%02i' % emin" tal:attributes="value emin;selected edate.minute==emin"/>
 </select>
 <P><B><TT>Altitude(km)</TT></B><BR>  Min:
 <select name="lheight" size="1" >

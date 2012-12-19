@@ -7,6 +7,9 @@
 			<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/about_image.htm">About these images</a><br />
 ${session.name} RTI<BR/>${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime('%B %e, %Y %H:%M') + ' - ' + session.endtime.strftime('%H:%M' if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else '%B %e, %Y %H:%M'))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }
 		</center>
+		<center>
+			<a tal:attributes="href request.route_path('session_resource',session=session.sessionid,filename=session.filename)" tal:content="session.filename"/>
+		</center>
 		<a tal:condition="'logbookurl' in session" tal:attributes="href session.logbookurl">logbook entry</a><br />
 		<center>
 			<div tal:repeat="imurl imageurls">
