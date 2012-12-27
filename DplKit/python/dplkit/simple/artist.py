@@ -26,6 +26,7 @@ class MplMultiLinePlot(aArtist):
         self._config = kwargs
 
     def render(self, *args, **kwargs):
+        pass
 
 
 
