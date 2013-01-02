@@ -1,4 +1,4 @@
-Metadata-Version: 1.0
+Metadata-Version: 1.1
 Name: Picnic
 Version: 0.0
 Summary: Picnic
@@ -7,6 +7,15 @@ Author: UNKNOWN
 Author-email: UNKNOWN
 License: UNKNOWN
 Description: Picnic README
+        
+        
+        
+        
+        External Files needed (see examples in resources): 
+        /etc/dataarchive.plist to configure the data sites, storage locations, and
+        available datasets
+        operational hsrl_python code in the PYTHONPATH, including HSRL_CONFIG
+        environment variable.
         
         
         0.0

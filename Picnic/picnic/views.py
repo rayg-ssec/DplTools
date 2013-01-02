@@ -1139,7 +1139,7 @@ def form_view(request):
 
     return {'project':'Picnic',
             'bdate':starttime,
-            'edate':endtime,'monthnames':calendar.month_name,
+            'edate':endtime,'calendar':calendar,'timedelta':timedelta,'datetime':datetime,
             'altrange':[minalt,maxalt],'alts':alts,
             'timeresvals':timeresvals,'altresvals':altresvals,
             'timeres':timeres,'altres':altres,

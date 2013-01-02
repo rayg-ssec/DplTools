@@ -18,10 +18,10 @@ All times should be entered in UTC.  Default is the last two hours</B>
 <P>
 <B><TT>From:    </TT></B><P>
 year<select NAME="byr" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option  tal:repeat="byear range(2012,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
+<option  tal:repeat="byear range(datetime.utcnow().year,2002,-1)" tal:content="byear" tal:attributes="value byear;selected bdate.year==byear"/>
 </select>
 month<select NAME="bmo" SIZE="1" onchange="freshentop();checkDataAvailability();" >
-<option tal:repeat="bmonth range(1,13)" tal:content="monthnames[bmonth]" tal:attributes="value bmonth;selected bdate.month==bmonth"/>
+<option tal:repeat="bmonth range(1,13)" tal:content="calendar.month_name[bmonth]" tal:attributes="value bmonth;selected bdate.month==bmonth"/>
 </select>
 day<select NAME="bdy" SIZE="1" onchange="freshentop();checkDataAvailability();" >
 <option  tal:repeat="bday range(1,32)" tal:content="'%02i' % bday" tal:attributes="value bday;selected bdate.day==bday"/>
@@ -35,10 +35,10 @@ minute<select NAME="bmn" SIZE="1" onchange="freshentop();checkDataAvailability()
 <P><P>
 <B><TT>To:    </TT></B><P>
 year<select NAME="eyr" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option  tal:repeat="eyear range(2012,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
+<option  tal:repeat="eyear range(datetime.utcnow().year,2002,-1)" tal:content="eyear" tal:attributes="value eyear;selected edate.year==eyear"/>
 </select>
 month<select NAME="emo" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
-<option tal:repeat="emonth range(1,13)" tal:content="monthnames[emonth]" tal:attributes="value emonth;selected edate.month==emonth"/>
+<option tal:repeat="emonth range(1,13)" tal:content="calendar.month_name[emonth]" tal:attributes="value emonth;selected edate.month==emonth"/>
 </select>
 day<select NAME="edy" SIZE="1" onchange="freshenbottom();checkDataAvailability();" >
 <option  tal:repeat="eday range(1,32)" tal:content="'%02i' % eday" tal:attributes="value eday;selected edate.day==eday"/>
