@@ -9,6 +9,7 @@ import calendar
 import plistlib
 import time
 import multiprocessing
+from netCDF4 import Dataset
 
 import jsgen
 import json
@@ -417,6 +418,9 @@ def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
     print dplparameters
     updateSessionComment(sessionid,'initializing DPL')
     dplc=dpl_rti(**dplparameters)
+    session['processing_defaults']=dplc.rs_static.processing_defaults;
+    folder=safejoin('.','sessions',sessionid);
+    json.dump(session,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
     updateSessionComment(sessionid,'processing with DPL')
     processingfunction(dplc,session)
     print datetime.utcnow()
@@ -464,12 +468,12 @@ def dp_images(dplc,session):
     for n in dplc:
         #print 'loop'
         updateSessionComment(sessionid,'rendering figures')
-        figs=du.show_images(instrument,n,dplc.rs_init.sounding,
-                            dplc.rs_init.rs_constants,
-                            dplc.rs_static.processing_defaults,
-                            disp,
-                            dplc.rs_init.last_sounding_time,
-                            dplc.rs_static.max_alt,None)
+        figs=du.show_images(instrument=instrument,rs=n,sounding=dplc.rs_init.sounding,
+                            rs_constants=dplc.rs_init.rs_constants,
+                            processing_defaults=dplc.rs_static.processing_defaults,
+                            display_defaults=disp,
+                            last_sounding_time=dplc.rs_init.last_sounding_time,
+                            max_alt=dplc.rs_static.max_alt,auto_loop=None)
         #print n.rs_inv.beta_a_backscat_par
         #print n.rs_inv.times
         # force a redraw
@@ -510,7 +514,6 @@ def dp_netcdf(dplc,session):
     updateSessionComment(sessionid,'loading toolkits')
     #import hsrl.data_stream.open_config as oc
     from hsrl.utils.locate_file import locate_file
-    from netCDF4 import Dataset
     #import hsrl.data_stream.display_utilities as du
     #import hsrl.calibration.cal_read_utilities as cru
     #import hsrl.graphics.graphics_toolkit as gt
@@ -552,54 +555,58 @@ def dp_netcdf(dplc,session):
         updateSessionComment(sessionid,'processing more')
     n.close()
 
-    v=None
-
     if len(session['figstocapture'])>0:
         updateSessionComment(sessionid,'done. capturing images')
-        import hsrl.data_stream.display_utilities as du
         # read whole file into structure
-        v=dpl_ctnc.dpl_read_templatenetcdf(ncfilename)
-
-    if v!=None:
-      for n in v:
-        instrument=session['dataset']
-        figs=du.show_images(instrument,n,None,{},process_defaults,disp,None,None,None)
-        #print n.rs_inv.beta_a_backscat_par
-        #print n.rs_inv.times
-        # force a redraw
-        rs=n
-        fignum=0
-
-        alreadycaptured=[]
-
-        for x in session['figstocapture']:#plt._pylab_helpers.Gcf.get_all_fig_managers():
-            if x in alreadycaptured:
-                continue
-            alreadycaptured.append(x)
-            if x == None:
-                tmp=[ f for f in figs ];
-                tmp.sort()
-                session['figstocapture'].extend(tmp)
-                continue
-            figname=safejoin(folder,'figure%04i_%s.png' % (fignum,x))
-            fignum = fignum + 1
-        #      print 'updating  %d' % x.num
-            updateSessionComment(sessionid,'capturing figure ' + x)
-            if x not in figs:
-                f=file(figname,'w')
-                f.close()
-                continue
-        
-            fig = figs.figure(x)#plt.figure(x.num)
-        
-      # QApplication.processEvents()
-            
-            fig.canvas.draw()
-            #fig.canvas.
-            fig.savefig(figname,format='png',bbox_inches='tight')
+        readncdpl(None,None,dp_images,session,dp_images_setup)
+        #import hsrl.dpl_experimental.dpl_read_templatenetcdf as dpl_rtnc
+        #v=dpl_rtnc.dpl_read_templatenetcdf(ncfilename)
+        #if v!=None:
+        #    # set up a structure to result in call resembling du.show_images(instrument,n,None,{},process_defaults,disp,None,None,None)
+        #    setattr(v,'rs_init',dplc.rs_init)
+        #    #setattr(v.rs_init,'sounding',None)
+        #    #setattr(v.rs_init,'rs_constants',{})
+        #    #setattr(v.rs_init,'last_sounding_time',None)
+        #    setattr(v,'rs_static',dplc.rs_static)
+        #    #setattr(v.rs_static,'processing_defaults',)
+        #    #setattr(v.rs_static,'max_alt',)
+        #
+        #    dplparms={}
+        #    dp_images_setup(session,dplparms)
+        #    dp_images(v,session)
 
     updateSessionComment(sessionid,'done.')
-   
+
+class retobj(object):
+    pass
+
+
+def readncdpl(mystdout,unused,processingfunction,session,precall=None):
+    if mystdout!=None:
+        os.dup2(mystdout.fileno(),sys.stdout.fileno())
+        os.dup2(mystdout.fileno(),sys.stderr.fileno())
+    sessionid=session['sessionid']
+    updateSessionComment(sessionid,'loading NetCDF')
+
+    folder=safejoin('.','sessions',sessionid);
+    ncfilename=safejoin(folder,session['filename'])
+    
+    import hsrl.dpl_experimental.dpl_read_templatenetcdf as dpl_rtnc
+    dplc=dpl_rtnc.dpl_read_templatenetcdf(ncfilename)
+    tmp=retobj()
+    setattr(tmp,'sounding',None)
+    setattr(tmp,'rs_constants',{})
+    setattr(tmp,'last_sounding_time',None)
+    setattr(dplc,'rs_init',tmp)#dplc.rs_init)
+    tmp=retobj()
+    setattr(tmp,'processing_defaults',session['processing_defaults'])
+    setattr(tmp,'max_alt',session['altmax'])
+    setattr(dplc,'rs_static',tmp)#dplc.rs_static)
+    if precall!=None:
+        dplparms={}
+        precall(session,dplparms)
+    processingfunction(dplc,session)
+
     
 @view_config(route_name='imageresult',renderer='templates/imageresult.pt')
 def imageresult(request):
@@ -652,8 +659,14 @@ def netcdfresult(request):
         session['starttime']=datetime.strptime(session['starttime'],json_dateformat)
     if 'endtime' in session:
         session['endtime']=datetime.strptime(session['endtime'],json_dateformat)
+    fullfilename=safejoin(folder,session['filename'])
+    try:
+        nc=Dataset(fullfilename,'r')
+    except:
+        nc=None 
+    print file(safejoin(folder,'logfile')).read()
     #send to template
-    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'timedelta':timedelta } 
+    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc }
 
 
 def setdictval(d,ks,v):
@@ -843,6 +856,22 @@ def imagerequest(request):
     #redirect to the progress page
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
+@view_config(route_name='netcdfreimage')
+def netcdfreimage(request):
+    sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
+    folder=safejoin('.','sessions',sessionid);
+    session=json.load(file(safejoin(folder,"session.json")))
+    
+    logfilepath=safejoin(folder,'logfile')
+    stdt=file(logfilepath,'w')
+    tasks[sessionid]=multiprocessing.Process(target=readncdpl,args=(stdt,None,dp_images,session,dp_images_setup))
+    tasks[sessionid].start()
+    stdt.close()
+    
+    #redirect to the progress page
+    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+
+
 @view_config(route_name='netcdfreq')
 def netcdfrequest(request):
     session=request.session
@@ -902,6 +931,21 @@ def netcdfrequest(request):
     sessiondict['template']=request.params.getone('cdltemplatename')
     sessiondict['filename']=datasetname+starttime.strftime('_%Y%m%dT%H%M')+endtime.strftime('_%Y%m%dT%H%M') + ('_%gs_%gm.nc' % (timeres.total_seconds(),altres))
     sessiondict['figstocapture']=[]
+
+    imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
+    sessiondict['display_defaults_file']='all_plots.json'
+      
+    figstocapture=[]
+    for i in imagesetlist:
+        #print i
+        try:
+            defmode=i['default']
+            for figname in i['sets'][defmode]['figs']:
+                if 'image' in figname:
+                    figstocapture.append(figname)
+        except:
+            pass
+    sessiondict['figstocapture']=figstocapture
 
 
     #start process

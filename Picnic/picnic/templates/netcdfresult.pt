@@ -1,14 +1,25 @@
-<html>
+<html tal:define="hourformat '%H:%M:%S';dateformat '%B %e, %Y '+hourformat;">
 	<head>
-		<title>${session.name} RTI ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime('%B %e, %Y %H:%M') + ' - ' + session.endtime.strftime('%H:%M' if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else '%B %e, %Y %H:%M'))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }</title>
+		<title>${session.name} NetCDF Creation ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime(dateformat) + ' - ' + session.endtime.strftime(hourformat if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else dateformat))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }</title>
 	</head>
 	<body>
 		<center>
 			<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/about_image.htm">About these images</a><br />
-${session.name} RTI<BR/>${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime('%B %e, %Y %H:%M') + ' - ' + session.endtime.strftime('%H:%M' if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else '%B %e, %Y %H:%M'))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }
+${session.name} NetCDF Creation<BR/>Requested: ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime(dateformat) + ' - ' + session.endtime.strftime(hourformat if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else dateformat))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }
 		</center>
 		<center>
-			<a tal:attributes="href request.route_path('session_resource',session=session.sessionid,filename=session.filename)" tal:content="session.filename"/>
+			<div tal:omit-tag="" tal:condition="nc!=None">
+				<a tal:attributes="href request.route_path('session_resource',session=session.sessionid,filename=session.filename)" tal:content="session.filename" tal:condition="nc!=None"/>
+				<BR/>
+				<div tal:omit-tag="" tal:condition="('base_time' in nc.variables) and ('time' in nc.variables) and (len(nc.variables['time'])>0)">
+					<div tal:omit-tag="" tal:define="base_time datetime(1970,1,1,0,0,0)+timedelta(seconds=int(nc.variables['base_time'][0]))">
+						${(base_time + timedelta(seconds=nc.variables['time'][0])).strftime(dateformat)} - ${(base_time + timedelta(seconds=nc.variables['time'][-1])).strftime(dateformat)} (${len(nc.variables['time'])} records)
+					</div>
+				</div>
+			</div>
+			<div tal:omit-tag="" tal:condition="nc==None">
+				Failed to create valid NetCDF file. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div>
+			</div>
 		</center>
 		<a tal:condition="'logbookurl' in session" tal:attributes="href session.logbookurl">logbook entry</a><br />
 		<center>
@@ -20,6 +31,7 @@ ${session.name} RTI<BR/>${'' if ('starttime' not in session or 'endtime' not in 
 		<center>
 			<a tal:repeat="jsonurl jsonurls" tal:attributes="href jsonurl if 'url' not in jsonurl else jsonurl.url" tal:content="'JSON' if 	'name' not in jsonurl else jsonurl.name"/>
 		</center>
-	    <a tal:condition="'logfileurl' in session" tal:attributes="href session.logfileurl">&lambda;</a>
+	    <a tal:condition="'logfileurl' in session" tal:attributes="href session.logfileurl">&lambda;</a><a tal:condition="nc!=None" href="${request.route_path('netcdfreimage',session=session.sessionid)}">Reimage</a>
 	</body>
+	${'' if nc==None else nc.close()}
 </html>

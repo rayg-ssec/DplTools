@@ -10,9 +10,9 @@
 <div id="wrap">
   <table align="center"><tbody>
     <tr>
-      <td align="left" width="150"><a tal:condition="prevdate!=None and prevdate<thistime and prevdate>=firsttime" href="${request.route_path(request.matched_route.name,accesstype=methodtype,access=methodkey,year=prevdate.year,month='%02i' % prevdate.month,day='%02i' % prevdate.day,ampm='am' if prevdate.hour<12 else 'pm')}">Previous</a></td>
+      <td align="left" width="150"><a tal:condition="prevdate!=None and prevdate<thistime and prevdate>=firsttime" href="${request.current_route_path(accesstype=methodtype,access=methodkey,year=prevdate.year,month='%02i' % prevdate.month,day='%02i' % prevdate.day,ampm='am' if prevdate.hour<12 else 'pm')}">Previous</a></td>
       <td align="center" width="500">${lib().Name}<BR>${thistime.strftime('%B %e, %Y ') + ampm_range}</td>
-      <td align="right" width="150"><a tal:condition="nextdate!=None and nextdate>=endtime and nextdate<lasttime" href="${request.route_path(request.matched_route.name,accesstype=methodtype,access=methodkey,year=nextdate.year,month='%02i' % nextdate.month,day='%02i' % nextdate.day,ampm='am' if nextdate.hour<12 else 'pm')}">Next</a></td>
+      <td align="right" width="150"><a tal:condition="nextdate!=None and nextdate>=endtime and nextdate<lasttime" href="${request.current_route_path(accesstype=methodtype,access=methodkey,year=nextdate.year,month='%02i' % nextdate.month,day='%02i' % nextdate.day,ampm='am' if nextdate.hour<12 else 'pm')}">Next</a></td>
     </tr>
     <tr>
       <td></td>

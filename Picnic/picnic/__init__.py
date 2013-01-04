@@ -21,6 +21,7 @@ def main(global_config, **settings):
     #netcdf gen redirect
     config.add_route('netcdfreq', '/netcdf_request/')#will set up process, and forward to progress#
     config.add_route('netcdfresult', '/netcdf_result/{session}')#
+    config.add_route('netcdfreimage','/netcdf_result/{session}/reimage')
     config.add_route('netcdfgen', '/{accesstype}/{access}/custom_netcdf/')
     config.add_route('netcdfjavascript', '/{accesstype}/{access}/custom_netcdf/req.js')
  
