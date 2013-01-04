@@ -468,8 +468,16 @@ def dp_images(dplc,session):
     rs=None
     for n in dplc:
         #print 'loop'
+        if rs==None:
+            rs=n
+        else:
+            print 'DPL went more than one iteration'
+            break
+            rs.append( n )
+
+    if True:
         updateSessionComment(sessionid,'rendering figures')
-        figs=du.show_images(instrument=instrument,rs=n,sounding=dplc.rs_init.sounding,
+        figs=du.show_images(instrument=instrument,rs=rs,sounding=dplc.rs_init.sounding,
                             rs_constants=dplc.rs_init.rs_constants,
                             processing_defaults=dplc.rs_static.processing_defaults,
                             display_defaults=disp,
@@ -478,7 +486,6 @@ def dp_images(dplc,session):
         #print n.rs_inv.beta_a_backscat_par
         #print n.rs_inv.times
         # force a redraw
-        rs=n
         fignum=0
 
         alreadycaptured=[]
@@ -508,7 +515,7 @@ def dp_images(dplc,session):
             fig.canvas.draw()
             #fig.canvas.
             fig.savefig(figname,format='png',bbox_inches='tight')
-        updateSessionComment(sessionid,'done')
+    updateSessionComment(sessionid,'done')
     
 def dp_netcdf(dplc,session):
     sessionid=session['sessionid']
@@ -839,7 +846,7 @@ def imagerequest(request):
         'start_time_datetime':starttime,
         'end_time_datetime':endtime,
         'timeres_timedelta':timeres,
-        'maxtimeslice_timedelta':timedelta(seconds=60*60*2),
+        'maxtimeslice_timedelta':endtime-starttime,
         'min_alt_m':altmin,
         'max_alt_m':altmax,
         'altres_m':altres}

@@ -1,6 +1,28 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
 <head>
+  <script type="text/javascript">
+function autoIframe(frameId){
+  try{  
+    frame = document.getElementById(frameId);
+    innerDoc = (frame.contentDocument) ? frame.contentDocument : frame.contentWindow.document;
+
+    if (innerDoc == null){
+      // Google Chrome
+      frame.height = document.all[frameId].clientHeight + document.all[frameId].offsetHeight + document.all[frameId].offsetTop;
+    }
+    else{
+      frame.height = innerDoc.body.scrollHeight + 18;
+      frame.style.height = innerDoc.body.scrollHeight + 18;
+      }
+  }
+
+  catch(err){
+    alert('Err: ' + err.message);
+    window.status = err.message;
+  }
+}
+</script>
   <title>${pagename} -- Progress...</title>
   <META HTTP-EQUIV="Refresh" CONTENT="10;url=${progresspage}">
   <meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/>
@@ -29,5 +51,6 @@ setTimeout("self.location.replace('${progresspage}')",5000)
   <INPUT TYPE=SUBMIT VALUE="Skip/Abort">
   </FORM>
 </div></center>
+<iframe tal:condition="request.client_addr=='127.0.0.1'" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
 </body>
 </html>
