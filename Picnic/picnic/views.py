@@ -789,10 +789,8 @@ def imagerequest(request):
                      int(request.params.getone('ehr')),
                      int(request.params.getone('emn')),
                      0)
-    timeres=None#timedelta((endtime-starttime).total_seconds()/640) #640 pixels wide
     altmin=float(request.params.getone('lheight'))*1000
     altmax=float(request.params.getone('height'))*1000
-    altres=None#(altmax-altmin)/480 # 480 pixels high
     #contstruct dpl
     datinfo=lib(**{method:methodkey})
     instruments=datinfo['Instruments']
@@ -845,11 +843,8 @@ def imagerequest(request):
         'instrument':datasetname,
         'start_time_datetime':starttime,
         'end_time_datetime':endtime,
-        'timeres_timedelta':timeres,
-        'maxtimeslice_timedelta':endtime-starttime,
         'min_alt_m':altmin,
-        'max_alt_m':altmax,
-        'altres_m':altres}
+        'max_alt_m':altmax}
     tasks[sessionid]=multiprocessing.Process(target=makedpl,args=(stdt,dplparams,dp_images,sessiondict,dp_images_setup))
     sessiondict['comment']='started'
     sessiondict['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile') 
