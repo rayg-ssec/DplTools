@@ -447,7 +447,7 @@ def dp_images_setup(session,dplparms):
     else:
         data_req= 'images housekeeping'
 
-    session['display_defaults']=disp
+    session['display_defaults']=disp.json_representation()
     dplparms['data_request']=data_req
 
 def dp_images(dplc,session):
@@ -455,11 +455,12 @@ def dp_images(dplc,session):
     updateSessionComment(sessionid,'loading graphics toolkits')
     #import hsrl.data_stream.open_config as oc
     import hsrl.data_stream.display_utilities as du
+    import hsrl.utils.json_config as jc
     #import hsrl.calibration.cal_read_utilities as cru
     #import hsrl.graphics.graphics_toolkit as gt
     instrument=session['dataset']
     #sessionid=session['sessionid']
-    disp=session['display_defaults']
+    disp=jc.json_config(session['display_defaults'])
 
     folder=safejoin('.','sessions',sessionid);
     updateSessionComment(sessionid,'processing')
