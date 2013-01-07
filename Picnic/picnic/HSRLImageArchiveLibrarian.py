@@ -126,8 +126,57 @@ class HSRLImageArchiveSearchResult:
             rangestr="%s-%s" % (self.start,self.end)
         return 'HSRLImageArchiveSearchResult(%s,%s,%s,%s,%s)' % (self.lib,self.base['Path'],self.prefix,rangestr,self.suffix)
 
+    def _getpathfordate(self,date):
+        return os.path.join(self.base['Path'],'%i' % date.year, '%02i' % date.month, '%02i' % date.day, 'images')
+
     def __iter__(self):
-        return HSRLImageArchiveSearchResultIterator(self)
+        time=self.start
+        prefix=0
+        #return HSRLImageArchiveSearchResultIterator(self)
+        while not (time==None or (self.end!=None and self.end<=time)):
+            ret={'time':time,'filename':None,'hasHighres':False,'ampm':('am' if time.hour<12 else 'pm')}
+            ret.update(self.prefix[prefix])
+            d=self._getpathfordate(time)
+            if os.access(d,os.R_OK):
+                fnpatt=self.prefix[prefix]['prefix'] + self.middlematch + '_' + ret['ampm']
+                newestfile=None
+                newesttime=None
+                for suff in self.suffix:
+                    patt=fnpatt+suff
+                    po=re.compile('^'+patt+'$')
+                    for f in os.listdir(d):
+                        m=po.match(f)
+                        #print f
+                        #print m
+                        if m!=None:
+                            mt= modTime(os.path.join(d,f))
+                            if newesttime==None or newesttime>mt:
+                                newestfile=f
+                                newesttime=mt
+                    if newestfile!=None:
+                        #print "found " , newestfile
+                        ret['filename']=newestfile
+                        ret['hasHighres']=True
+                        break
+                if ret['filename']==None:
+                    for suff in self.suffix:
+                        if ret['filename']!=None:
+                            break
+                        patt='missing_'+ ret['ampm'] + suff
+                        po=re.compile('^'+patt+"$")
+                        for f in os.listdir(d):
+                            m=po.match(f)
+                            #print f
+                            #print m
+                            if m!=None:
+                                ret['filename']=f
+                                break
+
+            prefix=prefix+1
+            if prefix>=len(self.prefix):
+                prefix=0
+                time=self.nextTime(time)
+            yield ret
 
 
 
@@ -298,7 +347,93 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
         nl=name.lower()
         return ins[k[kl.index(nl)]]
 
-    def search(self, searchtype=None,searchbase=None,start=None,end=None,isactive=None,prefix=None,isthumb=None,site=None,instrument=None,dataset=None,index=None):
+    def widesearch(self,searchtype,searchbase,start,end,isactive,reverseOrder):
+            if searchtype=='instrument':
+                from hsrl.data_stream.open_config import open_config
+                fd = open_config('hsrl_python.json')
+                prefs = json.load(fd)['data_dir']
+                fd.close()
+                for k in prefs.keys():
+                    inst={'Name':k,'Path':prefs[k],'Instruments':[k]}
+                    if searchbase!=None:
+                        if searchbase.lower()==k.lower():
+                            yield inst
+                            return
+                    else:
+                        yield inst
+                return
+            if searchtype=='dataset':
+                dsets=self.archive()['Datasets']
+                if reverseOrder:
+                    order=range(len(dsets)-1,-1,-1)
+                else:
+                    order=range(len(dsets))
+                for dsetidx in order:
+                    dset=dsets[dsetidx]
+                    dset['DatasetID']=dsetidx
+                    dset['Instruments']=[dset['Name']]
+                    if searchbase!=None:
+                        try:
+                            dsi=int(searchbase)
+                            if dsetidx==dsi:
+                                yield dset
+                                return
+                        except:
+                            if searchbase.lower()==dset['Name'].lower():
+                                yield dset
+                                return
+                    else:
+                        yield dset
+                return
+            if searchtype=='site':
+                includeTimeCheck=(start!=None or end!=None)
+                if start==None:
+                    start=datetime(1990,1,1,0,0,0)
+                if end==None:
+                    end=datetime(2100,1,1,0,0,0)
+                includeActiveCheck=(isactive!=None)
+                searchsite=None
+                if searchbase!=None:
+                    try:
+                        searchsite=int(searchbase)
+                    except:
+                        raise RuntimeError("%s parameter %s not found" %(searchtype,searchbase))
+                sites=self.archive()['Sites']
+                if reverseOrder:
+                    order=range(len(sites)-1,-1,-1)
+                else:
+                    order=range(len(sites))
+                for siteidx in order:
+                    site=sites[siteidx]
+                    site['SiteID']=siteidx
+                    if includeActiveCheck:
+                        hadActive=False
+                        for w in site['Windows']:
+                            if 'End' not in w:
+                                hadActive=True
+                        if isactive!=hadActive:
+                            if searchbase!=None and siteidx==searchsite:
+                                yield None
+                                return
+                            continue
+                    if includeTimeCheck:
+                        w=self._timeintersection(start,end,site['Windows'])
+                        if len(w)==0:
+                            if searchbase!=None and siteidx==searchsite:
+                                yield None
+                                return
+                            continue
+                        site['Windows']=w
+                    if searchbase!=None:
+                        if siteidx==searchsite:
+                            yield site
+                            return
+                    else:
+                        yield site
+                return
+            raise RuntimeError("%s is an unknown search type" %(searchtype))
+
+    def search(self, searchtype=None,searchbase=None,start=None,end=None,isactive=None,prefix=None,isthumb=None,site=None,instrument=None,dataset=None,index=None,reverseOrder=False):
         """ This is the primary interface of the Librarian, exposing all personalities of the dataarchive list
             meta searchtype with searchbase=None and defaultsearchbase=None (def): #FIXME these will probably change to actual instrument/dataset/site parameters. This will be specifying one of those 3 to a new parameter "index"
                None        - use init default
@@ -347,80 +482,11 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
             searchtype=index
             searchbase=None
         if prefix==None and isthumb==None:#want a list of disk catalogs, or a specified catalog (not an imagesearch)
-            if searchtype=='instrument':
-                from hsrl.data_stream.open_config import open_config
-                fd = open_config('hsrl_python.json')
-                prefs = json.load(fd)
-                prefs = prefs['data_dir']
-                fd.close()
-                ret=[]
-                for k in prefs.keys():
-                    ret.append({'Name':k,'Path':prefs[k],'Instruments':[k]})
-                    if searchbase!=None and searchbase.lower()==k.lower():
-                        return ret[-1]
-                if searchbase!=None:
-                    raise RuntimeError("%s parameter %s not found" %(searchtype,searchbase))
+            ret=self.widesearch(searchtype,searchbase,start,end,isactive,reverseOrder)
+            if searchbase==None:
                 return ret
-            if searchtype=='dataset':
-                ret=[]
-                dsets=self.archive()['Datasets']
-                for dsetidx in range(len(dsets)):
-                    dset=dsets[dsetidx]
-                    dset['DatasetID']=dsetidx
-                    dset['Instruments']=[dset['Name']]
-                    ret.append(dset)
-                    if searchbase!=None:
-                        try:
-                            dsi=int(searchbase)
-                            if len(ret)>dsi:
-                                return ret[dsi]
-                        except:
-                            if searchbase.lower()==dset['Name'].lower():
-                                return dset
-                if searchbase!=None:
-                    raise RuntimeError("%s parameter %s not found" %(searchtype,searchbase))
-                return ret
-            if searchtype=='site':
-                includeTimeCheck=(start!=None or end!=None)
-                if start==None:
-                    start=datetime(1990,1,1,0,0,0)
-                if end==None:
-                    end=datetime(2100,1,1,0,0,0)
-                includeActiveCheck=(isactive!=None)
-                ret=[]
-                searchsite=None
-                if searchbase!=None:
-                    try:
-                        searchsite=int(searchbase)
-                    except:
-                        raise RuntimeError("%s parameter %s not found" %(searchtype,searchbase))
-                sites=self.archive()['Sites']
-                for siteidx in range(len(sites)):
-                    site=sites[siteidx]
-                    site['SiteID']=siteidx
-                    if includeActiveCheck:
-                        hadActive=False
-                        for w in site['Windows']:
-                            if 'End' not in w:
-                                hadActive=True
-                        if isactive!=hadActive:
-                            if searchbase!=None and siteidx==searchsite:
-                                return None
-                            continue
-                    if includeTimeCheck:
-                        w=self._timeintersection(start,end,site['Windows'])
-                        if len(w)==0:
-                            if searchbase!=None and siteidx==searchsite:
-                                return None
-                            continue
-                        site['Windows']=w
-                    if searchbase!=None and siteidx==searchsite:
-                        return site
-                    ret.append(site)
-                if searchbase!=None:
-                    raise RuntimeError("%s parameter %s not found" %(searchtype,searchbase))
-                return ret
-            raise RuntimeError("%s is an unknown search type" %(searchtype))
+            for x in ret:
+                return x
         return HSRLImageArchiveSearchResult(host=self,base=self.search(searchtype,searchbase),start=start,end=end,prefix=prefix,isthumb=isthumb)
 
 
