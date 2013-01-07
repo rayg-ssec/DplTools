@@ -8,68 +8,6 @@ import re
 def modTime(filepath):
     return os.stat(filepath).st_mtime
 
-class HSRLImageArchiveSearchResultIterator:
-    def _getpathfordate(self,date):
-        return os.path.join(self.path,'%i' % date.year, '%02i' % date.month, '%02i' % date.day, 'images')
-
-
-    def __init__(self,host):
-        self.host=host
-        self.path=host.base['Path']
-        self.time=host.start
-        self.prefix=0
-
-    def __repr__(self):
-        return "HSRLImageArchiveSearchResultIterator(%s)[%s]" % (self.host,self.time)
-
-    def next(self):
-        if self.time==None or (self.host.end!=None and self.host.end<=self.time):
-            raise StopIteration
-        ret={'time':self.time,'filename':None,'hasHighres':False,'ampm':('am' if self.time.hour<12 else 'pm')}
-        ret.update(self.host.prefix[self.prefix])
-        d=self._getpathfordate(self.time)
-        if os.access(d,os.R_OK):
-            fnpatt=self.host.prefix[self.prefix]['prefix'] + self.host.middlematch + '_' + ret['ampm']
-            newestfile=None
-            newesttime=None
-            for suff in self.host.suffix:
-                patt=fnpatt+suff
-                po=re.compile('^'+patt+'$')
-                for f in os.listdir(d):
-                    m=po.match(f)
-                    #print f
-                    #print m
-                    if m!=None:
-                        mt= modTime(os.path.join(d,f))
-                        if newesttime==None or newesttime>mt:
-                            newestfile=f
-                            newesttime=mt
-                if newestfile!=None:
-                    #print "found " , newestfile
-                    ret['filename']=newestfile
-                    ret['hasHighres']=True
-                    break
-            if ret['filename']==None:
-                for suff in self.host.suffix:
-                    if ret['filename']!=None:
-                        break
-                    patt='missing_'+ ret['ampm'] + suff
-                    po=re.compile('^'+patt+"$")
-                    for f in os.listdir(d):
-                        m=po.match(f)
-                        #print f
-                        #print m
-                        if m!=None:
-                            ret['filename']=f
-                            break
-
-        self.prefix=self.prefix+1
-        if self.prefix>=len(self.host.prefix):
-            self.prefix=0
-            self.time=self.host.nextTime(self.time)
-        return ret
-
-
 class HSRLImageArchiveSearchResult:
     def _nextTime(self,tm):
         return tm+timedelta(days=.5)
