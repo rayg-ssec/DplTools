@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 package.module
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 
 A description which can be long and explain the complete

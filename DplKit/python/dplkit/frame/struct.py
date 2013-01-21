@@ -27,6 +27,7 @@ class struct(object):
     Ingest a mapping (dictionary syntax) as a data struct object (attribute syntax),
     optionally convert back to a new dictionary including any changes.
     Used primarily for DPL framestreams: 
+
         both data dictionary and data struct are useful in difference circumstances.
     """
     meta = None    # mapping describing the channels available in this frame, typically assigned by the narrator

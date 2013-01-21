@@ -28,7 +28,8 @@ LOG = logging.getLogger(__name__)
 
 
 class aZookeeper(object):
-    """Zookeeper(uri, **constraints) returns an URL when given sets of logical URIs
+    """``Zookeeper(uri, **constraints)`` returns an URL when given sets of
+    logical URIs.
     """    
     __metaclass__ = ABCMeta
 

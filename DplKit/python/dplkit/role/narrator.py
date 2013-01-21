@@ -23,8 +23,8 @@ LOG = logging.getLogger(__name__)
 
 
 class aNarrator(object):
-    """Narrator(url, **constraints) generates a framestream from a media URI.
-    It also provides a meta mapping as an attribute.
+    """``Narrator(url, **constraints)`` generates a framestream from a media
+    URI. It also provides a meta mapping as an attribute.
     """
     __metaclass__ = ABCMeta
 

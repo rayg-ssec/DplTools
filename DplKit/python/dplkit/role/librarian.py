@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 package.module
-~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 
 
 
@@ -54,14 +54,14 @@ class aLibrarian(object):
         key_values can also include lambda expressions returning true/false on the key in question
         Admissible keys should be a subset of librarian's meta.keys().
  
-        example for a simple system with one librarian, one zookeeper, one narrator class:
+        example for a simple system with one librarian, one zookeeper, one narrator class::
 
-        assets = mylibrarian(start=start_time, end=end_time)
-        for asset_info in assets:
-            media_info = myzookeeper(**asset_info)
-            frames = mynarrator(**media_info)
-            for frame in frames:
-                process(frame)
+            assets = mylibrarian(start=start_time, end=end_time)
+            for asset_info in assets:
+                media_info = myzookeeper(**asset_info)
+                frames = mynarrator(**media_info)
+                for frame in frames:
+                    process(frame)
 
         """
         pass
