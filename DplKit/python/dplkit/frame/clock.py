@@ -19,6 +19,8 @@ VariableFrameRate: datetime generator which uses a key from an incoming framestr
 :license: GPLv3, see LICENSE for more details
 """
 
+from ..role.filter import aFilter
+
 import os, sys
 import logging
 from datetime import datetime
