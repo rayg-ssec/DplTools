@@ -8,12 +8,19 @@ Welcome to DPLKit's documentation!
 
 This is DPL's sphinx documentation.
 
-Contents:
+Contents
+--------
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
+API
+---
 
+.. toctree::
+    :maxdepth: 3
+
+    modules
 
 Indices and tables
 ==================
