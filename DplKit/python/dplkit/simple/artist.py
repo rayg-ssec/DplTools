@@ -10,6 +10,7 @@ Matplotlib examples from HSRL
 :license: GPLv3, see LICENSE for more details
 """
 
+from ..role.artist import aArtist
 import os, sys
 import logging
 from ..role.blender import aBlender
