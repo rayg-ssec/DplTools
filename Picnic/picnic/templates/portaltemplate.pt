@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="http://static.pylonsproject.org/fonts/nobile/stylesheet.css" media="screen" />
   <link rel="stylesheet" href="http://static.pylonsproject.org/fonts/neuton/stylesheet.css" media="screen" />
   <!--[if lte IE 6]>
+
   <link rel="stylesheet" href="${request.static_path('picnic:static/ie6.css')}" type="text/css" media="screen" charset="utf-8" />
   <![endif]-->
 </head>
@@ -93,6 +94,9 @@
 
 <H3>Related Information</H3>
 
+8-Jan-13 -- <a href="http://lidar.ssec.wisc.edu/DOE-2012.avi">Movie</a> from January 2013 of DOE/ARM HSRL Systems
+<BR>
+<BR>
 22-Dec-10 -- <a href="http://lidar.ssec.wisc.edu/NCAR-2010.avi">Movie</a> from December 2010 of GVHSRL at NCAR
 <BR>
 <BR>
