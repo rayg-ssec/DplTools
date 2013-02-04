@@ -208,7 +208,7 @@ def moddateoffile(f):
 def session_resource(request):
     fn=request.matchdict['filename']
     if 'session' in request.matchdict:
-        f=safejoin('.','sessions',request.matchdict['session'],fn)
+        f=safejoin(sessionfolder(request.matchdict['session']),fn)
     elif 'accesstype' in request.matchdict:
         global imagepathcache
         global imagepathcacheage
@@ -392,15 +392,27 @@ def month_view(request):
             #'prevlink':prevlink,'nextlink':nextlink,dynamically generated in the template. prev includes windows, next includes windows end and now
             #'pagename':pagename, 'pagedesc':pagedesc} extracted from generator
 
+def sessionfolder(sessionid):
+    if sessionid==None:
+        return safejoin('.','sessions')
+    return safejoin('.','sessions',sessionid);
+
+def loadsession(sessionid):
+    return json.load(file(safejoin(sessionfolder(sessionid),"session.json")))
+
+def storesession(session):
+    json.dump(session,file(safejoin(sessionfolder(session['sessionid']),'session.json'),'w'),indent=4,separators=(',', ': '))
+
+
 def updateSessionComment(sessionid,value):
-    folder=safejoin('.','sessions',sessionid);
-    #sessiontask=tasks[sessionid]
-    #session=sessiontask['session']
-    #scan session folder for images
-    session=json.load(file(safejoin(folder,"session.json")))
+    if type(sessionid) in [str, unicode]:
+        print 'WARNING: Loading session, rather than using session directly'
+        session = loadsession(sessionid)
+    else:
+        session = sessionid
     session['comment']=value
-    print 'Updating Session Comment :',value
-    json.dump(session,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
+    print datetime.utcnow(),' Updating Session Comment :',value
+    storesession(session)
 
 
 def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
@@ -408,7 +420,7 @@ def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
     os.dup2(mystdout.fileno(),sys.stderr.fileno())
     t=datetime.utcnow();
     sessionid=session['sessionid']
-    updateSessionComment(sessionid,'loading DPL')
+    updateSessionComment(session,'loading DPL')
     from hsrl.dpl_experimental.dpl_rti import dpl_rti
     print t
     if precall!=None:
@@ -419,17 +431,15 @@ def makedpl(mystdout,dplparameters,processingfunction,session,precall=None):
     updateSessionComment(sessionid,'initializing DPL')
     dplc=dpl_rti(**dplparameters)
     session['processing_defaults']=dplc.rs_static.processing_defaults;
-    folder=safejoin('.','sessions',sessionid);
-    json.dump(session,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
-    updateSessionComment(sessionid,'processing with DPL')
+    storesession(session)
+    updateSessionComment(session,'processing with DPL')
     processingfunction(dplc,session)
     print datetime.utcnow()
     print (datetime.utcnow()-t).total_seconds()
 
 #this will load the parameters from the session to create a json, or load and configure a premade one
 def dp_images_setup(session,dplparms):
-    sessionid=session['sessionid']
-    updateSessionComment(sessionid,'setup')
+    updateSessionComment(session,'setup')
     import hsrl.data_stream.display_utilities as du
     (disp,conf)=du.get_display_defaults(session['display_defaults_file'])
     #else:#fixme should this be enable_all()?
@@ -448,11 +458,12 @@ def dp_images_setup(session,dplparms):
         data_req= 'images housekeeping'
 
     session['display_defaults']=disp.json_representation()
+    storesession(session)
     dplparms['data_request']=data_req
 
 def dp_images(dplc,session):
     sessionid=session['sessionid']
-    updateSessionComment(sessionid,'loading graphics toolkits')
+    updateSessionComment(session,'loading graphics toolkits')
     #import hsrl.data_stream.open_config as oc
     import hsrl.data_stream.display_utilities as du
     import hsrl.utils.json_config as jc
@@ -462,8 +473,8 @@ def dp_images(dplc,session):
     #sessionid=session['sessionid']
     disp=jc.json_config(session['display_defaults'])
 
-    folder=safejoin('.','sessions',sessionid);
-    updateSessionComment(sessionid,'processing')
+    folder=sessionfolder(sessionid)#safejoin('.','sessions',sessionid);
+    updateSessionComment(session,'processing')
     
     rs=None
     for n in dplc:
@@ -476,7 +487,7 @@ def dp_images(dplc,session):
             rs.append( n )
 
     if True:
-        updateSessionComment(sessionid,'rendering figures')
+        updateSessionComment(session,'rendering figures')
         figs=du.show_images(instrument=instrument,rs=rs,sounding=dplc.rs_init.sounding,
                             rs_constants=dplc.rs_init.rs_constants,
                             processing_defaults=dplc.rs_static.processing_defaults,
@@ -489,20 +500,21 @@ def dp_images(dplc,session):
         fignum=0
 
         alreadycaptured=[]
+        capturingfigs=session['figstocapture']
 
-        for x in session['figstocapture']:#plt._pylab_helpers.Gcf.get_all_fig_managers():
+        for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
             if x in alreadycaptured:
                 continue
             alreadycaptured.append(x)
             if x == None:
                 tmp=[ f for f in figs ];
                 tmp.sort()
-                session['figstocapture'].extend(tmp)
+                capturingfigs.extend(tmp)
                 continue
             figname=safejoin(folder,'figure%04i_%s.png' % (fignum,x))
             fignum = fignum + 1
         #      print 'updating  %d' % x.num
-            updateSessionComment(sessionid,'capturing figure ' + x)
+            updateSessionComment(session,'capturing figure ' + x)
             if x not in figs:
                 f=file(figname,'w')
                 f.close()
@@ -515,38 +527,38 @@ def dp_images(dplc,session):
             fig.canvas.draw()
             #fig.canvas.
             fig.savefig(figname,format='png',bbox_inches='tight')
-    updateSessionComment(sessionid,'done')
+    updateSessionComment(session,'done')
     
 def dp_netcdf(dplc,session):
     sessionid=session['sessionid']
-    updateSessionComment(sessionid,'loading toolkits')
+    updateSessionComment(session,'loading toolkits')
     #import hsrl.data_stream.open_config as oc
     from hsrl.utils.locate_file import locate_file
     #import hsrl.data_stream.display_utilities as du
     #import hsrl.calibration.cal_read_utilities as cru
     #import hsrl.graphics.graphics_toolkit as gt
     ncformat="NETCDF4"
-    if session['template'] in ['hsrl_cfradial.cdl']:
+    if session['template'] in ['hsrl_cfradial.cdl','someradialtemplate'] or 'cfradial' in session['template']:
         import hsrl.dpl_experimental.dpl_create_cfradial as dpl_ctnc
     else:
         import hsrl.dpl_experimental.dpl_create_templatenetcdf as dpl_ctnc
         if '3' in session['template']:
             ncformat="NETCDF3_CLASSIC"
 
-    folder=safejoin('.','sessions',sessionid);
-    updateSessionComment(sessionid,'opening blank netcdf file')
+    folder=sessionfolder(sessionid);
+    updateSessionComment(session,'opening blank netcdf file')
     
     ncfilename=safejoin(folder,session['filename'])
     v=None
     n=Dataset(ncfilename,'w',clobber=True,format=ncformat)
  
-    updateSessionComment(sessionid,'processing')
+    updateSessionComment(session,'processing')
  
     rs=None
     for i in dplc:
         #print 'loop'
         if v==None:
-            updateSessionComment(sessionid,'creating template netcdf file')
+            updateSessionComment(session,'creating template netcdf file')
             v=dpl_ctnc.dpl_create_templatenetcdf(locate_file(session['template']),n,i)
         timewindow='blank'
         findTimes=['rs_raw','rs_mean','rs_inv']
@@ -555,16 +567,16 @@ def dp_netcdf(dplc,session):
                 t=getattr(i,f).times
                 timewindow=t[0].strftime('%Y.%m.%d %H:%M') + ' - ' + t[-1].strftime('%Y.%m.%d %H:%M')
 
-        updateSessionComment(sessionid,'appending data %s' % (timewindow))
+        updateSessionComment(session,'appending data %s' % (timewindow))
  
         v.appendtemplatedata(i)
         n.sync()
  
-        updateSessionComment(sessionid,'processing more')
+        updateSessionComment(session,'processing more')
     n.close()
 
     if len(session['figstocapture'])>0:
-        updateSessionComment(sessionid,'done. capturing images')
+        updateSessionComment(session,'done. capturing images')
         # read whole file into structure
         readncdpl(None,None,dp_images,session,dp_images_setup)
         #import hsrl.dpl_experimental.dpl_read_templatenetcdf as dpl_rtnc
@@ -583,7 +595,7 @@ def dp_netcdf(dplc,session):
         #    dp_images_setup(session,dplparms)
         #    dp_images(v,session)
 
-    updateSessionComment(sessionid,'done.')
+    updateSessionComment(session,'done.')
 
 class retobj(object):
     pass
@@ -594,9 +606,9 @@ def readncdpl(mystdout,unused,processingfunction,session,precall=None):
         os.dup2(mystdout.fileno(),sys.stdout.fileno())
         os.dup2(mystdout.fileno(),sys.stderr.fileno())
     sessionid=session['sessionid']
-    updateSessionComment(sessionid,'loading NetCDF')
+    updateSessionComment(session,'loading NetCDF')
 
-    folder=safejoin('.','sessions',sessionid);
+    folder=sessionfolder(sessionid);
     ncfilename=safejoin(folder,session['filename'])
     
     import hsrl.dpl_experimental.dpl_read_templatenetcdf as dpl_rtnc
@@ -619,11 +631,11 @@ def readncdpl(mystdout,unused,processingfunction,session,precall=None):
 @view_config(route_name='imageresult',renderer='templates/imageresult.pt')
 def imageresult(request):
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
-    folder=safejoin('.','sessions',sessionid);
+    folder=sessionfolder(sessionid);
     #sessiontask=tasks[sessionid]
     #session=sessiontask['session']
     #scan session folder for images
-    session=json.load(file(safejoin(folder,"session.json")))
+    session=loadsession(sessionid)
     ims = []
     jsonfiles=[]
     try:
@@ -646,11 +658,11 @@ def imageresult(request):
 @view_config(route_name='netcdfresult',renderer='templates/netcdfresult.pt')
 def netcdfresult(request):
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
-    folder=safejoin('.','sessions',sessionid);
+    folder=sessionfolder(sessionid);
     #sessiontask=tasks[sessionid]
     #session=sessiontask['session']
     #scan session folder for images
-    session=json.load(file(safejoin(folder,"session.json")))
+    session=loadsession(sessionid)
     ims = []
     jsonfiles=[]
     try:
@@ -803,7 +815,7 @@ def imagerequest(request):
  
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
-    folder=safejoin('.','sessions',sessionid);
+    folder=sessionfolder(sessionid);
     os.mkdir(folder)
 
     #dplc=dpl_rti(datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres);#alt in m
@@ -852,7 +864,7 @@ def imagerequest(request):
     #print sv
     sessiondict['logbookurl']=request.route_path('logbook',accesstype=method,access=methodkey)+'?rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
 
-    json.dump(sessiondict,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
+    storesession(sessiondict)
     tasks[sessionid].start()
     stdt.close()
     
@@ -862,12 +874,12 @@ def imagerequest(request):
 @view_config(route_name='netcdfreimage')
 def netcdfreimage(request):
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
-    folder=safejoin('.','sessions',sessionid);
-    session=json.load(file(safejoin(folder,"session.json")))
+    folder=sessionfolder(sessionid);
+    session=loadsession(sessionid)
     
     logfilepath=safejoin(folder,'logfile')
     stdt=file(logfilepath,'w')
-    tasks[sessionid]=multiprocessing.Process(target=readncdpl,args=(stdt,None,dp_images,session,dp_images_setup))
+    tasks[sessionid]=multiprocessing.Process(target=readncdpl,args=(stdt,None,dp_images,session))
     tasks[sessionid].start()
     stdt.close()
     
@@ -918,7 +930,7 @@ def netcdfrequest(request):
  
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
-    folder=safejoin('.','sessions',sessionid);
+    folder=sessionfolder(sessionid);
     os.mkdir(folder)
 
     #dplc=dpl_rti(datasetname,starttime,endtime,timedelta(seconds=timeres),endtime-starttime,altmin,altmax,altres);#alt in m
@@ -974,7 +986,7 @@ def netcdfrequest(request):
     #print sv
     sessiondict['logbookurl']=request.route_path('logbook',accesstype=method,access=methodkey)+'?rss=off&byr=%i&bmo=%i&bdy=%i&bhr=%i&bmn=%i&eyr=%i&emo=%i&edy=%i&ehr=%i&emn=%i' % (starttime.year,starttime.month,starttime.day,starttime.hour,starttime.minute,endtime.year,endtime.month,endtime.day,endtime.hour,endtime.minute)
 
-    json.dump(sessiondict,file(safejoin(folder,'session.json'),'w'),indent=4,separators=(',', ': '))
+    storesession(sessiondict)
     tasks[sessionid].start()
     stdt.close()
     
@@ -1070,12 +1082,11 @@ def progresspage(request):
     #check status of this task
     #if sessionid not in tasks:
     #    return HTTPNotFound('Invalid session')
-    folder=safejoin('.','sessions',sessionid);
     session=None
     retry=10
     while session==None and retry>0:
         try:
-            session=json.load(file(safejoin(folder,"session.json")))
+            session=loadsession(sessionid)
         except:
             time.sleep(.05)
             session=None
@@ -1207,7 +1218,7 @@ from operator import itemgetter
             
 @view_config(route_name='status',renderer='templates/status.pt')
 def statuspage(request):
-    folder=safejoin('.','sessions');
+    folder=sessionfolder(None)#safejoin('.','sessions');
     sess=os.listdir(folder)
     sessinfo=[(n,infoOfFile(safejoin(folder,n))[0],tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,tasks[n] if n in tasks else None) for n in sess]
     sessinfo.sort(key=itemgetter(1),reverse=True)
@@ -1231,8 +1242,8 @@ def debugpage(request):
 @view_config(route_name='debugsession',renderer='templates/debugsession.pt')
 def debugsession(request):
     sessionid=request.matchdict['session']
-    folder=safejoin('.','sessions',sessionid);
-    session=json.load(file(safejoin(folder,"session.json")))
+    folder=sessionfolder(sessionid);
+    session=loadsession(sessionid)
     if sessionid in tasks and tasks[sessionid]!=None:
         task=tasks[sessionid]
         running=task.is_alive()
@@ -1250,7 +1261,7 @@ def debugsession(request):
         filelist=None
         filelistinfo=None
     if 'session.json' in filelist:
-        session=json.load(file(safejoin(folder,"session.json")))
+        session=loadsession(sessionid)
     else:
         session=None
     return {'task':task,
