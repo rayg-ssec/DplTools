@@ -221,7 +221,7 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
 
     def __init__(self, defaultsearchtype='site', defaultsearchbase=None, dataarchive_path=None,site=None,instrument=None,dataset=None,indexdefault=None):
         """ Initializer determines types of searches that this will be doing
-            :param dataarchive_path: location of dataarchive.plist, default is /etc/dataarchive.plist
+            :param dataarchive_path: location of dataarchive.plist, default is from env 'HSRL_DATA_ARCHIVE_CONFIG' or /etc/dataarchive.plist
             :param defaultsearchtype: default searchtype for finding data
                 instrument - hsrl_python json method of only mapping the instrument name to a path
                 dataset    - dataarchive mapping instrument name to a path (int or string)
@@ -248,7 +248,7 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
         if self.defaultsearchtype!=None and self.defaultsearchtype not in ['instrument','dataset','site']:
             raise KeyError('invalid method type ' + self.defaultsearchtype)
         if self.dataarchive_path==None:
-            self.dataarchive_path="/etc/dataarchive.plist"
+            self.dataarchive_path=os.getenv('HSRL_DATA_ARCHIVE_CONFIG',"/etc/dataarchive.plist")
         self._archive=None
         self._archivemodtime=None
         self.archive()
