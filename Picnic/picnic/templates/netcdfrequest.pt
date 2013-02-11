@@ -375,6 +375,7 @@ updateVisibilities();changePSET();bscs2rUpdate();updateFMVisibilities();checkDat
 </FORM>
 <br />
 <div align="center">
+	<a href="${oldurl}">Use old Matlab site</a><br/>
 <a href="${request.route_path('home')}">Back to HSRL Data Portal</a><br />
 </div>
 </body>

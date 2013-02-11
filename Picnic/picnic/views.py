@@ -1173,10 +1173,12 @@ def form_view(request):
     oldformparams='&'.join((k+'='+oldformparmsdict[k]) for k in oldformparmsdict.keys())
     #print oldformparams
 
-    if request.matched_route.name=='netcdfgen' and instcount>0: #all netcdf processing is currently 
-        return HTTPTemporaryRedirect(location="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?%s" % (oldformparams))
-    if request.matched_route.name=='imagegen' and instcount>3: #more than just HSRL
-        return HTTPTemporaryRedirect(location="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?%s" % (oldformparams))
+    if request.matched_route.name=='netcdfgen':
+        oldurl="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?%s" % (oldformparams)
+    if request.matched_route.name=='imagegen':
+        oldurl="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?%s" % (oldformparams)
+    if False:#instcount>3:#more than just HSRL. python doesn't support it yet
+        return HTTPTemporaryRedirect(location=oldurl)
 
     #print request
     # used in both forms, but simplifies template
@@ -1204,6 +1206,7 @@ def form_view(request):
             'imagesets':jsgen.formsetsForInstruments(datasets,'images'),
             'netcdfsets':jsgen.formsetsForInstruments(datasets,'netcdf'),
             'datasets':datasets,methodtype[3:]:methodkey,
+            'oldurl':oldurl,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
             'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
