@@ -42,6 +42,7 @@ def safejoin(*args):
 staticresources={}
 
 tasks={}
+taskupdatetimes={}
 
 def validdate(yearno,monthno,dayno=1,hourno=0,minuteno=0):
     while minuteno>=60:
@@ -792,6 +793,7 @@ def imagerequest(request):
     #add task status to list
     #print request.route_path('imageresult')
     sessiondict['finalpage']=request.route_path('imageresult',session=sessionid);
+    taskupdatetimes[sessionid]=datetime.utcnow()
     tasks[sessionid]=None
     #load parameters
     #print request.params
@@ -876,6 +878,7 @@ def imagerequest(request):
     storesession(sessiondict)
     tasks[sessionid].start()
     stdt.close()
+    print 'started task for ',sessionid
     
     #redirect to the progress page
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
@@ -888,9 +891,11 @@ def netcdfreimage(request):
     
     logfilepath=safejoin(folder,'logfile')
     stdt=file(logfilepath,'w')
+    taskupdatetimes[sessionid]=datetime.utcnow()
     tasks[sessionid]=multiprocessing.Process(target=readncdpl,args=(stdt,None,dp_images,session))
     tasks[sessionid].start()
     stdt.close()
+    print 'started task for ',sessionid
     
     #redirect to the progress page
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
@@ -905,6 +910,7 @@ def netcdfrequest(request):
     #add task status to list
     #print request.route_path('imageresult')
     sessiondict['finalpage']=request.route_path('netcdfresult',session=sessionid);
+    taskupdatetimes[sessionid]=datetime.utcnow()
     tasks[sessionid]=None
     #load parameters
     #print request.params
@@ -1001,6 +1007,7 @@ def netcdfrequest(request):
     tasks[sessionid].start()
     stdt.close()
     
+    print 'started task for ',sessionid
     #redirect to the progress page
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
@@ -1107,9 +1114,18 @@ def progresspage(request):
 
     if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
         #load intermediate if not
+        nowtime=datetime.utcnow()
+        taskupdatetimes[sessionid]=nowtime
+
+        for sesid in tasks:
+            if tasks[sesid]!=None and tasks[sesid].is_alive() and (nowtime-taskupdatetimes[sesid]).total_seconds()>60.0:
+                tasks[sesid].terminate()
+                print 'terminated task for ',sesid
+
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
             'sessionid':sessionid,'destination':session['finalpage'],'session':session}
     #load next page if complete
+    print 'finished task for ',sessionid
     return HTTPTemporaryRedirect(location=session['finalpage'])
 
 @view_config(route_name='logbook')
