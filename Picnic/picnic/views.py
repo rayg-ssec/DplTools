@@ -1252,13 +1252,41 @@ def statuspage(request):
     sess=os.listdir(folder)
     sessinfo=[(n,infoOfFile(safejoin(folder,n))[0],tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,tasks[n] if n in tasks else None) for n in sess]
     sessinfo.sort(key=itemgetter(1),reverse=True)
+    if 'purge' in request.params:
+        purgefrom=request.params.getone('purge')
+        found=False
+        for (sessid,sdate,running,task) in sessinfo:
+            if sessid==purgefrom:
+                found=True
+                continue
+            if found:
+                sesf=sessionfolder(sessid)
+                fs=os.listdir(sesf)
+                for f in fs:
+                    os.unlink(safejoin(sesf,f))
+                    print 'unlinked ',safejoin(sesf,f)
+                os.rmdir(sesf)
+                print 'unlinked ',sesf
+        if found:
+            return HTTPTemporaryRedirect(location=request.route_path('status'))
+    if 'terminate' in request.params:
+        terminate=request.params.getone('terminate')
+        found=False
+        for (sessid,sdate,running,task) in sessinfo:
+            if sessid==terminate:
+                print 'will try to terminate ',sessid
+                if sessid in tasks and tasks[sessid] and tasks[sessid].is_alive():
+                    tasks[sessid].terminate()
+                    return HTTPTemporaryRedirect(location=request.route_path('status'))
+                break
     runningtasks=0
     for ses in tasks:
         if tasks[ses]!=None and tasks[ses].is_alive():
             runningtasks=runningtasks+1
     return {'sessions':sess,
             'sessioninfo':sessinfo,
-            'runningtasks':runningtasks}
+            'runningtasks':runningtasks,
+            'datetime':datetime,'timedelta':timedelta}
 
 @view_config(route_name='debug',renderer='templates/debug.pt')
 def debugpage(request):

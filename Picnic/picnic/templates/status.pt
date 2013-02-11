@@ -27,6 +27,10 @@ setTimeout("self.location.replace('${request.route_path('status')}')",90000)
         <td><a href="${request.route_path('debugsession',session=sess[0])}">${sess[0]}</a></td>
         <td>started ${sess[1].strftime('%F %R UT')}</td>
         <td><a tal:condition="sess[2]" tal:attributes="href request.route_path('progress_withid',session=sess[0])">running</a></td>
+        <td>
+          <a tal:condition="sess[2]" href="${request.current_route_path()}?terminate=${sess[0]}">terminate</a>
+          <a tal:condition="not sess[2] and (datetime.utcnow()-sess[1])>timedelta(days=1)" href="${request.current_route_path()}?purge=${sess[0]}">purge older</a>
+        </td>
       </tr>
     </table>
 </div>
