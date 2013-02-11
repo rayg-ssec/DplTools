@@ -405,7 +405,7 @@ def storesession(session):
 
 
 def updateSessionComment(sessionid,value):
-    if type(sessionid) in [str, unicode]:
+    if isinstance(sessionid,basestring):
         print 'WARNING: Loading session, rather than using session directly'
         session = loadsession(sessionid)
     else:
