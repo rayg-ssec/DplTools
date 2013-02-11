@@ -87,6 +87,15 @@ meters/point
 </TD></TR></TABLE>
 </TD><TD>
 <TABLE><TR><TD align="right">
+Format:
+</TD><TD align="left">
+<select name="cdltemplatename">
+<option value="hsrl_nomenclature.cdl">UW HSRL(NetCDF4)</option>
+<option value="hsrl_cfradial.cdl">NCAR CFRadial</option>
+<option value="hsrl3_processed.cdl">UW Processed (NetCDF3)</option>
+<option value="hsrl3_raw.cdl">UW Raw (NetCDF3)</option>
+</select>
+</TD></TR><TR><TD align="right">
 <A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#filemode"  TARGET="lidarwebdoc">File Mode:</A> 
 </TD><TD align="left">
 <span id="filemoderecommend" style="display: none"><font color="#cc0000">Grid size is huge.<BR/>Recommend breaking into multiple smaller files.<BR/></font></span>
@@ -191,7 +200,6 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 </TABLE></TD>
 </TR></TABLE>
 </div>
-<input type="hidden" name="cdltemplatename" value="hsrl_nomenclature.cdl">
 <DIV ALIGN="CENTER"><font color="#cc0000">under construction</font></DIV> <BR/>
 <DIV ALIGN="CENTER"><a href="http://lidar.ssec.wisc.edu/syst/ahsrl/export_netcdf_help.html">Documentation</a><p/></DIV>
 <DIV ALIGN="CENTER" tal:condition="False"><BIG><BIG>Select your desired datasets:</BIG></BIG></DIV>

@@ -538,8 +538,10 @@ def dp_netcdf(dplc,session):
     #import hsrl.calibration.cal_read_utilities as cru
     #import hsrl.graphics.graphics_toolkit as gt
     ncformat="NETCDF4"
+    usecf=False
     if session['template'] in ['hsrl_cfradial.cdl','someradialtemplate'] or 'cfradial' in session['template']:
         import hsrl.dpl_experimental.dpl_create_cfradial as dpl_ctnc
+        usecf=True
     else:
         import hsrl.dpl_experimental.dpl_create_templatenetcdf as dpl_ctnc
         if '3' in session['template']:
@@ -559,7 +561,10 @@ def dp_netcdf(dplc,session):
         #print 'loop'
         if v==None:
             updateSessionComment(session,'creating template netcdf file')
-            v=dpl_ctnc.dpl_create_templatenetcdf(locate_file(session['template']),n,i)
+            if usecf:
+                v=dpl_ctnc.DplCreateCfradial(locate_file(session['template']),n,i)
+            else:
+                v=dpl_ctnc.dpl_create_templatenetcdf(locate_file(session['template']),n,i)
         timewindow='blank'
         findTimes=['rs_raw','rs_mean','rs_inv']
         for f in findTimes:
@@ -568,11 +573,15 @@ def dp_netcdf(dplc,session):
                 timewindow=t[0].strftime('%Y.%m.%d %H:%M') + ' - ' + t[-1].strftime('%Y.%m.%d %H:%M')
 
         updateSessionComment(session,'appending data %s' % (timewindow))
- 
-        v.appendtemplatedata(i)
+        if usecf:
+            v.append_data(i)
+        else:
+            v.appendtemplatedata(i)
         n.sync()
  
         updateSessionComment(session,'processing more')
+    if v and usecf:
+        v.close()
     n.close()
 
     if len(session['figstocapture'])>0:
@@ -684,7 +693,7 @@ def netcdfresult(request):
         nc=Dataset(fullfilename,'r')
     except:
         nc=None 
-    print file(safejoin(folder,'logfile')).read()
+    #print file(safejoin(folder,'logfile')).read()
     #send to template
     return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc }
 
@@ -941,7 +950,9 @@ def netcdfrequest(request):
     sessiondict['sessionid']=sessionid
     sessiondict['starttime']=starttime.strftime(json_dateformat)
     sessiondict['endtime']=endtime.strftime(json_dateformat)
+    sessiondict['timeres']=timeres.total_seconds()
     sessiondict['altmin']=altmin
+    sessiondict['altres']=altres
     sessiondict['altmax']=altmax
     sessiondict['template']=request.params.getone('cdltemplatename')
     sessiondict['filename']=datasetname+starttime.strftime('_%Y%m%dT%H%M')+endtime.strftime('_%Y%m%dT%H%M') + ('_%gs_%gm.nc' % (timeres.total_seconds(),altres))

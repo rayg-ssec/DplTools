@@ -14,11 +14,14 @@ ${session.name} NetCDF Creation<BR/>Requested: ${'' if ('starttime' not in sessi
 				<div tal:omit-tag="" tal:condition="('base_time' in nc.variables) and ('time' in nc.variables) and (len(nc.variables['time'])>0)">
 					<div tal:omit-tag="" tal:define="base_time datetime(1970,1,1,0,0,0)+timedelta(seconds=int(nc.variables['base_time'][0]))">
 						${(base_time + timedelta(seconds=nc.variables['time'][0])).strftime(dateformat)} - ${(base_time + timedelta(seconds=nc.variables['time'][-1])).strftime(dateformat)} (${len(nc.variables['time'])} records)
+				<div tal:omit-tag="" tal:condition="(session.endtime-(base_time + timedelta(seconds=nc.variables['time'][-1]))).total_seconds()>(2*session.timeres)">
+					<font color="#cc0000">NetCDF file is incomplete. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div></font>
+				</div>
 					</div>
 				</div>
 			</div>
 			<div tal:omit-tag="" tal:condition="nc==None">
-				Failed to create valid NetCDF file. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div>
+				<font color="#cc0000">Failed to create valid NetCDF file. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div></font>
 			</div>
 		</center>
 		<a tal:condition="'logbookurl' in session" tal:attributes="href session.logbookurl">logbook entry</a><br />
