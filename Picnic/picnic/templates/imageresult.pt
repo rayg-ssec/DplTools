@@ -1,5 +1,27 @@
 <html>
 	<head>
+  <script type="text/javascript" tal:condition="request.client_addr=='127.0.0.1'" >
+function autoIframe(frameId){
+  try{  
+    frame = document.getElementById(frameId);
+    innerDoc = (frame.contentDocument) ? frame.contentDocument : frame.contentWindow.document;
+
+    if (innerDoc == null){
+      // Google Chrome
+      frame.height = document.all[frameId].clientHeight + document.all[frameId].offsetHeight + document.all[frameId].offsetTop;
+    }
+    else{
+      frame.height = innerDoc.body.scrollHeight + 18;
+      frame.style.height = innerDoc.body.scrollHeight + 18;
+      }
+  }
+
+  catch(err){
+    alert('Err: ' + err.message);
+    window.status = err.message;
+  }
+}
+</script>
 		<title>${session.name} RTI ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime('%B %e, %Y %H:%M') + ' - ' + session.endtime.strftime('%H:%M' if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else '%B %e, %Y %H:%M'))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }</title>
 	</head>
 	<body>
@@ -17,6 +39,8 @@ ${session.name} RTI<BR/>${'' if ('starttime' not in session or 'endtime' not in 
 		<center>
 			<a tal:repeat="jsonurl jsonurls" tal:attributes="href jsonurl if 'url' not in jsonurl else jsonurl.url" tal:content="'JSON' if 	'name' not in jsonurl else jsonurl.name"/>
 		</center>
+		<a href="${req.route_path('imagereq')+'?sessionid='+session.sessionid}" tal:condition="request.client_addr=='127.0.0.1' and len(imageurls)==0">Reprocess</a>
+<iframe tal:condition="request.client_addr=='127.0.0.1' and len(imageurls)==0" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
 	    <a tal:condition="'logfileurl' in session" tal:attributes="href session.logfileurl">&lambda;</a>
 	</body>
 </html>
