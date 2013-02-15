@@ -4,7 +4,10 @@ import json
 from pyramid.httpexceptions import HTTPNotFound, HTTPTemporaryRedirect
 from webob import Response
 from datetime import datetime
+import time
+import multiprocessing
 
+json_dateformat='%Y.%m.%dT%H:%M:%S'
 
 tasks={}
 taskupdatetimes={}
@@ -28,8 +31,30 @@ def safejoin(*args):
                 print "path " + ret + " doesn't with " + p
                 return None
     return ret
-    
+
+
+# requests take 4 stages:
+# - fork/dispatch: sets up session, logfile, forks, and calls specific function
+# - parse parameters
+# - construct DPL
+# - execute
+
+dispatched=False
+dispatchers={}
+
+def addDispatchers(d):
+    dispatchers.update(d)
+
+def taskdispatch(dispatcher,request,session,logstream=None):
+    if logstream!=None:
+        os.dup2(logstream.fileno(),sys.stdout.fileno())
+        os.dup2(logstream.fileno(),sys.stderr.fileno())
+    updateSessionComment(session,'dispatching')
+    dispatchers[dispatcher](request,session,isBackground=(None if logstream==None else True))
+ 
 def sessionfile(sessionid,filename,create=False):
+    if not isinstance(sessionid,basestring):
+        sessionid = sessionid['sessionid']
     fold=_sessionfolder(sessionid)
     if filename==None:
         return fold
@@ -58,6 +83,20 @@ def updateSessionComment(sessionid,value):
     session['comment']=value
     print datetime.utcnow(),' Updating Session Comment :',value
     storesession(session)
+
+def newSessionProcess(dispatch,request,session):
+    sessionid=session['sessionid']
+    taskupdatetimes[sessionid]=datetime.utcnow()
+    logfilepath=sessionfile(sessionid,'logfile',create=True)
+    stdt=file(logfilepath,'w')
+    tasks[sessionid]=multiprocessing.Process(target=taskdispatch,args=(dispatch,request,session,stdt))
+    session['comment']='inited'
+    session['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile')
+    dispatchers[dispatch](request,session,False)
+    storesession(session)
+    tasks[sessionid].start()
+    stdt.close()
+  
 
 def moddateoffile(f):
     return os.stat(f).st_mtime

@@ -1,5 +1,25 @@
 from sets import Set
 
+from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
+lib=HSRLImageArchiveLibrarian(indexdefault='site')
+from pyramid.view import view_config
+
+@view_config(route_name='imagejavascript',renderer='string')
+@view_config(route_name='netcdfjavascript',renderer='string')
+def formjavascript(request):
+    methodtype=request.matchdict['accesstype']
+    methodkey=request.matchdict['access']
+    request.response.content_type='text/javascript'
+    datasets=[]
+    try:
+        for inst in lib(**{methodtype[3:]:methodkey})['Instruments']:
+            datasets.extend(lib.instrument(inst)['datasets'])
+    except RuntimeError:
+        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+    if request.matched_route.name=='imagejavascript':
+        return imagejavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
+    return netcdfjavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
+
 setsfile='picnic/resources/portal_requestsets.json'
 
 def formsetsForInstruments(instruments,subset):

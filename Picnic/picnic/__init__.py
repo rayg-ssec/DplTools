@@ -57,5 +57,9 @@ def main(global_config, **settings):
     config.add_route('imagecustom','/imagecustom')
     config.add_route('generatejson','/jsongen')
 
+    import picnicsession
+    import dispatch
+    picnicsession.addDispatchers(dispatch.getDispatchers())
+
     config.scan()
     return config.make_wsgi_app()

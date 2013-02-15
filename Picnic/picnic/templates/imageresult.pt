@@ -29,7 +29,7 @@ function autoIframe(frameId){
 			<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/about_image.htm">About these images</a><br />
 ${session.name} RTI<BR/>${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime('%B %e, %Y %H:%M') + ' - ' + session.endtime.strftime('%H:%M' if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else '%B %e, %Y %H:%M'))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }
 		</center>
-		<a tal:condition="'logbookurl' in session" tal:attributes="href session.logbookurl">logbook entry</a><br />
+		<a href="${request.route_path('logbook',accesstype=session.method,access=session.methodkey)+'?rss=off&'+ session.starttime.strftime('byr=%Y&bmo=%m&bdy=%d&bhr=%H&bmn=%M') +'&' + session.endtime.strftime('eyr=%Y&emo=%m&edy=%d&ehr=%H&emn=%M')}">logbook entry</a><br />
 		<center>
 			<div tal:repeat="imurl imageurls">
   				<img src="${imurl if 'url' not in imurl else imurl.url}" alt="${'' if 'name' not in imurl else imurl.name}"/>
