@@ -15,6 +15,7 @@ def main(global_config, **settings):
     #image gen
     config.add_route('imagereq', '/rti_request/')#will set up process, and forward to progress#
     config.add_route('imageresult', '/rti_result/{session}')#
+    config.add_route('reimagereq', '/rti_result/{session}/reimage')#
     config.add_route('imagegen', '/{accesstype}/{access}/custom_rti/')
     config.add_route('imagejavascript', '/{accesstype}/{access}/custom_rti/req.js')
 

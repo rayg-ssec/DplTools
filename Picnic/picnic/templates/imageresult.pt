@@ -39,7 +39,7 @@ ${session.name} RTI<BR/>${'' if ('starttime' not in session or 'endtime' not in 
 		<center>
 			<a tal:repeat="jsonurl jsonurls" tal:attributes="href jsonurl if 'url' not in jsonurl else jsonurl.url" tal:content="'JSON' if 	'name' not in jsonurl else jsonurl.name"/>
 		</center>
-		<a href="${req.route_path('imagereq')+'?sessionid='+session.sessionid}" tal:condition="request.client_addr=='127.0.0.1' and len(imageurls)==0">Reprocess</a>
+		<a href="${req.route_path('reimagereq',session=session.sessionid)}" tal:condition="request.client_addr=='127.0.0.1' and len(imageurls)==0">Reprocess</a>
 <iframe tal:condition="request.client_addr=='127.0.0.1' and len(imageurls)==0" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
 	    <a tal:condition="'logfileurl' in session" tal:attributes="href session.logfileurl">&lambda;</a>
 	</body>

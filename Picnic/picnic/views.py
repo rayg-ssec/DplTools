@@ -106,6 +106,14 @@ def imagerequest(request):
     sessiondict['finalpage']=request.route_path('imageresult',session=sessionid);
     picnicsession.newSessionProcess("newimages",request,sessiondict)
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+
+@view_config(route_name='reimagereq')
+def reimagerequest(request):
+    sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
+    #folder=picnicsession.sessionfolder(sessionid);
+    session=picnicsession.loadsession(sessionid)
+    picnicsession.newSessionProcess("createimages",request,session)
+    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
    
 
 @view_config(route_name='netcdfreimage')
