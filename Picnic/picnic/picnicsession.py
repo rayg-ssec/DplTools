@@ -94,6 +94,7 @@ def newSessionProcess(dispatch,request,session):
     session['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile')
     dispatchers[dispatch](request,session,False)
     storesession(session)
+    print 'starting task for ',sessionid, ' dispatch named ', dispatch
     tasks[sessionid].start()
     stdt.close()
   

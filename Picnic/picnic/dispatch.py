@@ -201,12 +201,12 @@ def makeDPLFromSession(session):
     from hsrl.dpl_experimental.dpl_hsrl import dpl_hsrl
     dplobj=dpl_hsrl(**fromSession(session,copyToInit))
     dplc=dplobj(**fromSession(session,copyToSearch))
-    if 'processing_defaults' in session:
+    if 'processing_defaults' in session and session['processing_defaults']:
         pass
-    elif hasattr(dplobj,'process_defaults'):
+    elif hasattr(dplobj,'process_defaults') and dplobj.process_defaults:
         session['processing_defaults']=dplobj.process_defaults
     else:
-        session['processing_defaults']=dplc.rs_static.processing_defaults
+        session['processing_defaults']=dplobj.get_processing_defaults(None)[0]
     picnicsession.storesession(session)
     picnicsession.updateSessionComment(session,'processing with DPL')
     return dplc    
@@ -247,12 +247,14 @@ def makeImagesFromDPL(session,DPLgen):
     instrument=session['dataset']
     #sessionid=session['sessionid']
     disp=jc.json_config(session['display_defaults'])
+    print session
 
     #folder=picnicsession.sessionfolder(sessionid)#safejoin('.','sessions',sessionid);
     
     if True:
         picnicsession.updateSessionComment(session,'creating artist')    
-        artist=artists.dpl_images_artist(DPLgen,session['dataset'],session['altmax'],session['processing_defaults'],jc.json_config(session['display_defaults']))
+        artist=artists.dpl_images_artist(framestream=DPLgen,instrument=session['dataset'],max_alt=session['altmax'],
+            processing_defaults=session['processing_defaults'],display_defaults=disp)
         picnicsession.updateSessionComment(session,'processing')
         figs=artist()
         picnicsession.updateSessionComment(session,'rendering figures')
