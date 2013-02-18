@@ -6,6 +6,7 @@ import os
 import calendar
 import picnicsession
 import jsgen
+from multiprocessing import Process,Queue
 import json
 
 from timeutils import validdate
@@ -136,34 +137,8 @@ def netcdfrequest(request):
     picnicsession.newSessionProcess("newnetcdf",request,sessiondict)
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
-
-@view_config(route_name='dataAvailability')
-def dataAvailability(request):
-    #site=request.params.getone('site')
-    starttime=request.params.getone('time0')
-    endtime=request.params.getone('time1')
-    srctypes=['site','dataset','instrument'] 
-    mode = None
-    for srctype in srctypes:
-        if srctype in request.params:
-            mode=srctype
-            modeval=request.params.getone(mode)
-            break
-    if mode == None:
-        return HTTPNotFound('unknown data storage search method')
-    datasets=[]
-    if 'datasets' in request.params:
-        datasets.extend(request.params.getone('datasets').split(','))
-    else:
-        try:
-            instruments=lib(**{mode:modeval})['Instruments']
-            for inst in instruments:
-                datasets.extend(lib.instrument(inst)['datasets'])
-        except RuntimeError:
-            return HTTPNotFound("unknown data storage search method 2")
-    starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')
-    endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
-    retval=[]
+def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
+    ret=[]
 
     #print 'checking site ' , site , ' with time range ' , (starttime,endtime)
     if 'lidar' in datasets:
@@ -201,7 +176,45 @@ def dataAvailability(request):
             #print 'cal time may intersect'
 
         if success:
-            retval.append("lidar")
+            ret.append("lidar")
+
+    Q.put(ret)
+
+@view_config(route_name='dataAvailability')
+def dataAvailability(request):
+    #site=request.params.getone('site')
+    starttime=request.params.getone('time0')
+    endtime=request.params.getone('time1')
+    srctypes=['site','dataset','instrument'] 
+    mode = None
+    for srctype in srctypes:
+        if srctype in request.params:
+            mode=srctype
+            modeval=request.params.getone(mode)
+            break
+    if mode == None:
+        return HTTPNotFound('unknown data storage search method')
+    datasets=[]
+    if 'datasets' in request.params:
+        datasets.extend(request.params.getone('datasets').split(','))
+    else:
+        try:
+            instruments=lib(**{mode:modeval})['Instruments']
+            for inst in instruments:
+                datasets.extend(lib.instrument(inst)['datasets'])
+        except RuntimeError:
+            return HTTPNotFound("unknown data storage search method 2")
+    starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')
+    endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
+    
+    Q=Queue()
+    p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
+    print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
+    p.start()
+    retval=Q.get()
+    print retval,datetime.utcnow()
+    p.join()
+    print datetime.utcnow()
 
         #print "Success = " , success
     # if other sets, add checks here using librarians
