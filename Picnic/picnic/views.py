@@ -139,9 +139,9 @@ def netcdfrequest(request):
 
 def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
     ret=[]
-
-    #print 'checking site ' , site , ' with time range ' , (starttime,endtime)
-    if 'lidar' in datasets:
+    try:
+      #print 'checking site ' , site , ' with time range ' , (starttime,endtime)
+      if 'lidar' in datasets:
         times=[]
         fn=None
         t=None
@@ -177,7 +177,8 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
 
         if success:
             ret.append("lidar")
-
+    except:
+        pass
     Q.put(ret)
 
 @view_config(route_name='dataAvailability')
@@ -209,12 +210,12 @@ def dataAvailability(request):
     
     Q=Queue()
     p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
-    print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
+    #print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
     p.start()
     retval=Q.get()
-    print retval,datetime.utcnow()
+    #print retval,datetime.utcnow()
     p.join()
-    print datetime.utcnow()
+    #print datetime.utcnow()
 
         #print "Success = " , success
     # if other sets, add checks here using librarians
