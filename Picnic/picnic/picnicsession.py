@@ -88,6 +88,11 @@ def newSessionProcess(dispatch,request,session):
     sessionid=session['sessionid']
     taskupdatetimes[sessionid]=datetime.utcnow()
     logfilepath=sessionfile(sessionid,'logfile',create=True)
+    if sessionid in tasks and tasks[sessionid].is_alive():
+        print 'cancelling stale task for ',sessionid
+        tasks[sessionid].terminate()
+        tasks[sessionid].join()
+    session['rescode']=''
     stdt=file(logfilepath,'w')
     tasks[sessionid]=multiprocessing.Process(target=taskdispatch,args=(dispatch,request,session,stdt))
     session['comment']='inited'
@@ -162,6 +167,9 @@ def progresspage(request):
             if tasks[sesid]!=None and tasks[sesid].is_alive() and (nowtime-taskupdatetimes[sesid]).total_seconds()>60.0:
                 tasks[sesid].terminate()
                 print 'terminated task for ',sesid
+                tses=loadsession(sesid)
+                tses['rescode']='terminated'
+                storesession(tses)
 
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
             'sessionid':sessionid,'destination':session['finalpage'],'session':session}
@@ -170,6 +178,9 @@ def progresspage(request):
         rescode=tasks[sessionid].exitcode
     else:
         rescode='unknown (old task)'
+    if 'rescode' not in session or session['rescode']=='':
+        session['rescode']=rescode
+        storesession(session)
     print 'finished task for ',sessionid, ' with result code ', rescode
     return HTTPTemporaryRedirect(location=session['finalpage'])
 
@@ -186,17 +197,17 @@ from operator import itemgetter
 def statuspage(request):
     folder=_sessionfolder(None)#safejoin('.','sessions');
     sess=os.listdir(folder)
-    sessinfo=[(n,infoOfFile(safejoin(folder,n))[0],tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,tasks[n] if n in tasks else None) for n in sess]
-    sessinfo.sort(key=itemgetter(1),reverse=True)
+    sessinfo=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0],'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,'task':tasks[n] if n in tasks else None,'session':loadsession(n)} for n in sess]
+    sessinfo.sort(key=itemgetter('startTime'),reverse=True)
     if 'purge' in request.params:
         purgefrom=request.params.getone('purge')
         found=False
-        for (sessid,sdate,running,task) in sessinfo:
-            if sessid==purgefrom:
+        for inf in sessinfo:#(sessid,sdate,running,task) in sessinfo:
+            if inf['sessionid']==purgefrom:
                 found=True
                 continue
             if found:
-                sesf=_sessionfolder(sessid)
+                sesf=_sessionfolder(inf['sessionid'])
                 fs=os.listdir(sesf)
                 for f in fs:
                     os.unlink(safejoin(sesf,f))
@@ -208,17 +219,29 @@ def statuspage(request):
     if 'terminate' in request.params:
         terminate=request.params.getone('terminate')
         found=False
-        for (sessid,sdate,running,task) in sessinfo:
-            if sessid==terminate:
+        for inf in sessinfo:
+            if inf['sessionid']==terminate:
+                sessid=inf['sessionid']
                 print 'will try to terminate ',sessid
                 if sessid in tasks and tasks[sessid] and tasks[sessid].is_alive():
                     tasks[sessid].terminate()
+                    tses=loadsession(sessid)
+                    tses['rescode']='terminated'
+                    storesession(tses)
                     return HTTPTemporaryRedirect(location=request.route_path('status'))
                 break
     runningtasks=0
     for ses in tasks:
-        if tasks[ses]!=None and tasks[ses].is_alive():
-            runningtasks=runningtasks+1
+        if tasks[ses]!=None:
+            if tasks[ses].is_alive():
+                runningtasks=runningtasks+1
+            else:
+                tses=loadsession(ses)
+                if 'rescode' not in tses or tses['rescode']=='':
+                    tses['rescode']=tasks.exitcode
+                    storesession(tses)
+                tasks[ses]=None
+
     return {'sessions':sess,
             'sessioninfo':sessinfo,
             'runningtasks':runningtasks,
@@ -241,6 +264,12 @@ def debugsession(request):
     if sessionid in tasks and tasks[sessionid]!=None:
         task=tasks[sessionid]
         running=task.is_alive()
+        if not running:
+            tses=loadsession(sessionid)
+            if 'rescode' not in tses or tses['rescode']=='':
+                tses['rescode']=tasks.exitcode
+                storesession(tses)
+            tasks[sessionid]=None
     else:
         task=None
         running=False
