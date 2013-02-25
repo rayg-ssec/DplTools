@@ -68,7 +68,15 @@ def _sessionfolder(sessionid):
     return safejoin('.','sessions',sessionid);
 
 def loadsession(sessionid):
-    return json.load(file(sessionfile(sessionid,"session.json")))
+    retry=5;
+    ret=None
+    while ret==None and retry>0:
+        try:
+            ret=json.load(file(sessionfile(sessionid,"session.json")))
+        except:
+            retry-=1
+            time.sleep(.025)
+    return ret
 
 def storesession(session):
     json.dump(session,file(sessionfile(session['sessionid'],'session.json',create=True),'w'),indent=4,separators=(',', ': '))
@@ -88,7 +96,7 @@ def newSessionProcess(dispatch,request,session):
     sessionid=session['sessionid']
     taskupdatetimes[sessionid]=datetime.utcnow()
     logfilepath=sessionfile(sessionid,'logfile',create=True)
-    if sessionid in tasks and tasks[sessionid].is_alive():
+    if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
         print 'cancelling stale task for ',sessionid
         tasks[sessionid].terminate()
         tasks[sessionid].join()
