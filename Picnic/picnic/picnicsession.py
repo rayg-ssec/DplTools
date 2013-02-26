@@ -75,7 +75,7 @@ def loadsession(sessionid):
             ret=json.load(file(sessionfile(sessionid,"session.json")))
         except:
             retry-=1
-            time.sleep(.025)
+            time.sleep(.2)
     return ret
 
 def storesession(session):
@@ -275,7 +275,7 @@ def debugsession(request):
         if not running:
             tses=loadsession(sessionid)
             if 'rescode' not in tses or tses['rescode']=='':
-                tses['rescode']=tasks.exitcode
+                tses['rescode']=tasks[sessionid].exitcode
                 storesession(tses)
             tasks[sessionid]=None
     else:
@@ -287,7 +287,7 @@ def debugsession(request):
         filelistinfo=[]
         for f in filelist:
             inf=infoOfFile(safejoin(folder,f))
-            filelistinfo.append((f,inf[2],inf[0],inf[1]))
+            filelistinfo.append({'name':f,'stats':[inf[2],inf[0],inf[1]]})
     else:
         filelist=None
         filelistinfo=None

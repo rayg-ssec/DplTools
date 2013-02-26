@@ -39,6 +39,14 @@ setTimeout("self.location.replace('${request.route_path('debugsession',session=s
       <td>${session.name}</td>
       <td tal:condition="'dataset' in session and 'site' in session">[${session.dataset}(${session.site})]</td>
     </tr>
+    <tr tal:condition="session!=None and 'rescode' in session">
+      <td>Process Result:</td>
+      <td>${session.rescode}</td>
+    </tr>
+    <tr tal:condition="session!=None and 'pid' in session">
+      <td>Process ID:</td>
+      <td>${session.pid}</td>
+    </tr>
     <tr>
       <td>Files</td>
       <td tal:condition="files!=None">(${len(files)} count)</td>
@@ -46,13 +54,11 @@ setTimeout("self.location.replace('${request.route_path('debugsession',session=s
     </tr>    
     <tr tal:condition="files!=None">
       <td colspan="3">
-        <table border="4" cellpadding="20">
+        <table>
           <tr><td>Name</td><td>size</td><td>created</td><td>modified</td></tr>
           <tr tal:repeat="f fileinfo">
-            <td><a href="${request.route_path('session_resource',session=sessionid,filename=f[0])}">${f[0]}</a></td>
-            <td>${f[1]}</td>
-            <td>${f[2]}</td>
-            <td>${f[3]}</td>
+            <td style="padding: 5px"><a href="${request.route_path('session_resource',session=sessionid,filename=f.name)}">${f.name}</a></td>
+            <td tal:repeat="stat f.stats" style="padding: 5px">${stat}</td>
           </tr>
         </table>
       </td>
