@@ -204,7 +204,12 @@ from operator import itemgetter
 @view_config(route_name='status',renderer='templates/status.pt')
 def statuspage(request):
     folder=_sessionfolder(None)#safejoin('.','sessions');
-    sess=os.listdir(folder)
+    _sess=os.listdir(folder)
+    sess=[]
+    for s in _sess:
+        if s.startswith('.') or not os.path.isdir(safejoin(folder,s)):
+            continue
+        sess.append(s)
     sessinfo=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0],'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,'task':tasks[n] if n in tasks else None,'session':loadsession(n)} for n in sess]
     sessinfo.sort(key=itemgetter('startTime'),reverse=True)
     if 'purge' in request.params:
