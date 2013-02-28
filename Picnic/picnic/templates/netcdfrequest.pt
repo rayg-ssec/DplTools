@@ -8,8 +8,7 @@
 <style type="text/css">.checklink A:link {color: #000000; text-decoration: none} .checklink A:visited {text-decoration: none} .checklink A:active {text-decoration: none} .checklink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM id="reqform" ACTION="http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi" METHOD="GET">
-<INPUT TYPE="HIDDEN" NAME="URL" VALUE="${netcdfdestinationurl}"/>
+<FORM id="reqform" ACTION="${netcdfdestinationurl}" METHOD="GET">
 <INPUT TYPE="HIDDEN" NAME="site" VALUE="${site}"/>
 <P/>
 <div align="center">
@@ -373,7 +372,9 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 </TR></TABLE></span></DIV>
 
 <BR/><BR/><DIV ALIGN="CENTER">
+<span tal:omit-tag="True" tal:condition="userTracking">
 E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>
+</span>
 <INPUT TYPE="SUBMIT" VALUE="*BETA* Submit *BETA*"/><P/>
 <span id="avail_progress" style="display: none"><font color="#cc0000">updating options based on availability... (Timeout <span id="countdown">0</span>)</font></span><BR/>
 <script type="text/javascript"><!--

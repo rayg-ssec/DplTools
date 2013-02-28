@@ -112,8 +112,7 @@ def imagerequest(request):
         sessiondict=request.params.getone('loadedsession',None)
     sessiondict['sessionid']=sessionid
     sessiondict['finalpage']=request.route_path('imageresult',session=sessionid);
-    picnicsession.newSessionProcess("newimages",request,sessiondict)
-    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+    return picnicsession.newSessionProcess("newimages",request,sessiondict)
 
 @view_config(route_name='reimagereq')
 def reimagerequest(request):
@@ -126,8 +125,7 @@ def reimagerequest(request):
         sessionid=pysession.new_csrf_token()
         session['sessionid']=sessionid
         session['finalpage']=request.route_path('imageresult',session=sessionid);
-    picnicsession.newSessionProcess("createimages",request,session)
-    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+    return picnicsession.newSessionProcess("createimages",request,session)
    
 
 @view_config(route_name='netcdfreimage')
@@ -136,10 +134,8 @@ def netcdfreimage(request):
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
     #folder=picnicsession.sessionfolder(sessionid);
     session=picnicsession.loadsession(sessionid)
-    picnicsession.newSessionProcess("readnetcdf",request,session)
-    #redirect to the progress page
-    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
-
+    return picnicsession.newSessionProcess("readnetcdf",request,session)
+ 
 
 @view_config(route_name='netcdfreq')
 def netcdfrequest(request):
@@ -149,8 +145,7 @@ def netcdfrequest(request):
     sessiondict={}
     sessiondict['sessionid']=sessionid
     sessiondict['finalpage']=request.route_path('netcdfresult',session=sessionid);
-    picnicsession.newSessionProcess("newnetcdf",request,sessiondict)
-    return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
+    return picnicsession.newSessionProcess("newnetcdf",request,sessiondict)
 
 def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
     ret=[]
@@ -352,141 +347,7 @@ def form_view(request):
             'oldurl':oldurl,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
-            'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
+            'userTracking':picnicsession.haveUserTracking(),
+            #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
             'sitename':name}
-
-def isValidEmailAddress(stringval):
-    s=stringval.split('@')
-    if len(s)!=2:
-        return False
-    return True
-
-datacookiename="datauser"
-keyfield="email"
-reqfields=("email","name",)
-optionalfields=("org",)
-
-@view_config(route_name='userCheck',renderer='templates/userCheck.pt')
-def userCheck(request):
-    print 'URLREQ: ',request.matched_route.name
-    try:
-        import cgi_datauser
-    except:
-        print "Couldn't load cgi_datauser from hsrl git codebase. user tracking disabled"
-        parms=''
-        jumpurl=''
-        if "PARAMS" in request.params:
-            parms='?'+request.params.getone('PARAMS')
-        if len(parms)<=1:
-            parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-        if "URL" in request.params:
-            jumpurl=request.params.getone('URL')
-        if len(jumpurl)<=0:
-            jumpurl='/'
-            parms=''
-        dest=jumpurl + parms
-        return HTTPTemporaryRedirect(location=dest)
-    dbc=cgi_datauser.lidarwebdb()
-    info={};
-    doForm=True
-    fromSQL=False
-    indebug=False #True
-    if (keyfield in request.params and len(request.params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
-        doForm=False
-        if keyfield in request.params and len(request.params.getone(keyfield))>0:
-            if not isValidEmailAddress(request.params.getone(keyfield)):
-                doForm=True
-            else:
-                info[keyfield]=request.params.getone(keyfield)
-                hasreq=True;
-                for f in reqfields:
-                    if f in request.params and len(request.params.getone(f))>0:
-                        info[f]=request.params.getone(f)
-                    else:
-                        hasreq=False
-                for f in optionalfields:
-                    if f in request.params and len(request.params.getone(f))>0:
-                        info[f]=request.params.getone(f)
-                if not hasreq:#work by lookup
-                    ti=dbc.getUserByEMail(info[keyfield])
-                    if ti:
-                        info=ti
-                        fromSQL=True
-        elif datacookiename in request.cookies:
-            ti=dbc.getUserByUID(request.cookies[datacookiename])
-            if ti:
-                info=ti
-                fromSQL=True
-        elif indebug: #DEBUG ONLY
-            ti=dbc.getUserByEMail("null")
-            if ti==None:
-                dbc.addClient({'email':'null','name':'bubba'})
-                ti=dbc.getUserByEMail("null")
-            info=ti
-            fromSQL=True
-        for f in reqfields:
-            if not info.has_key(f):
-                doForm=True
-                break
-    if not doForm:
-        if not fromSQL:
-            uid=dbc.addClient(info)
-        else:
-            uid=info['uid']
-        if uid!=None:
-            parms=''
-            jumpurl=''
-            if "PARAMS" in request.params:
-                parms='?'+request.params.getone('PARAMS')
-            if len(parms)<=1:
-                parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-            if "URL" in request.params:
-                jumpurl=request.params.getone('URL')
-            if len(jumpurl)<=0:
-                jumpurl='/'
-                parms=''
-            dest=jumpurl + parms
-            if False and indebug:
-                print "Content-Type: text/plain"
-                print
-                if len(cookies)>0:
-                    print cookies
-                else:
-                    print "No cookies"
-                print "jump to %s" % dest
-            else:
-                bod="""
-                <HTML><HEAD>
-                <META HTTP-EQUIV="Refresh" CONTENT="0;url=%s">
-                <TITLE>Registered</TITLE>
-                </HEAD><BODY></BODY></HTML>
-               """  % dest
-            resp = Response(body=bod,content_type="text/html")
-            resp.set_cookie(datacookiename,uid,max_age=timedelta(weeks=12))
-            return resp
-    #form
-    #info=dbc.getUserByEMail("null")
-    #print "Content-Type: text/html"
-    #if len(cookies)>0:
-    #    print cookies
-    #print
-    if "URL" in request.params:
-        info["URL"]=request.params.getone('URL')
-    else:
-        info["URL"]=""
-    info["PARAMS"]=request.query_string#os.environ.get("QUERY_STRING","")
-    info["MYURL"]=request.path#os.environ.get("SCRIPT_NAME","")
-
-    fields=("email","name","org");
-    fielddesc={"email":"E-Mail Address",
-               "name":"Name",
-               "org":"Organization"}
-
-    return { 'MYURL': info['MYURL'],
-             'URL': info['URL'],
-             'PARAMS': info['PARAMS'],
-             'fields': fields,
-             'info': info,
-             'fielddesc': fielddesc,
-             'reqfields': reqfields}

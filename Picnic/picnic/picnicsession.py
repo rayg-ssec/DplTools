@@ -46,10 +46,10 @@ class PicnicTaskWrapper:
             self.exitcode()
             self.__task=None
 
-    def start(self):
+    def start(self,*args, **kwargs):
         if self.__task==None:
             return None
-        self.updateExpireTime()
+        self.updateExpireTime(*args, **kwargs)
         return self.__task.start()
 
     def exitcode(self):
@@ -176,9 +176,9 @@ def newSessionProcess(dispatch,request,session):
     dispatchers[dispatch](request,session,False)
     storesession(session)
     print 'starting task for ',sessionid, ' dispatch named ', dispatch
-    tasks[sessionid].start()
+    tasks[sessionid].start(updateseconds=120)
     stdt.close()
-  
+    return HTTPTemporaryRedirect(location=makeUserCheckURL(request,request.route_path('progress_withid',session=sessionid)))
 
 def moddateoffile(f):
     return os.stat(f).st_mtime
@@ -360,3 +360,163 @@ def debugsession(request):
             'running':running,
             'sessionid':sessionid}
 
+
+def isValidEmailAddress(stringval):
+    s=stringval.split('@')
+    if len(s)!=2:
+        return False
+    return True
+
+datacookiename="datauser"
+keyfield="email"
+reqfields=("email","name",)
+optionalfields=("org",)
+doHaveUserTracking=None
+
+def haveUserTracking():
+    global doHaveUserTracking
+    if doHaveUserTracking==None:
+        try:
+            import cgi_datauser
+            doHaveUserTracking=True
+        except:
+            doHaveUserTracking=False
+    return doHaveUserTracking
+
+def makeUserCheckURL(request,destination,destparms=None):#only works with a simple destination
+    if not haveUserTracking():
+        return destination
+    returl=request.route_path('userCheck')+'?URL='+destination
+    parms={}
+    if destparms!=None:
+        parms.update(destparms)
+    for f in reqfields+optionalfields:
+        if f in request.params:
+            parms[f]=request.params.getone(f)
+    if len(parms)>0:
+        returl+='&' + '&'.join([(f+'='+parms[f]) for f in parms])
+    return returl
+
+@view_config(route_name='userCheck',renderer='templates/userCheck.pt')
+def userCheck(request):
+    print 'URLREQ: ',request.matched_route.name
+    try:
+        import cgi_datauser
+    except:
+        print "Couldn't load cgi_datauser from hsrl git codebase. user tracking disabled"
+        parms=''
+        jumpurl=''
+        if "PARAMS" in request.params:
+            parms='?'+request.params.getone('PARAMS')
+        if len(parms)<=1:
+            parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
+        if "URL" in request.params:
+            jumpurl=request.params.getone('URL')
+        if len(jumpurl)<=0:
+            jumpurl='/'
+            parms=''
+        dest=jumpurl + parms
+        return HTTPTemporaryRedirect(location=dest)
+    dbc=cgi_datauser.lidarwebdb()
+    info={};
+    doForm=True
+    fromSQL=False
+    indebug=False #True
+    if (keyfield in request.params and len(request.params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
+        doForm=False
+        if keyfield in request.params and len(request.params.getone(keyfield))>0:
+            if not isValidEmailAddress(request.params.getone(keyfield)):
+                doForm=True
+            else:
+                info[keyfield]=request.params.getone(keyfield)
+                hasreq=True;
+                for f in reqfields:
+                    if f in request.params and len(request.params.getone(f))>0:
+                        info[f]=request.params.getone(f)
+                    else:
+                        hasreq=False
+                for f in optionalfields:
+                    if f in request.params and len(request.params.getone(f))>0:
+                        info[f]=request.params.getone(f)
+                if not hasreq:#work by lookup
+                    ti=dbc.getUserByEMail(info[keyfield])
+                    if ti:
+                        info=ti
+                        fromSQL=True
+        elif datacookiename in request.cookies:
+            ti=dbc.getUserByUID(request.cookies[datacookiename])
+            if ti:
+                info=ti
+                fromSQL=True
+        elif indebug: #DEBUG ONLY
+            ti=dbc.getUserByEMail("null")
+            if ti==None:
+                dbc.addClient({'email':'null','name':'bubba'})
+                ti=dbc.getUserByEMail("null")
+            info=ti
+            fromSQL=True
+        for f in reqfields:
+            if not info.has_key(f):
+                doForm=True
+                break
+    if not doForm:
+        if not fromSQL:
+            uid=dbc.addClient(info)
+        else:
+            uid=info['uid']
+        if uid!=None:
+            parms=''
+            jumpurl=''
+            if "PARAMS" in request.params:
+                parms='?'+request.params.getone('PARAMS')
+            if len(parms)<=1:
+                parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
+            if "URL" in request.params:
+                jumpurl=request.params.getone('URL')
+            if len(jumpurl)<=0:
+                jumpurl='/'
+                parms=''
+            dest=jumpurl + parms
+            if False and indebug:
+                print "Content-Type: text/plain"
+                print
+                if len(cookies)>0:
+                    print cookies
+                else:
+                    print "No cookies"
+                print "jump to %s" % dest
+            else:
+                bod="""
+                <HTML><HEAD>
+                <META HTTP-EQUIV="Refresh" CONTENT="0;url=%s">
+                <TITLE>Registered</TITLE>
+                </HEAD><BODY></BODY></HTML>
+               """  % dest
+            resp = Response(body=bod,content_type="text/html")
+            resp.set_cookie(datacookiename,uid,max_age=timedelta(weeks=12))
+            return resp
+    #form
+    #info=dbc.getUserByEMail("null")
+    #print "Content-Type: text/html"
+    #if len(cookies)>0:
+    #    print cookies
+    #print
+    if "URL" in request.params:
+        info["URL"]=request.params.getone('URL')
+    else:
+        info["URL"]=""
+    info["PARAMS"]=request.query_string#os.environ.get("QUERY_STRING","")
+    info["MYURL"]=request.path#os.environ.get("SCRIPT_NAME","")
+
+    fields=("email","name","org");
+    fielddesc={"email":"E-Mail Address",
+               "name":"Name",
+               "org":"Organization"}
+
+    return { 'MYURL': info['MYURL'],
+             'URL': info['URL'],
+             'PARAMS': info['PARAMS'],
+             'fields': fields,
+             'info': info,
+             'fielddesc': fielddesc,
+             'reqfields': reqfields}

@@ -7,8 +7,7 @@
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM ACTION="${usercheckurl}" METHOD="GET">
-<INPUT TYPE="HIDDEN" NAME="URL" VALUE="${imagedestinationurl}"/>
+<FORM ACTION="${imagedestinationurl}" METHOD="GET">
 <INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
 <P>
 <div align="center">
@@ -71,12 +70,15 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 </TABLE></TD>
 </TR></TABLE>
 <BR><div align="center">
+<span tal:omit-tag="True" tal:condition="userTracking">
 E-Mail: <span id="emailset" tal:condition="'datauser' in req.cookies"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" tal:attributes="style 'display: none' if 'datauser' in req.cookies else ''"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>
+</span>
 <INPUT TYPE="SUBMIT" VALUE="Submit"/><P>
 <span id="avail_progress" style="display: none"><font color="#cc0000">updating options based on availability... (Timeout <span id="countdown">0</span>)</font></span> <BR/>
 <script type="text/javascript"><!--
 checkDataAvailability();
 --></script>
+</div>
 </FORM>
 <div align="center">
 	<a href="${oldurl}">Use old Matlab site</a><br/>
