@@ -175,6 +175,36 @@ def newSessionProcess(dispatch,request,session):
     session['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile')
     dispatchers[dispatch](request,session,False)
     storesession(session)
+    if haveUserTracking():
+        import cgi_datauser
+        if datacookiename in request.cookies:
+            userid=request.cookies[datacookiename]
+        #elif datacookiename in request.params:
+        #    userid=request.params.getone(datacookiename)
+        else:
+            userid="unknown"
+
+        b=cgi_datauser.lidarwebdb()
+
+        processDescription={
+            'taskid':sessionid,
+            'uid':userid,
+            'processtype':dispatch,
+            'commandline':json.dumps(session,separators=(',', ':')),
+            'start_time':datetime.strptime(session['starttime'],json_dateformat).strftime('%F %T'),
+            'end_time':datetime.strptime(session['starttime'],json_dateformat).strftime('%F %T'),
+            'min_alt':session['altmin'],
+            'max_alt':session['altmax'],
+            }
+        if 'timeres' in session:
+            processDescription['timeres']=session['timeres'] 
+        if 'altres' in session:
+            processDescription['altres']=session['altres']
+        if 'process_control' in session:
+            processDescription['parameterstructure']=json.dumps(session['process_control'],separators=(',', ':'))
+
+        b.addProcess(processDescription)
+
     print 'starting task for ',sessionid, ' dispatch named ', dispatch
     tasks[sessionid].start(updateseconds=120)
     stdt.close()
