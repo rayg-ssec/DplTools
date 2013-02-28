@@ -16,6 +16,7 @@ lib=HSRLImageArchiveLibrarian(indexdefault='site')
      
 @view_config(route_name='imageresult',renderer='templates/imageresult.pt')
 def imageresult(request):
+    print 'URLREQ: ',request.matched_route.name
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
     #folder=picnicsession.sessionfolder(sessionid);
     #sessiontask=tasks[sessionid]
@@ -43,6 +44,7 @@ def imageresult(request):
 
 @view_config(route_name='netcdfresult',renderer='templates/netcdfresult.pt')
 def netcdfresult(request):
+    print 'URLREQ: ',request.matched_route.name
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
     #folder=picnicsession.sessionfolder(sessionid);
     #sessiontask=tasks[sessionid]
@@ -84,6 +86,7 @@ def netcdfresult(request):
 
 @view_config(route_name='imagecustom',renderer='templates/imagecustom.pt')
 def imagecustom(request):
+    print 'URLREQ: ',request.matched_route.name
     from hsrl.utils.locate_file import locate_file
     fn='all_plots.json'
     if 'display_defaults_file' in request.params:
@@ -100,9 +103,13 @@ def imagecustom(request):
 
 @view_config(route_name='imagereq')
 def imagerequest(request):
+    print 'URLREQ: ',request.matched_route.name
     session=request.session
     sessionid=session.new_csrf_token()
     sessiondict={}
+    if 'loadedsession' in request.params:
+        print 'loading session for id',sessionid
+        sessiondict=request.params.getone('loadedsession',None)
     sessiondict['sessionid']=sessionid
     sessiondict['finalpage']=request.route_path('imageresult',session=sessionid);
     picnicsession.newSessionProcess("newimages",request,sessiondict)
@@ -110,15 +117,22 @@ def imagerequest(request):
 
 @view_config(route_name='reimagereq')
 def reimagerequest(request):
+    print 'URLREQ: ',request.matched_route.name
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
     #folder=picnicsession.sessionfolder(sessionid);
     session=picnicsession.loadsession(sessionid)
+    if True:
+        pysession=request.session
+        sessionid=pysession.new_csrf_token()
+        session['sessionid']=sessionid
+        session['finalpage']=request.route_path('imageresult',session=sessionid);
     picnicsession.newSessionProcess("createimages",request,session)
     return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
    
 
 @view_config(route_name='netcdfreimage')
 def netcdfreimage(request):
+    print 'URLREQ: ',request.matched_route.name
     sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
     #folder=picnicsession.sessionfolder(sessionid);
     session=picnicsession.loadsession(sessionid)
@@ -129,6 +143,7 @@ def netcdfreimage(request):
 
 @view_config(route_name='netcdfreq')
 def netcdfrequest(request):
+    print 'URLREQ: ',request.matched_route.name
     session=request.session
     sessionid=session.new_csrf_token()
     sessiondict={}
@@ -246,6 +261,7 @@ def logbook(request):
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
 def form_view(request):
+    print 'URLREQ: ',request.matched_route.name
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
@@ -306,6 +322,7 @@ def form_view(request):
     if False:#instcount>3:#more than just HSRL. python doesn't support it yet
         return HTTPTemporaryRedirect(location=oldurl)
 
+
     #print request
     # used in both forms, but simplifies template
     alts=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,20,25,30] #in kilometers
@@ -352,9 +369,11 @@ optionalfields=("org",)
 
 @view_config(route_name='userCheck',renderer='templates/userCheck.pt')
 def userCheck(request):
+    print 'URLREQ: ',request.matched_route.name
     try:
         import cgi_datauser
     except:
+        print "Couldn't load cgi_datauser from hsrl git codebase. user tracking disabled"
         parms=''
         jumpurl=''
         if "PARAMS" in request.params:

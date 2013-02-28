@@ -9,8 +9,70 @@ import multiprocessing
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
+class PicnicTaskWrapper:
+    def __init__(self,sessionid):
+        self.__task=None
+        self.expiretime=datetime.utcnow()
+        self.__exitcode=None
+        self.sessionid=sessionid
+
+    #def __repr__(self):
+    def __updatesession(self):
+        tses=loadsession(self.sessionid)
+        tses['rescode']=self.__exitcode
+        storesession(tses)
+
+
+    def new_task(self,sessionid,*args, **kwargs):
+        self.terminate()
+        self.sessionid=sessionid
+        self.__task=multiprocessing.Process(*args, **kwargs)
+
+    def is_alive(self):
+        return self.__task!=None and self.__task.is_alive()
+
+    def terminate(self):
+        if self.is_alive():
+            self.__task.terminate()
+            self.__exitcode='terminated'
+            self.__updatesession()
+
+    def task(self):
+        return self.__task
+
+    def join(self):
+        if self.is_alive():
+            self.__task.join()
+            self.exitcode()
+            self.__task=None
+
+    def start(self):
+        if self.__task==None:
+            return None
+        self.updateExpireTime()
+        return self.__task.start()
+
+    def exitcode(self):
+        if self.is_alive():
+            self.__exitcode=None
+        elif self.__task!=None:
+            self.__exitcode=self.__task.exitcode
+            self.__updatesession()
+            self.__task=None
+        return self.__exitcode
+
+    def checkExpireTime(self,now=datetime.utcnow()):
+        if self.expiretime<=now:
+            self.terminate()
+
+    def updateExpireTime(self,updateseconds=30,now=datetime.utcnow(),force_time=None):
+        if force_time!=None:
+            self.expiretime=force_time
+        else:
+            self.expiretime=now+timedelta(seconds=updateseconds)
+
+
 tasks={}
-taskupdatetimes={}
 #imagepathcacheage=None
 
 def safejoin(*args):
@@ -94,15 +156,21 @@ def updateSessionComment(sessionid,value):
 
 def newSessionProcess(dispatch,request,session):
     sessionid=session['sessionid']
-    taskupdatetimes[sessionid]=datetime.utcnow()
     logfilepath=sessionfile(sessionid,'logfile',create=True)
-    if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
+    if sessionid in tasks and tasks[sessionid].is_alive():
         print 'cancelling stale task for ',sessionid
         tasks[sessionid].terminate()
         tasks[sessionid].join()
+    else:
+        tasks[sessionid]=PicnicTaskWrapper(sessionid=sessionid)
     session['rescode']=''
+    folder=_sessionfolder(sessionid)
+    for s in os.listdir(folder):
+        if s.startswith('.') or s=='logfile' or s.startswith('session'):
+            continue
+        os.unlink(safejoin(folder,s))
     stdt=file(logfilepath,'w')
-    tasks[sessionid]=multiprocessing.Process(target=taskdispatch,args=(dispatch,request,session,stdt))
+    tasks[sessionid].new_task(sessionid=sessionid,target=taskdispatch,args=(dispatch,request,session,stdt))
     session['comment']='inited'
     session['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile')
     dispatchers[dispatch](request,session,False)
@@ -150,6 +218,7 @@ def progress_getlastid(request):
     
 @view_config(route_name='progress_withid',renderer='templates/progress.pt')
 def progresspage(request):
+    print 'URLREQ: ',request.matched_route.name
     sessionid=request.matchdict['session']#session.get_csrf_token()  #get_cookies['session']#POST['csrf_token']
     #check status of this task
     #if sessionid not in tasks:
@@ -166,29 +235,22 @@ def progresspage(request):
     if session==None:
         return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
 
-    if sessionid in tasks and tasks[sessionid]!=None and tasks[sessionid].is_alive():
+    if sessionid in tasks and tasks[sessionid].is_alive():
         #load intermediate if not
-        nowtime=datetime.utcnow()
-        taskupdatetimes[sessionid]=nowtime
+        now=datetime.utcnow()
+        tasks[sessionid].updateExpireTime(now=now)
 
         for sesid in tasks:
-            if tasks[sesid]!=None and tasks[sesid].is_alive() and (nowtime-taskupdatetimes[sesid]).total_seconds()>60.0:
-                tasks[sesid].terminate()
-                print 'terminated task for ',sesid
-                tses=loadsession(sesid)
-                tses['rescode']='terminated'
-                storesession(tses)
+            if tasks[sesid].is_alive():
+                tasks[sesid].checkExpireTime(now=now)
 
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
             'sessionid':sessionid,'destination':session['finalpage'],'session':session}
     #load next page if complete
-    if sessionid in tasks and tasks[sessionid]!=None:
-        rescode=tasks[sessionid].exitcode
+    if sessionid in tasks:
+        rescode=tasks[sessionid].exitcode()
     else:
         rescode='unknown (old task)'
-    if 'rescode' not in session or session['rescode']=='':
-        session['rescode']=rescode
-        storesession(session)
     print 'finished task for ',sessionid, ' with result code ', rescode
     return HTTPTemporaryRedirect(location=session['finalpage'])
 
@@ -210,7 +272,7 @@ def statuspage(request):
         if s.startswith('.') or not os.path.isdir(safejoin(folder,s)):
             continue
         sess.append(s)
-    sessinfo=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0],'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,'task':tasks[n] if n in tasks else None,'session':loadsession(n)} for n in sess]
+    sessinfo=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0],'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,'task':tasks[n].task() if n in tasks else None,'session':loadsession(n)} for n in sess]
     sessinfo.sort(key=itemgetter('startTime'),reverse=True)
     if 'purge' in request.params:
         purgefrom=request.params.getone('purge')
@@ -236,24 +298,16 @@ def statuspage(request):
             if inf['sessionid']==terminate:
                 sessid=inf['sessionid']
                 print 'will try to terminate ',sessid
-                if sessid in tasks and tasks[sessid] and tasks[sessid].is_alive():
+                if sessid in tasks and tasks[sessid].is_alive():
                     tasks[sessid].terminate()
-                    tses=loadsession(sessid)
-                    tses['rescode']='terminated'
-                    storesession(tses)
                     return HTTPTemporaryRedirect(location=request.route_path('status'))
                 break
     runningtasks=0
     for ses in tasks:
-        if tasks[ses]!=None:
             if tasks[ses].is_alive():
                 runningtasks=runningtasks+1
             else:
-                tses=loadsession(ses)
-                if 'rescode' not in tses or tses['rescode']=='':
-                    tses['rescode']=tasks.exitcode
-                    storesession(tses)
-                tasks[ses]=None
+                tasks[ses].exitcode()#update the session exitcode
 
     return {'sessions':sess,
             'sessioninfo':sessinfo,
@@ -274,15 +328,14 @@ def debugsession(request):
     sessionid=request.matchdict['session']
     folder=_sessionfolder(sessionid);
     session=loadsession(sessionid)
-    if sessionid in tasks and tasks[sessionid]!=None:
+    if sessionid in tasks:
         task=tasks[sessionid]
         running=task.is_alive()
         if not running:
             tses=loadsession(sessionid)
             if 'rescode' not in tses or tses['rescode']=='':
-                tses['rescode']=tasks[sessionid].exitcode
+                tses['rescode']=task.exitcode()
                 storesession(tses)
-            tasks[sessionid]=None
     else:
         task=None
         running=False
@@ -300,7 +353,7 @@ def debugsession(request):
         session=loadsession(sessionid)
     else:
         session=None
-    return {'task':task,
+    return {'task':task.task(),
             'files':filelist,
             'fileinfo':filelistinfo,
             'session':session,
