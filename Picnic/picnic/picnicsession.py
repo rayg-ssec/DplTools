@@ -166,7 +166,7 @@ def newSessionProcess(dispatch,request,session):
     session['rescode']=''
     folder=_sessionfolder(sessionid)
     for s in os.listdir(folder):
-        if s.startswith('.') or s=='logfile' or s.startswith('session'):
+        if s.startswith('.') or s=='logfile' or s.endswith('.json') or s.endswith('.nc'):
             continue
         os.unlink(safejoin(folder,s))
     stdt=file(logfilepath,'w')
