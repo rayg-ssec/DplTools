@@ -6,6 +6,7 @@ from webob import Response
 from datetime import datetime,timedelta
 import time
 import multiprocessing
+import copy
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
@@ -155,6 +156,7 @@ def updateSessionComment(sessionid,value):
     storesession(session)
 
 def newSessionProcess(dispatch,request,session):
+    storesession(session)
     sessionid=session['sessionid']
     logfilepath=sessionfile(sessionid,'logfile',create=True)
     if sessionid in tasks and tasks[sessionid].is_alive():
@@ -190,9 +192,8 @@ def newSessionProcess(dispatch,request,session):
             'taskid':sessionid,
             'uid':userid,
             'processtype':dispatch,
-            'commandline':json.dumps(session,separators=(',', ':')),
             'start_time':datetime.strptime(session['starttime'],json_dateformat).strftime('%F %T'),
-            'end_time':datetime.strptime(session['starttime'],json_dateformat).strftime('%F %T'),
+            'end_time':datetime.strptime(session['endtime'],json_dateformat).strftime('%F %T'),
             'min_alt':session['altmin'],
             'max_alt':session['altmax'],
             }
@@ -202,6 +203,15 @@ def newSessionProcess(dispatch,request,session):
             processDescription['altres']=session['altres']
         if 'process_control' in session:
             processDescription['parameterstructure']=json.dumps(session['process_control'],separators=(',', ':'))
+        if 'process_control' in session or 'display_defaults' in session:
+            tsess=copy.deepcopy(session)
+            if 'process_control' in session:
+                del tsess['process_control']
+            if 'display_defaults' in session:
+                del tsess['display_defaults']
+        else:
+            tsess=session
+        processDescription['commandline']=json.dumps(tsess,separators=(',', ':')),
 
         b.addProcess(processDescription)
 
@@ -248,7 +258,7 @@ def progress_getlastid(request):
     
 @view_config(route_name='progress_withid',renderer='templates/progress.pt')
 def progresspage(request):
-    print 'URLREQ: ',request.matched_route.name
+    #print 'URLREQ: ',request.matched_route.name
     sessionid=request.matchdict['session']#session.get_csrf_token()  #get_cookies['session']#POST['csrf_token']
     #check status of this task
     #if sessionid not in tasks:
@@ -429,7 +439,7 @@ def makeUserCheckURL(request,destination,destparms=None):#only works with a simp
 
 @view_config(route_name='userCheck',renderer='templates/userCheck.pt')
 def userCheck(request):
-    print 'URLREQ: ',request.matched_route.name
+    #print 'URLREQ: ',request.matched_route.name
     try:
         import cgi_datauser
     except:
