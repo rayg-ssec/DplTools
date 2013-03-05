@@ -5,6 +5,7 @@ from pyramid.httpexceptions import HTTPNotFound, HTTPTemporaryRedirect
 from webob import Response
 from datetime import datetime,timedelta
 import time
+import resource
 import multiprocessing
 import copy
 
@@ -112,8 +113,19 @@ def taskdispatch(dispatcher,request,session,logstream=None):
     if logstream!=None:
         os.dup2(logstream.fileno(),sys.stdout.fileno())
         os.dup2(logstream.fileno(),sys.stderr.fileno())
+    resource.setrlimit(resource.RLIMIT_CORE,(0,0))
+    ress=[]
+    ress.append(resource.RLIMIT_DATA)
+    #ress.append(resource.RLIMIT_STACK)
+    ress.append(resource.RLIMIT_AS)
+    resssize=16*1024*1024*1024
+    for res in ress:
+        resource.setrlimit(res,(resssize,resssize))
     updateSessionComment(session,'dispatching')
-    dispatchers[dispatcher](request,session,isBackground=(None if logstream==None else True))
+    try:
+        dispatchers[dispatcher](request,session,isBackground=(None if logstream==None else True))
+    except Exception,e:
+        updateSessionComment(loadsession(session['sessionid']),'ERROR- %s :%s' % (type(e).__name__,e))
  
 def sessionfile(sessionid,filename,create=False):
     if not isinstance(sessionid,basestring):
@@ -133,11 +145,13 @@ def _sessionfolder(sessionid):
 def loadsession(sessionid):
     retry=5;
     ret=None
-    while ret==None and retry>0:
+    while ret==None:
         try:
             ret=json.load(file(sessionfile(sessionid,"session.json")))
         except:
             retry-=1
+            if retry==0:
+                raise
             time.sleep(.2)
     return ret
 
