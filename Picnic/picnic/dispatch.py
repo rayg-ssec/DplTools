@@ -89,10 +89,17 @@ def parseImageParameters(request,session):
     #construct image generation parameters
     session['dataset']=datasetname
     session['name']=name
+
+    if 'process_parameters_content' in request.params and request.params.getone('process_parameters_content')!=None:
+        print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
+        f=file(picnicsession.sessionfile(session,'process_parameters.json',create=True),'w')
+        f.write(request.params.getone('process_parameters_content').file.read())
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
-    if 'display_defaults_content' in request.params:
+    if 'display_defaults_content' in request.params and request.params.getone('display_defaults_content')!=None:
+        print 'Storing custom image parameters ',request.params.getone('display_defaults_content')
         f=file(picnicsession.sessionfile(session,'display_parameters.json',create=True),'w')
-        f.write(request.params.getone('display_defaults_content'))
+        f.write(request.params.getone('display_defaults_content').file.read())
+        session['figstocapture']=[None]
     elif 'display_defaults_file' in request.params:
         session['display_defaults_file']=request.params.getone('display_defaults_file')
         if os.path.sep in session['display_defaults_file']:
@@ -116,8 +123,13 @@ def parseImageParameters(request,session):
 
 def parseImageParametersBackground(request,session):
     picnicsession.updateSessionComment(session,'setup')
-    import hsrl.data_stream.display_utilities as du
-    (disp,conf)=du.get_display_defaults(session['display_defaults_file'])
+    if 'display_defaults_content' in request.params and request.params.getone('display_defaults_content')!=None:
+        import hsrl.utils.json_config as jc
+        disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
+    else:
+        import hsrl.data_stream.display_utilities as du
+        (disp,conf)=du.get_display_defaults(session['display_defaults_file'])
+
     #else:#fixme should this be enable_all()?
     #    (disp,conf)=du.get_display_defaults('web_plots.json')
     if None not in session['figstocapture']: # None indicates all should be captured, so if its not, scan structure
@@ -151,11 +163,7 @@ def parseNetCDFParameters(request,session):
 
     figstocapture=[]
 
-    if 'process_parameters_content' in request.params:
-        f=file(picnicsession.sessionfile(session,'process_parameters.json',create=True),'w')
-        f.write(request.params.getone('process_parameters_content'))
-
-    if 'display_defaults_content' not in request.params:
+    if 'display_defaults_content' not in request.params or request.params.getone('display_defaults_content')==None:
         datinfo=lib(**{session['method']:session[session['method']]})
         instruments=datinfo['Instruments']
         #print figstocapture

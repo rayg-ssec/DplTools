@@ -8,7 +8,7 @@
 <style type="text/css">.checklink A:link {color: #000000; text-decoration: none} .checklink A:visited {text-decoration: none} .checklink A:active {text-decoration: none} .checklink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM id="reqform" ACTION="${netcdfdestinationurl}" METHOD="GET">
+<FORM id="reqform" ACTION="${netcdfdestinationurl}" METHOD="POST" enctype="multipart/form-data">
 <INPUT TYPE="HIDDEN" NAME="site" VALUE="${site}"/>
 <P/>
 <div align="center">
@@ -371,7 +371,11 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 <TD ALIGN="RIGHT"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/waterphase.png" alt="P(180)/(4pi)=.05sr^-1"/></TD>
 </TR></TABLE></span></DIV>
 
-<BR/><BR/><DIV ALIGN="CENTER">
+<BR/><BR/>
+<DIV ALIGN="CENTER">
+	Custom Processing Parameter File:<INPUT TYPE="FILE" name="process_parameters_content" size="40"/>
+</DIV>
+<DIV ALIGN="CENTER">
 <span tal:omit-tag="True" tal:condition="userTracking">
 E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>
 </span>
