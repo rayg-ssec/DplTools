@@ -34,20 +34,28 @@ class GUIController(QtCore.QObject):
         self.widget = widget
         self.stream = stream
         self.stream.frame_ready.connect(self.handle_new_frame)
-        self.bindings = []
-        self.binding_idx = 0
-
-    def apply_line_x(self, line_object, data_array):
-        line_object.set_ydata(data_array)
-
-    def bind_line_y_to_channel(self, stream_channel_name, line_object=None):
-        if line_object is None:
-            raise ValueError("`line_object` is a required argument")
 
         # Each element in bindings is a 2-element tuple
         # The first is a tuple of the channel names to get data from
         # The second is a callable that expects only the arrays of data for the channels listed in the first element
+        self.bindings = []
+        self.binding_idx = 0
+
+    def apply_line_x(self, line_object, data_array):
+        line_object.set_xdata(data_array)
+
+    def apply_line_y(self, line_object, data_array):
+        line_object.set_ydata(data_array)
+
+    def bind_line_x_to_channel(self, stream_channel_name, line_object=None):
+        if line_object is None:
+            raise ValueError("`line_object` is a required argument")
         self.bindings.append( ((stream_channel_name,), partial(self.apply_line_x, line_object)) )
+
+    def bind_line_y_to_channel(self, stream_channel_name, line_object=None):
+        if line_object is None:
+            raise ValueError("`line_object` is a required argument")
+        self.bindings.append( ((stream_channel_name,), partial(self.apply_line_y, line_object)) )
 
     def handle_new_frame(self, frame):
         # Put the proper frame data into the widget
