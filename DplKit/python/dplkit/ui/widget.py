@@ -40,7 +40,9 @@ class MplWidget(FigureCanvasQTAgg):
         super(MplWidget, self).__init__(self.figure)
 
         self._blit = blit
-        self._blit_has_been_setup = False
+        self._have_run_setup = False
+
+        self._limits_changed = False
 
     def _init_draw(self):
         """Initialize blit drawing canvas.
@@ -93,9 +95,18 @@ class MplWidget(FigureCanvasQTAgg):
         if not self._blit:
             return self._draw()
 
-        if not self._blit_has_been_setup:
-            self._blit_has_been_setup = True
-            self._setup_blit()
+        if not self._have_run_setup:
+            self._have_run_setup = True
+            self._setup()
+            if self._blit:
+                self._setup_blit()
+
+        # If the limits were changed in some way we need to re-copy blitting stuff
+        if self._limits_changed:
+            self._limits_changed = False
+            self._init_draw()
+            self._post_draw()
+            return
 
         self._pre_draw()
         #self._draw() # Update any lines here if we were copying Animate
@@ -153,6 +164,15 @@ class MplWidget(FigureCanvasQTAgg):
         #    a.figure.canvas.restore_region(bg_cache[a])
         #    #self.restore_region(bg_cache[a], bbox=self.figure.bbox)
 
+    def _setup(self):
+        """Method run when things are first starting to gather information
+        about how the user set the figure up.
+        """
+        # Attach callbacks to handle limit changes
+        for ax in self.figure.axes:
+            ax.callbacks.connect('xlim_changed', self._handle_limits_change)
+            ax.callbacks.connect('ylim_changed', self._handle_limits_change)
+
     def _setup_blit(self):
         """Gather information for blitting to work properly.
         """
@@ -164,11 +184,6 @@ class MplWidget(FigureCanvasQTAgg):
         # Incomprehensible list comprehensions
         self._drawn_artists = [ line_obj for ax in self.figure.axes for line_obj in ax.lines ]
 
-        # Attach callbacks to handle limit changes
-        for ax in self.figure.axes:
-            ax.callbacks.connect('xlim_changed', self._handle_limits_change)
-            ax.callbacks.connect('ylim_changed', self._handle_limits_change)
-
         # Must setup the artists with their renderers, initial draw before we
         # copy anything
         self._init_draw()
@@ -177,8 +192,11 @@ class MplWidget(FigureCanvasQTAgg):
         self._post_draw()
 
     def _handle_limits_change(self, ax):
-        self._init_draw()
-        self._post_draw()
+        """Handle any axes limits changing.
+        This flag is handled in the `draw()` method by redrawing if the limits
+        were changed.
+        """
+        self._limits_changed = True
 
     def _handle_resize(self):
         #self._blit_cache.clear()

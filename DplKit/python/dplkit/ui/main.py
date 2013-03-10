@@ -74,7 +74,8 @@ def gui_test_1():
         x = numpy.linspace(0,2*numpy.pi,1024)
         #for i in range(1,10):
         for i in range(1,2000):
-            f = { "sine_value" : numpy.sin(x + i/10.0) }
+            f = { "sine_value" : numpy.sin(x + i/10.0)+(i*0.01) }
+            #f = { "sine_value" : numpy.sin(x + i/10.0)+(i*0.01) }
             yield f
 
     # Create the DPL Stream
@@ -93,6 +94,7 @@ def gui_test_1():
     ax.set_xlabel("X Axis")
     ax.set_ylabel("Y Axis")
     ax.set_ylim(-1, 1)
+    #ax.set_autoscale_on(True)
     #ax.set_xmargin(0.2)
     #ax.set_ymargin(0.5)
     ax.grid()
