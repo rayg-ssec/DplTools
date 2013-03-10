@@ -1,6 +1,7 @@
 import picnicsession
 from datetime import datetime,timedelta
 import jsgen
+import os
 
 #get parameters from session, call function to make DPL and make images
 def createimages(request,session,isBackground):
@@ -89,7 +90,10 @@ def parseImageParameters(request,session):
     session['dataset']=datasetname
     session['name']=name
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
-    if 'display_defaults_file' in request.params:
+    if 'display_defaults_content' in request.params:
+        f=file(picnicsession.sessionfile(session,'display_parameters.json',create=True),'w')
+        f.write(request.params.getone('display_defaults_content'))
+    elif 'display_defaults_file' in request.params:
         session['display_defaults_file']=request.params.getone('display_defaults_file')
         if os.path.sep in session['display_defaults_file']:
             session['display_defaults_file']=picnicsession.sessionfile(session,session['display_defaults_file'])
@@ -129,8 +133,7 @@ def parseImageParametersBackground(request,session):
     else:
         data_req= 'images housekeeping'
 
-    if 'display_defaults' not in session:
-        session['display_defaults']=disp.json_representation()
+    picnicsession.storejson(session,disp.json_representation(),'display_parameters.json')
     if 'data_request' not in session:
         session['data_request']=data_req
     picnicsession.storesession(session)
@@ -146,26 +149,32 @@ def parseNetCDFParameters(request,session):
     etf=datetime.strptime(session['endtime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     session['filename']=session['dataset'] + stf + etf + ('_%gs_%gm.nc' % (session['timeres'],session['altres']))
 
-    datinfo=lib(**{session['method']:session[session['method']]})
-    instruments=datinfo['Instruments']
-    #print figstocapture
-    datasets=[]
-    for inst in instruments:
-        datasets.extend(lib.instrument(inst)['datasets'])
- 
-    imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
-    session['display_defaults_file']='all_plots.json'
-      
     figstocapture=[]
-    for i in imagesetlist:
-        #print i
-        try:
-            defmode=i['default']
-            for figname in i['sets'][defmode]['figs']:
-                if 'image' in figname:
-                    figstocapture.append(figname)
-        except:
-            pass
+
+    if 'process_parameters_content' in request.params:
+        f=file(picnicsession.sessionfile(session,'process_parameters.json',create=True),'w')
+        f.write(request.params.getone('process_parameters_content'))
+
+    if 'display_defaults_content' not in request.params:
+        datinfo=lib(**{session['method']:session[session['method']]})
+        instruments=datinfo['Instruments']
+        #print figstocapture
+        datasets=[]
+        for inst in instruments:
+            datasets.extend(lib.instrument(inst)['datasets'])
+ 
+        imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
+        session['display_defaults_file']='all_plots.json'
+      
+        for i in imagesetlist:
+            #print i
+            try:
+                defmode=i['default']
+                for figname in i['sets'][defmode]['figs']:
+                    if 'image' in figname:
+                        figstocapture.append(figname)
+            except:
+                pass
     session['figstocapture']=figstocapture
     picnicsession.storesession(session)
 
@@ -187,8 +196,7 @@ def makeDPLFromSession(session):
     copyToInit={
         'dataset':'instrument',
         'maxtimeslice':'maxtimeslice_timedelta',
-        'data_request':'data_request',
-        'process_control':'process_control'
+        'data_request':'data_request'
     }
     copyToSearch={
         'starttime':'start_time_datetime',
@@ -199,13 +207,13 @@ def makeDPLFromSession(session):
         'altres':'altres_m',
     }
     from hsrl.dpl_experimental.dpl_hsrl import dpl_hsrl
-    dplobj=dpl_hsrl(**fromSession(session,copyToInit))
+    process_control=None
+    if os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
+        process_control=picnicsession.loadjson(session,'process_parameters.json')
+    dplobj=dpl_hsrl(process_control=process_control,**fromSession(session,copyToInit))
     dplc=dplobj(**fromSession(session,copyToSearch))
-    if 'process_control' in session and session['process_control']!=None:
-        pass
-    else:
-        session['process_control']=dplobj.get_process_control(None)
-        picnicsession.storesession(session)
+    if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
+        picnicsession.storejson(session,dplobj.get_process_control(None),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
     return dplc    
 
@@ -244,7 +252,8 @@ def makeImagesFromDPL(session,DPLgen):
     #import hsrl.graphics.graphics_toolkit as gt
     instrument=session['dataset']
     #sessionid=session['sessionid']
-    disp=jc.json_config(session['display_defaults'])
+    disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
+    params=picnicsession.loadjson(session,'process_parameters.json')
     #print session
 
     #folder=picnicsession.sessionfolder(sessionid)#safejoin('.','sessions',sessionid);
@@ -253,7 +262,7 @@ def makeImagesFromDPL(session,DPLgen):
         picnicsession.updateSessionComment(session,'creating artist')    
         artist=artists.dpl_images_artist(framestream=DPLgen,instrument=session['dataset'],
             max_alt=session['altmax'],
-            processing_defaults=session['processing_defaults'] if 'processing_defaults' in session else session['process_control']['processing_defaults'],
+            processing_defaults=params,
             display_defaults=disp)
         picnicsession.updateSessionComment(session,'processing')
         figs=artist()
