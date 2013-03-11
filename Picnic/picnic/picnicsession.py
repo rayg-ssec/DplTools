@@ -121,11 +121,13 @@ def taskdispatch(dispatcher,request,session,logstream=None):
     resssize=16*1024*1024*1024
     for res in ress:
         resource.setrlimit(res,(resssize,resssize))
-    updateSessionComment(session,'dispatching')
+    starttime=datetime.utcnow()
+    print 'started ',starttime
     try:
         dispatchers[dispatcher](request,session,isBackground=(None if logstream==None else True))
     except Exception,e:
         updateSessionComment(loadsession(session['sessionid']),'ERROR- %s :%s' % (type(e).__name__,e))
+    print 'finished ',datetime.utcnow(),'(',(datetime.utcnow()-starttime).total_seconds(),'seconds )'
  
 def sessionfile(sessionid,filename,create=False):
     if not isinstance(sessionid,basestring):
