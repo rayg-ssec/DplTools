@@ -6,10 +6,11 @@
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM ACTION="${req.route_path('generatejson')}" METHOD="GET">
+<FORM ACTION="${req.route_path('generatejson')}" METHOD="POST">
 <INPUT TYPE="HIDDEN" NAME="jsonprefix" VALUE="${jsonprefix}"/>
 <INPUT TYPE="HIDDEN" NAME="file" VALUE="${file}"/>
 <INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${subpath}"/>
+<INPUT TYPE="HIDDEN" NAME="original_content" VALUE="${original_content}"/>
 <INPUT TYPE="SUBMIT" VALUE="Submit"/>
 <div tal:repeat="figname json.keys()" class="entry">
   <table  tal:condition="'enable' in json[figname]" class="figure" >

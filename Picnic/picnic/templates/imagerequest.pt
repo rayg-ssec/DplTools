@@ -7,7 +7,7 @@
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM ACTION="${imagedestinationurl}" METHOD="GET">
+<FORM ACTION="${imagedestinationurl}" METHOD="POST" enctype="multipart/form-data">
 <INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
 <P>
 <div align="center">
@@ -69,7 +69,12 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 </TD></TR>
 </TABLE></TD>
 </TR></TABLE>
-<BR><div align="center">
+<BR/>
+<DIV ALIGN="CENTER">
+	Custom Processing Parameter File:<INPUT TYPE="FILE" name="process_parameters_content" size="40"/><BR/>
+	Custom Image Parameter File:<INPUT TYPE="FILE" name="display_defaults_content" size="40"/>
+</DIV>
+<div align="center">
 <span tal:omit-tag="True" tal:condition="userTracking">
 E-Mail: <span id="emailset" tal:condition="'datauser' in req.cookies"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" tal:attributes="style 'display: none' if 'datauser' in req.cookies else ''"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>
 </span>

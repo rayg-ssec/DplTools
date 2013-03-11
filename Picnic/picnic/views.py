@@ -84,22 +84,6 @@ def netcdfresult(request):
     return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc }
 
 
-@view_config(route_name='imagecustom',renderer='templates/imagecustom.pt')
-def imagecustom(request):
-    #print 'URLREQ: ',request.matched_route.name
-    from hsrl.utils.locate_file import locate_file
-    fn='all_plots.json'
-    if 'display_defaults_file' in request.params:
-        fn=request.params.getone('display_defaults_file')
-        if os.path.sep in fn:
-            fn=picnicsession.sessionfile(sessionid,sessiondict['display_defaults_file'])
-    ret={}
-    ret['jsonprefix']='json'
-    ret['file']=fn
-    ret['subpath']='display_defaults'
-    ret[ret['jsonprefix']] = json.load(open(locate_file(fn),'r'))[ret['subpath']]
-    return ret #loadMeta(ret,'json','meta')
-
 
 @view_config(route_name='imagereq')
 def imagerequest(request):
@@ -121,10 +105,13 @@ def reimagerequest(request):
     #folder=picnicsession.sessionfolder(sessionid);
     session=picnicsession.loadsession(sessionid)
     if True:
+        oldsessionid=sessionid
         pysession=request.session
         sessionid=pysession.new_csrf_token()
         session['sessionid']=sessionid
         session['finalpage']=request.route_path('imageresult',session=sessionid);
+        for f in ('display_parameters.json','process_parameters.json'):
+            picnicsession.storejson(sessionid,picnicsession.loadjson(oldsessionid,f),f)
     return picnicsession.newSessionProcess("createimages",request,session)
    
 

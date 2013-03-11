@@ -144,12 +144,19 @@ def _sessionfolder(sessionid):
         return safejoin('.','sessions')
     return safejoin('.','sessions',sessionid);
 
+def loadjson(session,filename):
+    if isinstance(session,basestring):
+        sessionid=session
+    else:
+        sessionid=session['sessionid']
+    return json.load(file(sessionfile(sessionid,filename)))
+
 def loadsession(sessionid):
     retry=5;
     ret=None
     while ret==None:
         try:
-            ret=json.load(file(sessionfile(sessionid,"session.json")))
+            ret=loadjson(sessionid,'session.json')
         except:
             retry-=1
             if retry==0:
@@ -157,9 +164,15 @@ def loadsession(sessionid):
             time.sleep(.2)
     return ret
 
-def storesession(session):
-    json.dump(session,file(sessionfile(session['sessionid'],'session.json',create=True),'w'),indent=4,separators=(',', ': '))
+def storejson(session,d,filename):
+    if isinstance(session,basestring):
+        sessionid=session
+    else:
+        sessionid=session['sessionid']
+    json.dump(d,file(sessionfile(sessionid,filename,create=True),'w'),indent=4,separators=(',', ': '))
 
+def storesession(session):
+    storejson(session,session,'session.json')
 
 def updateSessionComment(sessionid,value):
     if isinstance(sessionid,basestring):
@@ -219,6 +232,8 @@ def newSessionProcess(dispatch,request,session):
             processDescription['altres']=session['altres']
         if 'process_control' in session:
             processDescription['parameterstructure']=json.dumps(session['process_control'],separators=(',', ':'))
+        elif os.access(sessionfile(session,'process_parameters.json'),os.R_OK):
+            processDescription['parameterstructure']=json.dumps(loadjson(session,'process_parameters.json'),separators=(',', ':'))
         if 'process_control' in session or 'display_defaults' in session:
             tsess=copy.deepcopy(session)
             if 'process_control' in session:
@@ -409,7 +424,7 @@ def debugsession(request):
         session=loadsession(sessionid)
     else:
         session=None
-    return {'task':task.task(),
+    return {'task':task.task() if task!=None else None,
             'files':filelist,
             'fileinfo':filelistinfo,
             'session':session,
