@@ -4,9 +4,10 @@
 dplkit.metadata.keys
 ~~~~~~~~~~~~~~~~~~~~
 
-Common / universal search keys
+Common / universal search keys with explanation metadata
+FUTURE: include a 'validate' key which includes a callable returning true/false, probably made from a regex
 
-:copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
+:copyright: 2013 by University of Wisconsin Regents, see AUTHORS for more details
 :license: GPLv3, see LICENSE for more details
 """
 
@@ -19,7 +20,9 @@ import logging, unittest
 
 LOG = logging.getLogger(__name__)
 
-
+KEYS = { K_TIME_SPAN, K_BOUNDING_BOX, K_PERIMETER_POLYGON, K_CONTENT_CONVENTION,
+         K_COLLECTION_NAME, K_INSTRUMENT, K_SITE, K_EXPERIMENT, K_CONTACT, K_FILE_FORMAT,
+         K_FILENAME, K_UUID, K_SOURCE_UUID }
 
 #
 ## FIXME code goes here.
