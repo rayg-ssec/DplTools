@@ -474,15 +474,19 @@ def userCheck(request):
     try:
         import cgi_datauser
     except:
+        if 'URL' in request.POST:
+            params=request.POST
+        else:
+            params=request.GET
         print "Couldn't load cgi_datauser from hsrl git codebase. user tracking disabled"
         parms=''
         jumpurl=''
-        if "PARAMS" in request.params:
-            parms='?'+request.params.getone('PARAMS')
+        if "PARAMS" in params:
+            parms='?'+params.getone('PARAMS')
         if len(parms)<=1:
             parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-        if "URL" in request.params:
-            jumpurl=request.params.getone('URL')
+        if "URL" in params:
+            jumpurl=params.getone('URL')
         if len(jumpurl)<=0:
             jumpurl='/'
             parms=''
@@ -493,22 +497,26 @@ def userCheck(request):
     doForm=True
     fromSQL=False
     indebug=False #True
-    if (keyfield in request.params and len(request.params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
+    if 'keyfield' in request.POST:
+        params=request.POST
+    else:
+        params=request.GET
+    if (keyfield in params and len(params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
         doForm=False
-        if keyfield in request.params and len(request.params.getone(keyfield))>0:
-            if not isValidEmailAddress(request.params.getone(keyfield)):
+        if keyfield in params and len(params.getone(keyfield))>0:
+            if not isValidEmailAddress(params.getone(keyfield)):
                 doForm=True
             else:
-                info[keyfield]=request.params.getone(keyfield)
+                info[keyfield]=params.getone(keyfield)
                 hasreq=True;
                 for f in reqfields:
-                    if f in request.params and len(request.params.getone(f))>0:
-                        info[f]=request.params.getone(f)
+                    if f in params and len(params.getone(f))>0:
+                        info[f]=params.getone(f)
                     else:
                         hasreq=False
                 for f in optionalfields:
-                    if f in request.params and len(request.params.getone(f))>0:
-                        info[f]=request.params.getone(f)
+                    if f in params and len(params.getone(f))>0:
+                        info[f]=params.getone(f)
                 if not hasreq:#work by lookup
                     ti=dbc.getUserByEMail(info[keyfield])
                     if ti:
@@ -538,12 +546,12 @@ def userCheck(request):
         if uid!=None:
             parms=''
             jumpurl=''
-            if "PARAMS" in request.params:
-                parms='?'+request.params.getone('PARAMS')
+            if "PARAMS" in params:
+                parms='?'+params.getone('PARAMS')
             if len(parms)<=1:
                 parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-            if "URL" in request.params:
-                jumpurl=request.params.getone('URL')
+            if "URL" in params:
+                jumpurl=params.getone('URL')
             if len(jumpurl)<=0:
                 jumpurl='/'
                 parms=''
@@ -572,8 +580,8 @@ def userCheck(request):
     #if len(cookies)>0:
     #    print cookies
     #print
-    if "URL" in request.params:
-        info["URL"]=request.params.getone('URL')
+    if "URL" in params:
+        info["URL"]=params.getone('URL')
     else:
         info["URL"]=""
     info["PARAMS"]=request.query_string#os.environ.get("QUERY_STRING","")

@@ -90,15 +90,21 @@ def parseImageParameters(request,session):
     session['dataset']=datasetname
     session['name']=name
 
-    if 'process_parameters_content' in request.params and request.params.getone('process_parameters_content')!=None:
+    if 'custom_processing' in request.params and request.params.getone('custom_processing'):
         print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
-        f=file(picnicsession.sessionfile(session,'process_parameters.json',create=True),'w')
-        f.write(request.params.getone('process_parameters_content').file.read())
+        try:
+            d=json.loads(request.params.getone('process_parameters_content').file.read())
+            picnicsession.storejson(session,d,'process_parameters.json')
+        except:
+            return HTTPBadRequest()
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
-    if 'display_defaults_content' in request.params and request.params.getone('display_defaults_content')!=None:
+    if 'custom_display' in request.params and request.params.getone('custom_display'):
         print 'Storing custom image parameters ',request.params.getone('display_defaults_content')
-        f=file(picnicsession.sessionfile(session,'display_parameters.json',create=True),'w')
-        f.write(request.params.getone('display_defaults_content').file.read())
+        try:
+            d=json.loads(request.params.getone('display_defaults_content').file.read())
+            picnicsession.storejson(session,d,'display_parameters.json')
+        except:
+            return HTTPBadRequest()
         session['figstocapture']=[None]
     elif 'display_defaults_file' in request.params:
         session['display_defaults_file']=request.params.getone('display_defaults_file')
@@ -123,7 +129,7 @@ def parseImageParameters(request,session):
 
 def parseImageParametersBackground(request,session):
     picnicsession.updateSessionComment(session,'setup')
-    if 'display_defaults_content' in request.params and request.params.getone('display_defaults_content')!=None:
+    if 'custom_display' in request.params and request.params.getone('custom_display'):
         import hsrl.utils.json_config as jc
         disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
     else:
@@ -163,7 +169,7 @@ def parseNetCDFParameters(request,session):
 
     figstocapture=[]
 
-    if 'display_defaults_content' not in request.params or request.params.getone('display_defaults_content')==None:
+    if 'custom_display' not in request.params or request.params.getone('custom_display'):
         datinfo=lib(**{session['method']:session[session['method']]})
         instruments=datinfo['Instruments']
         #print figstocapture

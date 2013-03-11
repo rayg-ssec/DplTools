@@ -1,6 +1,8 @@
 from pyramid.view import view_config
 import json
 from multiprocessing import Process,Queue
+from pyramid.httpexceptions import HTTPBadRequest
+import copy
 
 def _back_locate_file(fn,q):
     try:
@@ -24,54 +26,125 @@ def safe_locate_file(fn):
         return retval
     raise retval
 
+def sortList(x):
+    y=copy.deepcopy(x)
+    y.sort()
+    return y
 
 @view_config(route_name='imagecustom',renderer='templates/imagecustom.pt')
 def imagecustom(request):
     #print 'URLREQ: ',request.matched_route.name
-    if 'source' in request.params:
-        content=json.loads(request.params.getone('source'))
-    else:
-        fn='all_plots.json'
-        if 'display_defaults_file' in request.params:
-            fn=request.params.getone('display_defaults_file')
-            if os.path.sep in fn:
-                fn=picnicsession.sessionfile(sessionid,sessiondict['display_defaults_file'])
-        content=json.load(open(safe_locate_file(fn),'r'))        
+    try:
+        if 'source' in request.params and len(request.parms.getone('source'))>0:
+            content=json.loads(request.params.getone('source'))
+        else:
+            fn='all_plots.json'
+            if 'file' in request.params:
+                fn=request.params.getone('file')
+            content=json.load(open(safe_locate_file(fn),'r'))        
+    except:
+        return HTTPBadRequest()
     ret={}
+    ret['sort']=sortList
     ret['jsonprefix']='json'
     #ret['file']=fn
     ret['original_content']=json.dumps(content, separators=(',',':'))
-    ret['subpath']='display_defaults'
-    ret[ret['jsonprefix']] = content[ret['subpath']]
+    ret['subpath']=request.params.getone('subpath') if 'subpath' in request.params else 'display_defaults'
+    ret[ret['jsonprefix']] = content if len(ret['subpath'])==0 else content[ret['subpath']]
     return ret #loadMeta(ret,'json','meta')
+
+def getarrval(a,s):
+    if s==None or len(s)==0:
+        return a
+    if isinstance(s,basestring):
+        l=len(s)
+        elements=[int(x) for x in s[1:(l-1)].split('][')]
+        return getarrval(a,elements)
+    else:
+        if len(s)==1:
+            return a[s[0]]
+        return getarrval(a[s[0]],s[1:])
+
+def setarrval(a,s,v):
+    if s==None or len(s)==0:
+        return a
+    if isinstance(s,basestring):
+        l=len(s)
+        elements=[int(x) for x in s[1:(l-1)].split('][')]
+        return setarrval(a,elements,v)
+    else:
+        if len(s)==1:
+            if v!=None:
+                a[s[0]]=v
+            else:
+                return a[s[0]]
+        return setarrval(a[s[0]],s[1:],v)
+
+def getdictval(d,ks):
+    idxs=None
+    if '[' in ks[0]:
+        idxs=ks[0][ks[0].find('['):]
+        ks[0]=ks[0][0:ks[0].find('[')]
+    if ks[0] not in d:
+        return None
+    if len(ks)==1:
+        return getarrval(d[ks[0]],idxs)
+    return getdictval(getarrval(d[ks[0]],idxs),ks[1:])
 
 def setdictval(d,ks,v):
     if len(ks)==1:
-        d[ks[0]]=v
-        return d
+        if '[' in ks[0]:
+            newks=ks[0][0:ks[0].find('[')]
+            idxs=ks[0][ks[0].find('['):]
+            if newks not in d:
+                d[newks]=[]
+            return setarrval(d[newks],idxs,v)
+        else:
+            d[ks[0]]=v
+            return d
+    if '[' in ks[0]:
+        idxs=ks[0][ks[0].find('['):]
+        ks[0]=ks[0][0:ks[0].find('[')]
+    else:
+        idxs=None
     if ks[0] not in d:
-        d[ks[0]]={}
-    setdictval(d[ks[0]],ks[1:],v)
+        if idxs==None:
+            d[ks[0]]={}
+        else:
+            d[ks[0]]=[]
+    setdictval(setarrval(d[ks[0]],idxs,None),ks[1:],v)
 
 def oneleveldict(sd,dd={},ks=[]):
-    if type(sd) is not type({}):
+    if type(sd) not in (dict,list):
         dd['.'.join(ks)]=sd
         return dd
-    for k in sd:
-        oneleveldict(sd[k],dd,ks+[k])
+    if type(sd)==dict:
+        for k in sd:
+            oneleveldict(sd[k],dd,ks+[k])
+    elif type(sd)==list:
+        tmpks=copy.deepcopy(ks);
+        for k in range(0,len(sd)):
+            tmpks[-1]=ks[-1]+('[%i]' % k)
+            #print tmpks
+            oneleveldict(sd[k],dd,tmpks)
     return dd
 
 def meta(d):
-    ret={}
-    if type(d) is not type(ret):
+    if type(d) not in (dict,list):
         return '%s' % (type(d).__name__)
-    for x in d:
-        ret[x]=meta(d[x])
+    if type(d)==dict:
+        ret={}
+        for x in d:
+            ret[x]=meta(d[x])
+    elif type(d)==list:
+        ret=[]
+        for x in d:
+            ret.append(meta(x))
     return ret
 
 def loadMeta(d,pref,mpref):
     ret={}
-    ret[pref]=d
+    ret[pref]=copy.deepcopy(d)
     ret[mpref]=meta(d)
     ret['jsonprefix']=pref
     ret['metaprefix']=mpref
@@ -79,30 +152,53 @@ def loadMeta(d,pref,mpref):
 
 @view_config(route_name='generatejson',renderer='json')
 def generatejson(request):
-    if 'original_content' in request.params:
-        sidedo=json.loads(request.params.getone('original_content'))
-    else:
-        fn=request.params.getone('file')
-        sidedo=json.load(open(safe_locate_file(fn),'r'))
+    try:
+        if 'original_content' in request.params:
+            sidedo=json.loads(request.params.getone('original_content'))
+        else:
+            fn=request.params.getone('file')
+            sidedo=json.load(open(safe_locate_file(fn),'r'))
+    except:
+        return HTTPBadRequest()
+
+    #print request.params
     if 'jsonprefix' in request.params: 
         pref=request.params.getone('jsonprefix')
         subpath=request.params.getone('subpath')
         metpref='meta'
-        sided=oneleveldict(loadMeta(sidedo[subpath],pref,metpref))
+        sided=oneleveldict(loadMeta(sidedo if len(subpath)==0 else sidedo[subpath],pref,metpref))
         res={}
-        res[pref]=sidedo[subpath]
-        for f in request.params:
+        res[pref]=sidedo if len(subpath)==0 else sidedo[subpath]
+        allkeys=request.params.keys()
+        mk=sided.keys()
+        mk.sort()
+        for f in mk:
+            if not f.startswith(pref+'.'):
+                continue
+            if f not in allkeys:
+                allkeys.append(f)
+                #print 'added ',f
+        for f in allkeys:
             if not f.startswith(pref + '.'):
+                #print f,"doesn't start with",pref
                 continue
             k=f
             ks=k.split('.')
-            v=request.params.getone(f)
+            if f not in request.params:
+                if ks[-1]=='enable':
+                    v='0'#special dumb case
+                    #print k,'is being set to false'
+                else:
+                    print k,"wasn't in the form"
+                    continue
+            else:
+                v=request.params.getone(f)
             metkey=metpref + f[len(pref):]
             if metkey in sided:
                 tp=sided[metkey]
-                if tp not in ['int','float']:
+                if tp not in ['int','float','str','unicode']:
                     print tp
-                if v.lower() in ['on','off','true','false'] and tp=='int':
+                if v.lower() in ['on','off','true','false','yes','no'] and tp=='int':
                     if v.lower() in ['on','true']:
                         v=1
                     else:
@@ -111,8 +207,14 @@ def generatejson(request):
                     v=eval(tp+'(v)')
             #print 'setting value'
             #print ks
+            if getdictval(res,ks)==v:
+                continue
+            print 'changing ',ks,'was',getdictval(res,ks),', setting to',v
             #print v
             setdictval(res,ks,v)
             #print res
-        sidedo[subpath]=res[pref]
+        if len(subpath)==0:
+            sidedo=res[pref]
+        else:
+            sidedo[subpath]=res[pref]
     return sidedo

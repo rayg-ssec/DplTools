@@ -4,7 +4,6 @@
 <Title>${sitename} Processed Data Retreival</Title>
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
 <script language="javascript" src="${req.route_path('netcdfjavascript',accesstype=request.matchdict['accesstype'],access=request.matchdict['access'])}"></script>
-<script language="javascript" src="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?js=yes&site=${site}"></script>
 <style type="text/css">.checklink A:link {color: #000000; text-decoration: none} .checklink A:visited {text-decoration: none} .checklink A:active {text-decoration: none} .checklink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
@@ -373,7 +372,8 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 
 <BR/><BR/>
 <DIV ALIGN="CENTER">
-	Custom Processing Parameter File:<INPUT TYPE="FILE" name="process_parameters_content" size="40"/>
+	<INPUT type="checkbox" name="custom_processing" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="checklink"><a href="javascript: toggleCheckbox('custom_processing');updateVisibilities();checkDataAvailability();">Custom Processing Parameter File</a></span>
+	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/></span>
 </DIV>
 <DIV ALIGN="CENTER">
 <span tal:omit-tag="True" tal:condition="userTracking">

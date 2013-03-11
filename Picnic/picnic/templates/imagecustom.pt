@@ -4,20 +4,57 @@
 <Title></Title>
 <link rel="stylesheet" href="${request.static_path('picnic:static/imagecustom.css')}" type="text/css" media="screen" charset="utf-8" />
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
+ <script type="text/javascript">
+function toggleCheckbox(name){
+  var itemlist = document.forms['jsonform'];
+  var cb=itemlist[name];
+  cb.checked=!cb.checked;
+}
+</script>
 </head>
 <body>
-<FORM ACTION="${req.route_path('generatejson')}" METHOD="POST">
+<FORM ACTION="${req.current_route_path()}" METHOD="POST" enctype="multipart/form-data" id='newfile'>
+<INPUT TYPE="HIDDEN" NAME="subpath" value="${subpath}"/>
+Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
+<INPUT TYPE="SUBMIT" VALUE="Edit..."/>
+</FORM>
+<FORM ACTION="${req.route_path('generatejson')}" METHOD="POST" id='jsonform'>
 <INPUT TYPE="HIDDEN" NAME="jsonprefix" VALUE="${jsonprefix}"/>
 <INPUT TYPE="HIDDEN" NAME="file" VALUE="${file}"/>
 <INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${subpath}"/>
 <INPUT TYPE="HIDDEN" NAME="original_content" VALUE="${original_content}"/>
-<INPUT TYPE="SUBMIT" VALUE="Submit"/>
-<div tal:repeat="figname json.keys()" class="entry">
-  <table  tal:condition="'enable' in json[figname]" class="figure" >
+<div tal:repeat="figname sort(json.keys())" class="entry">
+  <table  tal:condition="(not isinstance(json[figname],dict) or 'enable' not in json[figname]) and not figname.startswith('#')" class="parameter">
+    <tbody>
+      <tr tal:condition="not isinstance(json[figname],dict) and not isinstance(json[figname],list)">
+        <td class="parameter_title">Parameter ${figname}:</td>
+        <td>
+          <input type="text" name="${jsonprefix}.${figname}" value="${json[figname]}"/>
+        </td>
+      </tr>
+      <tr tal:condition="isinstance(json[figname],list)">
+        <td class="parameter_title">Parameter Series ${figname}:</td>
+        <td>
+          <input tal:repeat="x range(0,len(json[figname]))" type="text" name="${jsonprefix}.${figname}[${x}]" value="${json[figname][x]}"/>
+        </td>
+      </tr>
+       <tr tal:condition="isinstance(json[figname],dict)">
+        <td class="parameter_title" colspan="5">Parameter Set ${figname}:</td>
+       </tr>
+       <tr tal:condition="isinstance(json[figname],dict)">
+        <td tal:repeat="field sort(json[figname].keys())" >
+          <span tal:omit-tag="True" tal:condition="not field.startswith('#')">
+            ${field}:<input type="text" name="${jsonprefix}.${figname}.${field}" value="${json[figname][field]}"/>
+          </span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <table  tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname]" class="figure" >
     <tbody>
       <tr>
         <td class="figure_title">
-          <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/>${figname}
+          <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${jsonprefix}.${figname}.enable')">Figure: ${figname}</a></span>
         </td>
       </tr>
       <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname]" >
@@ -54,6 +91,42 @@
             Color Max:
             <input type="text" name="${jsonprefix}.${figname}.hi_color_lmt" value="${json[figname]['hi_color_lmt']}"/>
           </span>
+        </td>
+      </tr>
+      <tr tal:condition="'log_linear' in json[figname]" >
+        <td>
+          Scale:
+          <select name="${jsonprefix}.${figname}.log_linear">
+            <option value="log" tal:attributes="selected json[figname].log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].log_linear=='linear'">Linear</option>
+          </select>
+        </td>
+      </tr>
+      <tr tal:condition="'x_log_linear' in json[figname]" >
+        <td>
+          X Scale:
+          <select name="${jsonprefix}.${figname}.x_log_linear">
+            <option value="log" tal:attributes="selected json[figname].x_log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].x_log_linear=='linear'">Linear</option>
+          </select>
+        </td>
+      </tr>
+     <tr tal:condition="'y_log_linear' in json[figname]" >
+        <td>
+          Y Scale:
+          <select name="${jsonprefix}.${figname}.y_log_linear">
+            <option value="log" tal:attributes="selected json[figname].y_log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].y_log_linear=='linear'">Linear</option>
+          </select>
+        </td>
+      </tr>
+      <tr tal:condition="'color_log_linear' in json[figname]" >
+        <td>
+          Color Scale:
+          <select name="${jsonprefix}.${figname}.color_log_linear">
+            <option value="log" tal:attributes="selected json[figname].color_log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].color_log_linear=='linear'">Linear</option>
+          </select>
         </td>
       </tr>
       <tr tal:condition="'mol_lost_level' in json[figname]" >
