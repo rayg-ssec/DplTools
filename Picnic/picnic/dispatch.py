@@ -163,6 +163,10 @@ def parseNetCDFParameters(request,session):
     session['maxtimeslice_timedelta']=60*60*2
     session['data_request']="images housekeeping"
     session['template']=request.params.getone('cdltemplatename')
+    if session['template']=='custom':
+        fn=picnicsession.sessionfile(session,'template.cdl',create=True)
+        file(fn,'w').write(request.params.getone('cdltemplate_content').file.read())
+        session['template']=fn
     stf=datetime.strptime(session['starttime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     etf=datetime.strptime(session['endtime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     session['filename']=session['dataset'] + stf + etf + ('_%gs_%gm.nc' % (session['timeres'],session['altres']))

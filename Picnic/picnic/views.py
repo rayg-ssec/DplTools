@@ -34,13 +34,15 @@ def imageresult(request):
             ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
         if f.endswith('.json'):
             jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
+        if f.endswith('.cdl'):
+            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
     ims.sort()
     if 'starttime' in session:
         session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
     if 'endtime' in session:
         session['endtime']=datetime.strptime(session['endtime'],picnicsession.json_dateformat)
     #send to template
-    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'timedelta':timedelta } 
+    return { 'imageurls':ims, 'plainurls':jsonfiles, 'session':session, 'timedelta':timedelta } 
 
 @view_config(route_name='netcdfresult',renderer='templates/netcdfresult.pt')
 def netcdfresult(request):
@@ -62,6 +64,8 @@ def netcdfresult(request):
             ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
         if f.endswith('.json'):
             jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
+        if f.endswith('.cdl'):
+            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
     ims.sort()
     if 'starttime' in session:
         session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
@@ -81,7 +85,7 @@ def netcdfresult(request):
         print err
     #print file(safejoin(folder,'logfile')).read()
     #send to template
-    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc }
+    return { 'imageurls':ims, 'plainurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc }
 
 
 
@@ -202,7 +206,7 @@ def dataAvailability(request):
                 datasets.extend(lib.instrument(inst)['datasets'])
         except RuntimeError:
             return HTTPNotFound("unknown data storage search method 2")
-    starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')
+    starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')#some OSes strptime don't assue %Y consumes 4 characters
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
     
     Q=Queue()
@@ -334,6 +338,14 @@ def form_view(request):
             'oldurl':oldurl,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
+            'cdltemplates':{
+                "hsrl_nomenclature.cdl":"UW HSRL(NetCDF4)",
+                "hsrl_cfradial.cdl":"NCAR CFRadial",
+                "hsrl3_processed.cdl":"UW Processed (NetCDF3)",
+                "hsrl3_raw.cdl":"UW Raw (NetCDF3)",
+                "custom":"User Provided:"
+            },
+            'cdltemplateorder':[ "hsrl_nomenclature.cdl","hsrl_cfradial.cdl","hsrl3_processed.cdl","hsrl3_raw.cdl","custom"],
             'userTracking':picnicsession.haveUserTracking(),
             #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),

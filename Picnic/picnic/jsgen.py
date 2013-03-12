@@ -145,13 +145,21 @@ function sanityCheckSubmit() {
     invcount++;
   if(itemlist['custom_processing']!=null && itemlist['custom_processing'].checked && itemlist['process_parameters_content'].value=="")
     invcount++;
-
+  if(itemlist['cdltemplatename'].value=='custom' && itemlist['cdltemplate_content'].value=="")
+    invcount++;
 
   if(invcount>0){
     sbmt.disabled=true;
   }else{
     sbmt.disabled=false;
   }
+}
+
+function updateTemplateVisibility(){
+  if(itemlist['cdltemplatename'].value=='custom')
+    document.getElementById("cdltemplate_custom").style.display=""
+  else
+    document.getElementById("cdltemplate_custom").style.display="none"
 }
 
 var fallbackTimeout=false;

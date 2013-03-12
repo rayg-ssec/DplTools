@@ -197,7 +197,7 @@ def newSessionProcess(dispatch,request,session):
     session['rescode']=''
     folder=_sessionfolder(sessionid)
     for s in os.listdir(folder):
-        if s.startswith('.') or s=='logfile' or s.endswith('.json') or s.endswith('.nc'):
+        if s.startswith('.') or s=='logfile' or s.endswith('.json') or s.endswith('.nc') or s.endswith('.cdl'):
             continue
         os.unlink(safejoin(folder,s))
     stdt=file(logfilepath,'w')
@@ -273,6 +273,8 @@ def session_resource(request):
         m='text/plain'
     if fn.endswith('.json'):
         m='application/json'
+    if fn.endswith('.cdl'):
+        m='application/x-netcdf'
     if fn.endswith('.nc') or fn.endswith('.cdf'):
         m='application/x-netcdf'
 
