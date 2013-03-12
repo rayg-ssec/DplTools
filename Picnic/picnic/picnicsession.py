@@ -8,6 +8,7 @@ import time
 import resource
 import multiprocessing
 import copy
+import stat
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
@@ -329,10 +330,47 @@ def progresspage(request):
 
 
 #### STATUS bits
+def printNumber(fn,fmt,base,orders):
+    powr=1.0
+    order=None
+    for o in range(0,len(orders)):
+        if fn<(powr*base):
+            order=o
+            break
+        powr*=base
+    if order==None:
+        order=-1
+    stri=fmt+' %s '
+    return stri % (fn/(powr),orders[order])
 
 def infoOfFile(fn):
     tmp=os.stat(fn)
-    return (datetime.utcfromtimestamp(tmp.st_ctime),datetime.utcfromtimestamp(tmp.st_mtime),tmp.st_size)
+    return (datetime.utcfromtimestamp(tmp.st_ctime),datetime.utcfromtimestamp(tmp.st_mtime),tmp.st_size,tmp.st_mode)
+
+def getSizeOfFolder(folder):
+    ret=0
+    for fn in os.listdir(folder):
+        if fn.startswith('.'):
+            continue
+        inf=infoOfFile(safejoin(folder,fn))
+        if stat.S_ISDIR(inf[3]):
+            ret+=getSizeOfFolder(safejoin(folder,fn))
+        elif stat.S_ISREG(inf[3]):
+            ret+=inf[2]
+    return ret
+
+def sessinfo_gen(folder,sessTimes):
+    for inf in sessTimes:
+        n=inf['sessionid']
+        yield {
+            'sessionid':n,
+            'startTime':infoOfFile(safejoin(folder,n))[0],
+            'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,
+            'task':tasks[n].task() if n in tasks else None,
+            'session':loadsession(n),
+            'size':getSizeOfFolder(safejoin(folder,n)),
+            }
+
 
 from operator import itemgetter
             
@@ -345,12 +383,12 @@ def statuspage(request):
         if s.startswith('.') or not os.path.isdir(safejoin(folder,s)):
             continue
         sess.append(s)
-    sessinfo=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0],'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,'task':tasks[n].task() if n in tasks else None,'session':loadsession(n)} for n in sess]
-    sessinfo.sort(key=itemgetter('startTime'),reverse=True)
+    sessTimes=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0]}  for n in sess]
+    sessTimes.sort(key=itemgetter('startTime'),reverse=True)
     if 'purge' in request.params:
         purgefrom=request.params.getone('purge')
         found=False
-        for inf in sessinfo:#(sessid,sdate,running,task) in sessinfo:
+        for inf in sessTimes:#(sessid,sdate,running,task) in sessinfo:
             if inf['sessionid']==purgefrom:
                 found=True
                 continue
@@ -367,9 +405,8 @@ def statuspage(request):
     if 'terminate' in request.params:
         terminate=request.params.getone('terminate')
         found=False
-        for inf in sessinfo:
-            if inf['sessionid']==terminate:
-                sessid=inf['sessionid']
+        for sessid in sess:
+            if sessid==terminate:
                 print 'will try to terminate ',sessid
                 if sessid in tasks and tasks[sessid].is_alive():
                     tasks[sessid].terminate()
@@ -383,9 +420,9 @@ def statuspage(request):
                 tasks[ses].exitcode()#update the session exitcode
 
     return {'sessions':sess,
-            'sessioninfo':sessinfo,
+            'sessioninfo':sessinfo_gen(folder,sessTimes),
             'runningtasks':runningtasks,
-            'datetime':datetime,'timedelta':timedelta}
+            'datetime':datetime,'timedelta':timedelta,'printNumber':printNumber}
 
 @view_config(route_name='debug',renderer='templates/debug.pt')
 def debugpage(request):
@@ -395,6 +432,11 @@ def debugpage(request):
     info.append({'name':'Python platform','content':sys.platform})
     info.append({'name':'Python Path','content':os.getenv('PYTHONPATH',"")})
     return {'simpleinfos':info}
+
+def filelistinfo_gen(folder,filelist):
+    for f in filelist:
+        inf=infoOfFile(safejoin(folder,f))
+        yield {'name':f,'stats':[printNumber(inf[2],'%.2f',1024,['bytes','KB','MB','GB']),inf[0],inf[1]]}
 
 @view_config(route_name='debugsession',renderer='templates/debugsession.pt')
 def debugsession(request):
@@ -415,10 +457,7 @@ def debugsession(request):
     if os.access(folder,os.R_OK):
         filelist=os.listdir(folder)
         filelist.sort()
-        filelistinfo=[]
-        for f in filelist:
-            inf=infoOfFile(safejoin(folder,f))
-            filelistinfo.append({'name':f,'stats':[inf[2],inf[0],inf[1]]})
+        filelistinfo=filelistinfo_gen(folder,filelist)
     else:
         filelist=None
         filelistinfo=None
@@ -431,7 +470,7 @@ def debugsession(request):
             'fileinfo':filelistinfo,
             'session':session,
             'running':running,
-            'sessionid':sessionid}
+            'sessionid':sessionid,'printNumber':printNumber}
 
 
 def isValidEmailAddress(stringval):

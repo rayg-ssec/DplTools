@@ -24,13 +24,14 @@ setTimeout("self.location.replace('${request.route_path('status')}')",90000)
     running tasks = ${runningtasks}<br>
     <table>
       <tr tal:repeat="sess sessioninfo">
-        <td><a href="${request.route_path('debugsession',session=sess.sessionid)}">${sess.sessionid}</a></td>
-        <td>started ${sess.startTime.strftime('%F %R UT')}</td>
-        <td>
+        <td style="padding: 5px"><a href="${request.route_path('debugsession',session=sess.sessionid)}">${sess.sessionid}</a></td>
+        <td style="padding: 5px">started ${sess.startTime.strftime('%F %R UT')}</td>
+        <td style="padding: 5px">${printNumber(sess.size,'%.1f',1024.0,['bytes','KB','MB','GB'])}</td>
+        <td style="padding: 5px">
           <a tal:condition="sess.running" tal:attributes="href request.route_path('progress_withid',session=sess.sessionid)">running</a>
           <div tal:condition="not sess.running and sess.session and 'rescode' in sess.session and sess.session.rescode!=0">Return:${sess.session.rescode}</div>
         </td>
-        <td>
+        <td style="padding: 5px">
           <a tal:condition="sess.running" href="${request.current_route_path()}?terminate=${sess.sessionid}">terminate</a>
           <a tal:condition="not sess.running and (datetime.utcnow()-sess.startTime)>timedelta(days=1)" href="${request.current_route_path()}?purge=${sess.sessionid}">purge older</a>
         </td>

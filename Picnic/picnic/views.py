@@ -75,9 +75,11 @@ def netcdfresult(request):
     try:
         from netCDF4 import Dataset
         nc=Dataset(fullfilename,'r')
+        inf=picnicsession.infoOfFile(fullfilename)
         e=None
     except Exception, err:
         nc=None
+        inf=[None,None,0,None]
         e=err
     if nc==None:
         print nc
@@ -85,7 +87,7 @@ def netcdfresult(request):
         print err
     #print file(safejoin(folder,'logfile')).read()
     #send to template
-    return { 'imageurls':ims, 'plainurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc }
+    return { 'imageurls':ims, 'plainurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber}
 
 
 
