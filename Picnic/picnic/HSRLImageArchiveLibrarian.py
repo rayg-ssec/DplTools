@@ -21,11 +21,16 @@ class HSRLImageArchiveSearchResult:
             return tm
         return self._nextTime(flr)
 
+    def validTime(self,tm):
+        if 'Windows' in self.base:
+            tm=self.lib.validLaterTime(tm,self.base['Windows'])
+        return tm
+
     def nextTime(self,tm):
         r=self._nextTime(tm)
-        if 'Windows' in self.base:
-            r=self.lib.validLaterTime(r,self.base['Windows'])
-        return r
+        #if 'Windows' in self.base:
+        #    r=self.lib.validLaterTime(r,self.base['Windows'])
+        return self.validTime(r)
 
     def __init__(self,host,base,start,end,prefix,isthumb):
         self.lib=host
@@ -58,7 +63,9 @@ class HSRLImageArchiveSearchResult:
 
     def __repr__(self):
         secondstep=self.nextTime(self.start)
-        if secondstep>=self.end:
+        if secondstep==None:
+            rangestr="EMPTY"
+        elif secondstep>=self.end:
             rangestr="%s" % (self.start)
         else:
             rangestr="%s-%s" % (self.start,self.end)
@@ -68,7 +75,7 @@ class HSRLImageArchiveSearchResult:
         return os.path.join(self.base['Path'],'%i' % date.year, '%02i' % date.month, '%02i' % date.day, 'images')
 
     def __iter__(self):
-        time=self.start
+        time=self.validTime(self.start)
         prefix=0
         #return HSRLImageArchiveSearchResultIterator(self)
         while not (time==None or (self.end!=None and self.end<=time)):
@@ -256,7 +263,8 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
         self.defaultsite=self()
         try:
             if 'Windows' in self.defaultsite:
-                self.defaultwindows=self.defualtsite['Windows']
+                self.defaultwindows=self.defaultsite['Windows']
+                print self.defaultwindows
         except AttributeError:
             pass
  
@@ -430,24 +438,25 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
 
 if __name__=='__main__':
     lib=HSRLImageArchiveLibrarian()
-    for x in lib():
-        print x
-    for x in lib('instrument'):
-        print x
-    for x in lib('dataset'):
-        print x
-    for x in lib(isactive=False):
-        print x
-    print lib('site',15)
+    #for x in lib():
+    #    print x
+    #for x in lib('instrument'):
+    #    print x
+    #for x in lib('dataset'):
+    #    print x
+    #for x in lib(isactive=False):
+    #    print x
+    #print lib('site',15)
     m=lib('site',16,start=datetime(2012,12,1,3,0,0),end=datetime(2012,12,3,12,0,0),prefix='bscat',isthumb=True)
     m=lib('site',1,start=datetime(2004,11,1,0,0,0),end=datetime(2004,12,1,0,0,0),prefix='bscat',isthumb=True)
-    print lib('site',1)
+    m=lib('site',1,start=datetime(2012,11,1,0,0,0),end=datetime(2012,12,1,0,0,0),prefix='bscat',isthumb=True)
+    #print lib('site',1)
     print m
     for x in m:
         print x
-    p=[thumb['prefix'] for thumblist in [[dict({'Instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib('site',2)['Instruments']] for thumb in thumblist]
-    print p
-    #print [t['prefix'] for t in p] #[lib.instrument(i)['thumbsets'] for i in lib()['Instruments']]]
-    selectedtype='depol'
-    #print ''.join([('' if thumb['prefix']!=b else thumb['instrument'] + ' ' + thumb['name'] ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib('site',2)['Instruments']] for thumb in thumblist])
-    print 'Multi-View' if selectedtype==None else ''.join([''.join([('' if thumb['prefix']!=selectedtype else (thumb['instrument'] + ' ' + thumb['name']) ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib('site',2)['Instruments']] for thumb in thumblist]),' Full Month View'])
+    #p=[thumb['prefix'] for thumblist in [[dict({'Instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib('site',2)['Instruments']] for thumb in thumblist]
+    #print p
+    ##print [t['prefix'] for t in p] #[lib.instrument(i)['thumbsets'] for i in lib()['Instruments']]]
+    #selectedtype='depol'
+    ##print ''.join([('' if thumb['prefix']!=b else thumb['instrument'] + ' ' + thumb['name'] ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib('site',2)['Instruments']] for thumb in thumblist])
+    #print 'Multi-View' if selectedtype==None else ''.join([''.join([('' if thumb['prefix']!=selectedtype else (thumb['instrument'] + ' ' + thumb['name']) ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib('site',2)['Instruments']] for thumb in thumblist]),' Full Month View'])

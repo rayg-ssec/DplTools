@@ -371,6 +371,14 @@ def sessinfo_gen(folder,sessTimes):
             'size':getSizeOfFolder(safejoin(folder,n)),
             }
 
+def __removeSession(sess):
+    sesf=_sessionfolder(sess)
+    fs=os.listdir(sesf)
+    for f in fs:
+        os.unlink(safejoin(sesf,f))
+        print 'unlinked ',safejoin(sesf,f)
+    os.rmdir(sesf)
+    print 'unlinked ',sesf
 
 from operator import itemgetter
             
@@ -385,6 +393,11 @@ def statuspage(request):
         sess.append(s)
     sessTimes=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0]}  for n in sess]
     sessTimes.sort(key=itemgetter('startTime'),reverse=True)
+    if 'purgeone' in request.params:
+        purge=request.params.getone('purgeone')
+        if purge in sess:
+            __removeSession(purge)
+            return HTTPTemporaryRedirect(location=request.current_route_path())
     if 'purge' in request.params:
         purgefrom=request.params.getone('purge')
         found=False
@@ -393,15 +406,9 @@ def statuspage(request):
                 found=True
                 continue
             if found:
-                sesf=_sessionfolder(inf['sessionid'])
-                fs=os.listdir(sesf)
-                for f in fs:
-                    os.unlink(safejoin(sesf,f))
-                    print 'unlinked ',safejoin(sesf,f)
-                os.rmdir(sesf)
-                print 'unlinked ',sesf
+                __removeSession(inf['sessionid'])
         if found:
-            return HTTPTemporaryRedirect(location=request.route_path('status'))
+            return HTTPTemporaryRedirect(location=request.current_route_path())
     if 'terminate' in request.params:
         terminate=request.params.getone('terminate')
         found=False
@@ -410,7 +417,7 @@ def statuspage(request):
                 print 'will try to terminate ',sessid
                 if sessid in tasks and tasks[sessid].is_alive():
                     tasks[sessid].terminate()
-                    return HTTPTemporaryRedirect(location=request.route_path('status'))
+                    return HTTPTemporaryRedirect(location=request.current_route_path())
                 break
     runningtasks=0
     for ses in tasks:

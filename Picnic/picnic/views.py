@@ -13,7 +13,19 @@ from timeutils import validdate
 
 from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
 lib=HSRLImageArchiveLibrarian(indexdefault='site')
-     
+
+def sessionUrls(request,sessionid,extensions):
+    try:
+        fl=os.listdir(picnicsession.sessionfile(sessionid,None))
+        fl.sort()
+    except:
+        return
+    for f in fl:
+        for e in extensions:
+            if f.endswith(e):
+                yield {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f}
+                break
+
 @view_config(route_name='imageresult',renderer='templates/imageresult.pt')
 def imageresult(request):
     #print 'URLREQ: ',request.matched_route.name
@@ -23,26 +35,13 @@ def imageresult(request):
     #session=sessiontask['session']
     #scan session folder for images
     session=picnicsession.loadsession(sessionid)
-    ims = []
-    jsonfiles=[]
-    try:
-        fl=os.listdir(picnicsession.sessionfile(sessionid,None))
-    except:
-        fl=[]
-    for f in fl:
-        if f.endswith('.png'):
-            ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
-        if f.endswith('.json'):
-            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
-        if f.endswith('.cdl'):
-            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
-    ims.sort()
+
     if 'starttime' in session:
         session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
     if 'endtime' in session:
         session['endtime']=datetime.strptime(session['endtime'],picnicsession.json_dateformat)
     #send to template
-    return { 'imageurls':ims, 'plainurls':jsonfiles, 'session':session, 'timedelta':timedelta } 
+    return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')) , 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session, 'timedelta':timedelta } 
 
 @view_config(route_name='netcdfresult',renderer='templates/netcdfresult.pt')
 def netcdfresult(request):
@@ -53,20 +52,7 @@ def netcdfresult(request):
     #session=sessiontask['session']
     #scan session folder for images
     session=picnicsession.loadsession(sessionid)
-    ims = []
-    jsonfiles=[]
-    try:
-        fl=os.listdir(picnicsession.sessionfile(sessionid,None))#folder)
-    except:
-        fl=[]
-    for f in fl:
-        if f.endswith('.png'):
-            ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
-        if f.endswith('.json'):
-            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
-        if f.endswith('.cdl'):
-            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
-    ims.sort()
+
     if 'starttime' in session:
         session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
     if 'endtime' in session:
@@ -87,7 +73,8 @@ def netcdfresult(request):
         print err
     #print file(safejoin(folder,'logfile')).read()
     #send to template
-    return { 'imageurls':ims, 'plainurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber}
+    return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')), 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session,
+        'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber}
 
 
 
