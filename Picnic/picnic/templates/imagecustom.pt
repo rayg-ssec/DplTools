@@ -24,7 +24,7 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${subpath}"/>
 <INPUT TYPE="HIDDEN" NAME="original_content" VALUE="${original_content}"/>
 <div tal:repeat="figname sort(json.keys())" class="entry">
-  <table  tal:condition="(not isinstance(json[figname],dict) or 'enable' not in json[figname]) and not figname.startswith('#')" class="parameter">
+  <table  tal:condition="(not isinstance(json[figname],dict) or ('enable' not in json[figname] and subpath=='display_defaults') or subpath!='display_defaults') and not figname.startswith('#')" class="parameter">
     <tbody>
       <tr tal:condition="not isinstance(json[figname],dict) and not isinstance(json[figname],list)">
         <td class="parameter_title">Parameter ${figname}:</td>
@@ -39,18 +39,22 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
         </td>
       </tr>
        <tr tal:condition="isinstance(json[figname],dict)">
-        <td class="parameter_title" colspan="5">Parameter Set ${figname}:</td>
+        <td class="parameter_title" colspan="5">Parameter Set ${figname}:
+          <span tal:condition="'enable' in json[figname]">
+            <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${jsonprefix}.${figname}.enable')">enable</a></span>
+          </span>
+        </td>
        </tr>
        <tr tal:condition="isinstance(json[figname],dict)">
         <td tal:repeat="field sort(json[figname].keys())" >
-          <span tal:omit-tag="True" tal:condition="not field.startswith('#')">
+          <span tal:omit-tag="True" tal:condition="not field.startswith('#') and field not in ('parameters','doc','docs','enable')">
             ${field}:<input type="text" name="${jsonprefix}.${figname}.${field}" value="${json[figname][field]}"/>
           </span>
         </td>
       </tr>
     </tbody>
   </table>
-  <table  tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname]" class="figure" >
+  <table  tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and subpath=='display_defaults'" class="figure" >
     <tbody>
       <tr>
         <td class="figure_title">
