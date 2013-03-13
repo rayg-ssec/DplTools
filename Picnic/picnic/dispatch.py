@@ -171,16 +171,38 @@ def parseNetCDFParameters(request,session):
     etf=datetime.strptime(session['endtime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     session['filename']=session['dataset'] + stf + etf + ('_%gs_%gm.nc' % (session['timeres'],session['altres']))
 
+    datinfo=lib(**{session['method']:session[session['method']]})
+    instruments=datinfo['Instruments']
+    #print figstocapture
+    datasets=[]
+    for inst in instruments:
+        datasets.extend(lib.instrument(inst)['datasets'])
+ 
+    fieldstocapture=[]
+    if not 'allfields' in request.params or not request.params.getone('allfields'):
+        fieldsetlist=jsgen.formsetsForInstruments(datasets,'netcdf')
+        for inst in fieldsetlist:#per instrument
+            for subset in inst['sets']:
+                subsetincluded=False
+                for checkbox in subset['sets']:
+                    formname=checkbox['formname']
+                    if formname not in request.params or not request.params.getone(formname):
+                        continue
+                    subsetincluded=True
+                    for fieldname in checkbox['included']:
+                        if fieldname not in fieldstocapture:
+                            fieldstocapture.append(fieldname)
+                if subsetincluded and 'included' in subset:
+                    for fieldname in subset['included']:
+                        if fieldname not in fieldstocapture:
+                            fieldstocapture.append(fieldname)
+
+    print fieldstocapture
+    session['selected_fields']=fieldstocapture
+
     figstocapture=[]
 
     if 'custom_display' not in request.params or request.params.getone('custom_display'):
-        datinfo=lib(**{session['method']:session[session['method']]})
-        instruments=datinfo['Instruments']
-        #print figstocapture
-        datasets=[]
-        for inst in instruments:
-            datasets.extend(lib.instrument(inst)['datasets'])
- 
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         session['display_defaults_file']='all_plots.json'
       
@@ -251,7 +273,7 @@ def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
     
     ncfilename=picnicsession.sessionfile(session,netcdffilename,create=True)
 
-    artist=artists.dpl_netcdf_artist(DPLgen,templatefilename,ncfilename)
+    artist=artists.dpl_netcdf_artist(DPLgen,templatefilename,ncfilename,selected_bindings=session['selected_fields'])
   
     picnicsession.updateSessionComment(session,'processing')
  

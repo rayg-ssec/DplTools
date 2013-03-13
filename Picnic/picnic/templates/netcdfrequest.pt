@@ -202,107 +202,37 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 <DIV ALIGN="CENTER"><font color="#cc0000">under construction</font></DIV> <BR/>
 <DIV ALIGN="CENTER"><a href="http://lidar.ssec.wisc.edu/syst/ahsrl/export_netcdf_help.html">Documentation</a><p/></DIV>
 <DIV ALIGN="CENTER" tal:condition="False"><BIG><BIG>Select your desired datasets:</BIG></BIG></DIV>
-  <TABLE ALIGN="CENTER" CELLSPACING="5" tal:condition="False">
-
+<TABLE ALIGN="CENTER" CELLSPACING="5">
+<TR><TD colspan="${len(netcdfsets)}" align="center"><B>Select Desired Datasets:</B></TD></TR>
 <TR>
-<TD colspan="2" align="left"><BIG>Derived Quantities</BIG></TD>
-
-<TD colspan="2" align="left"><A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#rawdata" TARGET="lidarwebdoc"><BIG>Raw Data</BIG></A></TD>
-
-<TD colspan="2"> </TD>
-
+	<TD tal:repeat="ncset netcdfsets">
+		<TABLE>
+			<TR>
+				<TD colspan="${len(ncset.sets)}" align="center"><a tal:attributes="href ncset.link" target="lidarwebdoc" tal:omit-tag="'link' not in ncset">${ncset.name}</a></TD>
+			</TR>
+			<TR>
+				<TD tal:repeat="ncsubset ncset.sets">
+					<TABLE>
+						<TR>
+							<TD colspan="2" align="center"><a tal:attributes="href ncsubset.link" target="lidarwebdoc" tal:omit-tag="'link' not in ncsubset">${ncsubset.name}</a></TD>
+						</TR>
+						<TR tal:repeat="checkbox ncsubset.sets">
+							<TD>
+								<input type="checkbox" tal:attributes="name checkbox.formname;checked checkbox.default!=0" />
+								<span class="checklink"><a href="javascript:toggleCheckbox(${checkbox.formname})">${checkbox.name}</a></span>
+								<a tal:condition="'link' in checkbox" tal:attributes="href checkbox.link" target="lidarwebdoc"><img src="http://lidar.ssec.wisc.edu/q.png" alt="(help)"/></a>
+							</TD>
+						</TR>
+					</TABLE>
+				</TD>
+			</TR>
+		</TABLE>
+	</TD>
 </TR>
-<TR>
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartBackXSec" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartBackXSec');">Particulate Backscatter Cross Section</A></span></TD>
-
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="Cmb" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('Cmb');">Combined Channel Counts</A></span></TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartOptDep" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartOptDep');">Particulate Optical Depth</A></span></TD>
-
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="Mol" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('Mol');">Molecular Channel Counts</A></span></TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartDepol" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartDepol');">Particulate Depolarization</A></span></TD>
-
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="Crs" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('Crs');">Cross Polarized Channel Counts</A></span></TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="PartScatXSec" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('PartScatXSec');">Particulate Extinction Cross Section</A></span></TD>
-
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="RdoProf" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('RdoProf');">Radiosonde Profile(s)</A></span></TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="AttenBackScat" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('AttenBackScat');">Attenuated Molecular Backscatter</A></span></TD>
-
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="MolScatXSec" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('MolScatXSec');">Molecular Scattering Cross Section</A></span></TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="ErrEst" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('ErrEst');">Error Estimates</A></span></TD>
-
-<TD align="right"><INPUT CHECKED="TRUE" TYPE="CHECKBOX" NAME="System" /></TD><TD align="left"> <span class="checklink"><A HREF="javascript: toggleCheckbox('System');">Calibration/System Measurements</A></span></TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD colspan="2" align="left"><BIG></BIG></TD>
-
-<TD colspan="2" align="left"><BIG></BIG></TD>
-
-<TD colspan="2" align="left"><BIG></BIG></TD>
-
-</TR>
-<TR>
-<TD colspan="2"> </TD>
-
-<TD colspan="2"> </TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD colspan="2"> </TD>
-
-<TD colspan="2"> </TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD colspan="2"> </TD>
-
-<TD colspan="2"> </TD>
-
-<TD colspan="2"> </TD>
-
-</TR>
-<TR>
-<TD colspan="2"> </TD>
-
-<TD colspan="2" align="left"><BIG></BIG></TD>
-
-<TD colspan="2" align="left"><BIG></BIG></TD>
-
-</TR>
+<TR><TD colspan="${len(netcdfsets)}" align="center"><input type="checkbox" name="allfields"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields')">Include All</a></span></TD></TR>
 </TABLE>
 
-<DIV ALIGN="CENTER"><span id="param_part" >
+<DIV ALIGN="CENTER"><span id="param_part"  tal:condition="False">
 <A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partmeasurements" TARGET="_blank">Particle Size Distribution Parameters</A><BR/>
 <P/>
 <TABLE><TR><TD>New Code.  Use with caution<BR/>Check your Distribution Graphs.<BR/><span id="showgraph"  style="display: none"><A HREF="javascript: sendFormAction('reqform','particleparametergraph.cgi');"> <input type="button" name="graph" value="Size Distribution Graphs" onclick="sendFormAction('reqform','particleparametergraph.cgi');" alt="" /></A></span>
@@ -355,7 +285,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 <TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/deltaa.png" alt="delta_a"/>=<INPUT TYPE="TEXT" NAME="particlesettings.delta_a2" VALUE="1.57" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD><TD></TD>
 <TD ALIGN="CENTER"><IMG src="http://lidar.ssec.wisc.edu/graphics/equations/netcdf/deltav.png" alt="delta_v"/>=<INPUT TYPE="TEXT" NAME="particlesettings.delta_v2" VALUE="2.26" size="5" MAXSIZE="10" onchange="clearPSET();"/></TD>
 </TR></TABLE></TD></TR></TABLE></span></DIV><BR/>
-<DIV ALIGN="CENTER"><span id="param_edp_part" >
+<DIV ALIGN="CENTER"><span id="param_edp_part" tal:condition="False" >
 <TABLE><TR><TD>Linear Depolarization below </TD><TD><INPUT TYPE="TEXT" NAME="particlesettings.h20_depol_threshold" VALUE="0.05" size="4" MAXSIZE="5"/></TD><TD>is considered liquid water</TD></TR></TABLE>
 <A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partdiameterprime" TARGET="_blank">Backscatter Phase Function used for Effective Diameter Prime</A><BR/>
 
