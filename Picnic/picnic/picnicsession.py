@@ -9,6 +9,7 @@ import resource
 import multiprocessing
 import copy
 import stat
+import traceback
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
@@ -128,6 +129,7 @@ def taskdispatch(dispatcher,request,session,logstream=None):
         dispatchers[dispatcher](request,session,isBackground=(None if logstream==None else True))
     except Exception,e:
         updateSessionComment(loadsession(session['sessionid']),'ERROR- %s :%s' % (type(e).__name__,e))
+        print traceback.format_exc()
     print 'finished ',datetime.utcnow(),'(',(datetime.utcnow()-starttime).total_seconds(),'seconds )'
  
 def sessionfile(sessionid,filename,create=False):

@@ -29,7 +29,7 @@ function checkViewType() {
   <table align="center"><tbody>
     <tr>
       <td align="left" width="150"><a tal:condition="prevdate!=None and prevdate!=thistime" href="${request.current_route_path(accesstype=methodtype,access=methodkey,year=prevdate.year,month='%02i' % prevdate.month,day='%02i' % prevdate.day,thumbtype=selectedtype)}">Previous</a></td>
-      <td align="center" width="500">${lib().Name} - ${'Multi-View' if selectedtype==None else ''.join([''.join([('' if thumb['prefix']!=selectedtype else (thumb['instrument'] + ' ' + thumb['name']) ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib()['Instruments']] for thumb in thumblist]),' Full Month View'])}<BR>pagedesc</td>
+      <td align="center" width="500">${lib().Name} - ${'Multi-View' if selectedtype==None else ''.join([''.join([('' if thumb['prefix']!=selectedtype else (thumb['instrument'] + ' ' + thumb['name']) ) for thumblist in [ [dict({'instrument':instrument}.items()+x.items()) for x in lib.instrument(instrument)['thumbsets']] for instrument in lib()['Instruments']] for thumb in thumblist]),' Full Month View'])}</td>
       <td align="right" width="150"><a tal:condition="nextdate!=None and nextdate>=endtime" href="${request.current_route_path(accesstype=methodtype,access=methodkey,year=nextdate.year,month='%02i' % nextdate.month,day='%02i' % nextdate.day,thumbtype=selectedtype)}">Next</a></td>
     </tr>
     <tr><td></td><td align="center">

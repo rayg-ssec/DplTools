@@ -228,10 +228,16 @@ def makeDPLFromSession(session):
     process_control=None
     if os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
         process_control=picnicsession.loadjson(session,'process_parameters.json')
+        import hsrl.utils.json_config as jc
+        process_control=jc.json_config(process_control,default_key='process_defaults')
     dplobj=dpl_hsrl(process_control=process_control,**fromSession(session,copyToInit))
-    dplc=dplobj(**fromSession(session,copyToSearch))
+    try:
+        import hsrl.utils.threaded_generator
+        dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**fromSession(session,copyToSearch))
+    except:
+        dplc=dplobj(**fromSession(session,copyToSearch))
     if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
-        picnicsession.storejson(session,dplobj.get_process_control(None),'process_parameters.json')
+        picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
     return dplc    
 
@@ -271,7 +277,7 @@ def makeImagesFromDPL(session,DPLgen):
     instrument=session['dataset']
     #sessionid=session['sessionid']
     disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
-    params=picnicsession.loadjson(session,'process_parameters.json')
+    params=jc.json_config(picnicsession.loadjson(session,'process_parameters.json'),'process_defaults')
     #print session
 
     #folder=picnicsession.sessionfolder(sessionid)#safejoin('.','sessions',sessionid);

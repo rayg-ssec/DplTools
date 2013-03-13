@@ -33,7 +33,7 @@ setTimeout("self.location.replace('${request.route_path('status')}')",90000)
         </td>
         <td style="padding: 5px">
           <a tal:condition="sess.running" href="${request.current_route_path()}?terminate=${sess.sessionid}">terminate</a>
-          <a tal:condition="not sess.running and (datetime.utcnow()-sess.startTime)>timedelta(days=1)" href="${request.current_route_path()}?purgeone=${sess.sessionid}">purge this</a>
+          <a tal:condition="not sess.running" href="${request.current_route_path()}?purgeone=${sess.sessionid}">purge this</a>
           <a tal:condition="not sess.running and (datetime.utcnow()-sess.startTime)>timedelta(days=1)" href="${request.current_route_path()}?purge=${sess.sessionid}">purge older</a>
         </td>
       </tr>

@@ -264,7 +264,6 @@ class HSRLImageArchiveLibrarian(dplkit.role.librarian.aLibrarian):
         try:
             if 'Windows' in self.defaultsite:
                 self.defaultwindows=self.defaultsite['Windows']
-                print self.defaultwindows
         except AttributeError:
             pass
  
