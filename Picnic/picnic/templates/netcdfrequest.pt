@@ -218,8 +218,8 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 						</TR>
 						<TR tal:repeat="checkbox ncsubset.sets">
 							<TD>
-								<input type="checkbox" tal:attributes="name checkbox.formname;checked checkbox.default!=0" />
-								<span class="checklink"><a href="javascript:toggleCheckbox(${checkbox.formname})">${checkbox.name}</a></span>
+								<input type="checkbox" tal:attributes="name checkbox.formname;checked checkbox.default!=0" onchange="checkDataAvailability();" />
+								<span class="checklink"><a href="javascript:toggleCheckbox('${checkbox.formname}');checkDataAvailability();">${checkbox.name}</a></span>
 								<a tal:condition="'link' in checkbox" tal:attributes="href checkbox.link" target="lidarwebdoc"><img src="http://lidar.ssec.wisc.edu/q.png" alt="(help)"/></a>
 							</TD>
 						</TR>
@@ -229,7 +229,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 		</TABLE>
 	</TD>
 </TR>
-<TR><TD colspan="${len(netcdfsets)}" align="center"><input type="checkbox" name="allfields"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields')">Include All</a></span></TD></TR>
+<TR><TD colspan="${len(netcdfsets)}" align="center"><input type="checkbox" name="allfields" onchange="checkDataAvailability();"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields');checkDataAvailability();">Include All</a></span></TD></TR>
 </TABLE>
 
 <DIV ALIGN="CENTER"><span id="param_part"  tal:condition="False">

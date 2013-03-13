@@ -42,12 +42,14 @@ def makeUpdateFromData(asets):
 
     ret+="""
 function updateFromData(availability){
-    var itemlist = document.forms[0];
+    var itemlist = document.forms['reqform'];
     fallbackTimeout=false;
     var av=new Array();
     var doall=false;
     var donone=false;
     if (itemlist['custom_display']!=null && itemlist['custom_display'].checked)
+      donone=true;
+    if (itemlist['allfields']!=null && itemlist['allfields'].checked)
       donone=true;
     if (availability && availability=='all')
       doall=true;
@@ -56,15 +58,25 @@ function updateFromData(availability){
       
 """
     for aset in asets:
-        setid=0
-        for setname in aset['order']:
+        if 'order' in aset:
+          setid=0
+          for setname in aset['order']:
             shoulden='true'
             if 'enabled' in aset['sets'][setname]:
                 shoulden='||'.join(["hasString(av,'%s')"%s for s in aset['sets'][setname]['enabled']])
             if 'required' in aset['sets'][setname]:
                 shoulden='&&'.join(["hasString(av,'%s')"%s for s in aset['sets'][setname]['required']])
-            ret+="    doDisable(itemlist,'%s:%i',((!(%s))&&!doall)||donone);\n" % (aset['formname'],setid,shoulden)
+            ret+="    doDisable(itemlist,'%s:%i',((!(%s))&&!doall)||donone,false);\n" % (aset['formname'],setid,shoulden)
             setid=setid+1
+        else:
+          for bset in aset['sets']:
+            for cset in bset['sets']:
+              shoulden='true'
+              if 'enabled' in cset:
+                  shoulden='||'.join(["hasString(av,'%s')"%s for s in cset['enabled']])
+              if 'required' in cset:
+                  shoulden='&&'.join(["hasString(av,'%s')"%s for s in cset['required']])
+              ret+="    doDisable(itemlist,'%s',((!(%s))&&!doall)||donone,true);\n" % (cset['formname'],shoulden)
     ret+="""
     if(av.length>0)
       sanityCheckSubmit();
@@ -283,6 +295,7 @@ function clearPSET() {
 
 function changePSET() {
   itemlist = document.forms[0];
+  try{
   idx=itemlist['presetPSET'].selectedIndex;
   if (idx<=0)
     return;
@@ -298,6 +311,7 @@ function changePSET() {
     if(keys[i] in pset)
       if(itemlist[prefix+keys[i]]!=null)
         itemlist[prefix+keys[i]].value=pset[keys[i]];
+  }catch(e){}
 }
 
 var xmlhttps=new Array(false,false);
@@ -348,7 +362,7 @@ function hasString(arr,str){
 
 var enState=new Object();
 
-function doDisable(objs,field,disable){
+function doDisable(objs,field,disable,checkval){
   try{
   obj=objs[field];
   wasDis=obj.disabled;
@@ -359,7 +373,7 @@ function doDisable(objs,field,disable){
     obj.disabled=true;
     if (obj.type.toLowerCase() == "checkbox"){
       enState[field]=obj.checked;
-      obj.checked=false;
+      obj.checked=checkval;
     }
   }else{
     obj.disabled=false;
@@ -458,7 +472,8 @@ function updateVisibilities() {
   else
     edp.style.display="none";
     }catch(e){
-    edp.style.display="none";
+    if(edp!=null)
+     edp.style.display="none";
     }
     try{
   if(itemlist['ParticleMeasurements'].checked)
@@ -466,6 +481,7 @@ function updateVisibilities() {
   else
     part.style.display="none";
     }catch(e){
+    if(part!=null)
     part.style.display="none";
     }
   if(itemlist['custom_processing']!=null){
