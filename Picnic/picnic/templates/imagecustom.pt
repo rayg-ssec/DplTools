@@ -97,6 +97,19 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
           </span>
         </td>
       </tr>
+      <tr tal:condition="'number_xbins' in json[figname] or 'number_ybins' in json[figname]" >
+        <td>
+          Histogram Bin Counts:
+          <span tal:condition="'number_xbins' in json[figname]">
+            X
+            <input type="text" name="${jsonprefix}.${figname}.number_xbins" value="${json[figname]['number_xbins']}"/>
+          </span>
+          <span tal:condition="'number_ybins' in json[figname]">
+            Y
+            <input type="text" name="${jsonprefix}.${figname}.number_ybins" value="${json[figname]['number_ybins']}"/>
+          </span>
+        </td>
+      </tr>
       <tr tal:condition="'log_linear' in json[figname]" >
         <td>
           Scale:
