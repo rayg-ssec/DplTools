@@ -7,7 +7,7 @@
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM ACTION="${imagedestinationurl}" METHOD="POST" enctype="multipart/form-data">
+<FORM ACTION="${imagedestinationurl}" id="reqform" METHOD="POST" enctype="multipart/form-data">
 <INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
 <P>
 <div align="center">
