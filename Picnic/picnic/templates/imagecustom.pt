@@ -46,10 +46,26 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
         </td>
        </tr>
        <tr tal:condition="isinstance(json[figname],dict)">
+        <td tal:condition="'doc' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].doc}</pre>
+        </td>
+        <td tal:condition="'docs' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].docs}</pre>
+        </td>
+        <td tal:condition="'documentation' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].documentation}</pre>
+        </td>
+      </tr>
+      <tr tal:condition="isinstance(json[figname],dict)">
         <td tal:repeat="field sort(json[figname].keys())" >
-          <span tal:omit-tag="True" tal:condition="not field.startswith('#') and field not in ('parameters','doc','docs','enable')">
+          <span tal:omit-tag="True" tal:condition="not field.startswith('#') and field not in ('parameters','doc','docs','enable','documentation')">
             ${field}:<input type="text" name="${jsonprefix}.${figname}.${field}" value="${json[figname][field]}"/>
           </span>
+        </td>
+      </tr>
+      <tr tal:condition="isinstance(json[figname],dict) and 'parameters' in json[figname]" tal:repeat="field sort(json[figname].parameters.keys())">
+        <td colspan="10" tal:condition="field!='enable'">
+          <pre>${field}: ${json[figname].parameters[field]}</pre>
         </td>
       </tr>
     </tbody>
