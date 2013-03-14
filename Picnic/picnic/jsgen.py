@@ -70,7 +70,7 @@ function updateFromData(availability){
             setid=setid+1
         else:
           for bset in aset['sets']:
-            for cset in bset['sets']:
+            for cset in bset['options']:
               shoulden='true'
               if 'enabled' in cset:
                   shoulden='||'.join(["hasString(av,'%s')"%s for s in cset['enabled']])

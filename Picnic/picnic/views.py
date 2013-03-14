@@ -233,6 +233,50 @@ def logbook(request):
     return HTTPTemporaryRedirect(location='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?'+'&'.join([(k + '=' + parms[k]) for k in parms.keys()]))
 
 
+class idxholder:
+    def __init__(self):
+        self.ctr=0
+
+    def increment(self):
+        self.ctr+=1
+
+    def value(self):
+        return self.ctr
+
+    def __repr__(self):
+        return '%i' % self.value()
+
+def setCount(sets):
+    ret=0
+    for s in sets:
+        #print s['name']
+        if 'sets' not in s:
+            ret+=1
+        else:
+            ret+=setCount(s)
+    return ret
+
+def setGen(sets,startid,count,cid=None):
+    if cid==None:
+        cid=idxholder()
+        toplayer=False
+    else:
+        toplayer=False
+    for s in sets:
+        if 'sets' not in s:
+            #print 'singleton set',sets['name'],startid,count,cid
+            if cid.value()>=startid and cid.value()<(startid+count):
+                if toplayer:
+                    print startid,count,cid,s['name']
+                yield (s,)
+            cid.increment()
+        else:
+            for ss in setGen(s['sets'],startid,count,cid):
+                if toplayer:
+                    print startid,count,cid,s['name'],tuple([x['name'] for x in ss])
+                #print 'returning iterated set',sets['name'],(s['name'],)+ss,startid,count,cid
+                yield (s,)+ss
+
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
 def form_view(request):
@@ -338,4 +382,4 @@ def form_view(request):
             'userTracking':picnicsession.haveUserTracking(),
             #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
-            'sitename':name}
+            'sitename':name,'setCount':setCount,'setGen':setGen}

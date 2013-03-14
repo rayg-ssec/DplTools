@@ -202,32 +202,23 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 <DIV ALIGN="CENTER"><font color="#cc0000">under construction</font></DIV> <BR/>
 <DIV ALIGN="CENTER"><a href="http://lidar.ssec.wisc.edu/syst/ahsrl/export_netcdf_help.html">Documentation</a><p/></DIV>
 <DIV ALIGN="CENTER" tal:condition="False"><BIG><BIG>Select your desired datasets:</BIG></BIG></DIV>
-<TABLE ALIGN="CENTER" CELLSPACING="5">
-<TR><TD colspan="${len(netcdfsets)}" align="center"><B>Select Desired Datasets:</B></TD></TR>
-<TR>
-	<TD tal:repeat="ncset netcdfsets">
-		<TABLE>
-			<TR>
-				<TD colspan="${len(ncset.sets)}" align="center"><a tal:attributes="href ncset.link" target="lidarwebdoc" tal:omit-tag="'link' not in ncset">${ncset.name}</a></TD>
-			</TR>
-			<TR>
-				<TD tal:repeat="ncsubset ncset.sets">
-					<TABLE>
-						<TR>
-							<TD colspan="2" align="center"><a tal:attributes="href ncsubset.link" target="lidarwebdoc" tal:omit-tag="'link' not in ncsubset">${ncsubset.name}</a></TD>
-						</TR>
-						<TR tal:repeat="checkbox ncsubset.sets">
-							<TD>
-								<input type="checkbox" tal:attributes="name checkbox.formname;checked checkbox.default!=0" onchange="checkDataAvailability();" />
-								<span class="checklink"><a href="javascript:toggleCheckbox('${checkbox.formname}');checkDataAvailability();">${checkbox.name}</a></span>
-								<a tal:condition="'link' in checkbox" tal:attributes="href checkbox.link" target="lidarwebdoc"><img src="http://lidar.ssec.wisc.edu/q.png" alt="(help)"/></a>
-							</TD>
-						</TR>
-					</TABLE>
-				</TD>
-			</TR>
-		</TABLE>
-	</TD>
+<TABLE ALIGN="CENTER" CELLSPACING="5" tal:define="colcount 3">
+<TR><TD colspan="${colcount}" align="center"><B>Select Desired Datasets:</B></TD></TR>
+<TR tal:repeat="setbase range(0,setCount(netcdfsets),colcount)">
+		<TD tal:repeat="setpair setGen(netcdfsets,setbase,colcount)">
+			<TABLE tal:define="ncset setpair[0];ncsubset setpair[1]">
+				<TR>
+					<TD colspan="2" align="center"><a tal:attributes="href ncsubset.link" target="lidarwebdoc" tal:omit-tag="'link' not in ncsubset">${ncset.name} ${ncsubset.name}</a></TD>
+				</TR>
+				<TR tal:repeat="checkbox ncsubset.options">
+					<TD>
+						<input type="checkbox" tal:attributes="name checkbox.formname;checked checkbox.default!=0" onchange="checkDataAvailability();" />
+						<span class="checklink"><a href="javascript:toggleCheckbox('${checkbox.formname}');checkDataAvailability();">${checkbox.name}</a></span>
+						<a tal:condition="'link' in checkbox" tal:attributes="href checkbox.link" target="lidarwebdoc"><img src="http://lidar.ssec.wisc.edu/q.png" alt="(help)"/></a>
+					</TD>
+				</TR>
+			</TABLE>
+		</TD>
 </TR>
 <TR><TD colspan="${len(netcdfsets)}" align="center"><input type="checkbox" name="allfields" onchange="checkDataAvailability();"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields');checkDataAvailability();">Include All</a></span></TD></TR>
 </TABLE>
