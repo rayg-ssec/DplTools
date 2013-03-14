@@ -4,7 +4,7 @@
             "enabled": ["lidar"],
             "sets": [
                 {   "name": "Derived Quantities", 
-                    "included": ["rs_inv.times","rs_mean.times"],
+                    "included": ["rs_inv.times","rs_mean.times","rs_mean.msl_altitudes"],
                     "options" : [
                         {   "name": "Particulate Backscatter Cross Section",
                             "included": ["rs_inv.beta_a_backscat_par","rs_inv.beta_a_backscat_perp","rs_inv.beta_a_backscat","profiles.inv.beta_a_backscat_par","profiles.inv.beta_a_backscat_perp","profiles.inv.beta_a_backscat"],
