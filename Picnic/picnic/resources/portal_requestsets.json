@@ -154,13 +154,13 @@
                 "included":[],
                 "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr",
                 "options":[
-                        { "name": "Reflectivity",
+                        { "name": "Effective Diameter Prime",
                             "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partdiameterprime",
                             "included": [],
                             "required": ["lidar","merge"],
                             "default" : 1,
                             "formname": "hsrlmmcr_dprime"
-                        }, {"name": "Backscatter Cross Section",
+                        }, {"name": "Particle Measurements",
                             "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partmeasurements",
                             "included": [],
                             "required": ["lidar","merge"],

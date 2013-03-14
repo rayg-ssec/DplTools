@@ -47,10 +47,13 @@ function updateFromData(availability){
     var av=new Array();
     var doall=false;
     var donone=false;
+    var disabledSetting=false;
     if (itemlist['custom_display']!=null && itemlist['custom_display'].checked)
       donone=true;
-    if (itemlist['allfields']!=null && itemlist['allfields'].checked)
+    if (itemlist['allfields']!=null && itemlist['allfields'].checked){
       donone=true;
+      disabledSetting=true;
+    }
     if (availability && availability=='all')
       doall=true;
     if(availability && availability.length>0)
@@ -66,7 +69,7 @@ function updateFromData(availability){
                 shoulden='||'.join(["hasString(av,'%s')"%s for s in aset['sets'][setname]['enabled']])
             if 'required' in aset['sets'][setname]:
                 shoulden='&&'.join(["hasString(av,'%s')"%s for s in aset['sets'][setname]['required']])
-            ret+="    doDisable(itemlist,'%s:%i',((!(%s))&&!doall)||donone,false);\n" % (aset['formname'],setid,shoulden)
+            ret+="    doDisable(itemlist,'%s:%i',((!(%s))&&!doall)||donone,disabledSetting);\n" % (aset['formname'],setid,shoulden)
             setid=setid+1
         else:
           for bset in aset['sets']:
@@ -76,7 +79,7 @@ function updateFromData(availability){
                   shoulden='||'.join(["hasString(av,'%s')"%s for s in cset['enabled']])
               if 'required' in cset:
                   shoulden='&&'.join(["hasString(av,'%s')"%s for s in cset['required']])
-              ret+="    doDisable(itemlist,'%s',((!(%s))&&!doall)||donone,true);\n" % (cset['formname'],shoulden)
+              ret+="    doDisable(itemlist,'%s',((!(%s))&&!doall)||donone,disabledSetting);\n" % (cset['formname'],shoulden)
     ret+="""
     if(av.length>0)
       sanityCheckSubmit();
