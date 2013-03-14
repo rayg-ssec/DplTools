@@ -189,7 +189,7 @@ def parseNetCDFParameters(request,session):
         for inst in fieldsetlist:#per instrument
             for subset in inst['sets']:
                 subsetincluded=False
-                for checkbox in subset['sets']:
+                for checkbox in subset['options']:
                     formname=checkbox['formname']
                     if formname not in request.params or not request.params.getone(formname):
                         continue
