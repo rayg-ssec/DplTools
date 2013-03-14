@@ -220,7 +220,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 			</TABLE>
 		</TD>
 </TR>
-<TR><TD colspan="${len(netcdfsets)}" align="center"><input type="checkbox" name="allfields" onchange="checkDataAvailability();"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields');checkDataAvailability();">Include All</a></span></TD></TR>
+<TR><TD colspan="${colcount}" align="center"><input type="checkbox" name="allfields" onchange="checkDataAvailability();"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields');checkDataAvailability();">Include All</a></span></TD></TR>
 </TABLE>
 
 <DIV ALIGN="CENTER"><span id="param_part"  tal:condition="False">
