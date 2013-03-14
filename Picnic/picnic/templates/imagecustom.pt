@@ -23,23 +23,24 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <INPUT TYPE="HIDDEN" NAME="file" VALUE="${file}"/>
 <INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${subpath}"/>
 <INPUT TYPE="HIDDEN" NAME="original_content" VALUE="${original_content}"/>
-<div tal:repeat="figname sort(json.keys())" class="entry">
-  <table  tal:condition="(not isinstance(json[figname],dict) or ('enable' not in json[figname] and subpath=='display_defaults') or subpath!='display_defaults') and not figname.startswith('#')" class="parameter">
-    <tbody>
+<table class="parameter"><tbody>
+  <tr><td colspan="5"><big><B>Parameters:</B></big></td></tr>
+  <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
+    <div tal:condition="(not isinstance(json[figname],dict) or ('enable' not in json[figname] and subpath=='display_defaults') or subpath!='display_defaults') and not figname.startswith('#')" tal:omit-tag="">
       <tr tal:condition="not isinstance(json[figname],dict) and not isinstance(json[figname],list)">
-        <td class="parameter_title">Parameter ${figname}:</td>
+        <td class="parameter_title">Parameter "${figname}":</td>
         <td>
           <input type="text" name="${jsonprefix}.${figname}" value="${json[figname]}"/>
         </td>
       </tr>
       <tr tal:condition="isinstance(json[figname],list)">
-        <td class="parameter_title">Parameter Series ${figname}:</td>
+        <td class="parameter_title">Parameter Series "${figname}":</td>
         <td>
           <input tal:repeat="x range(0,len(json[figname]))" type="text" name="${jsonprefix}.${figname}[${x}]" value="${json[figname][x]}"/>
         </td>
       </tr>
        <tr tal:condition="isinstance(json[figname],dict)">
-        <td class="parameter_title" colspan="5">Parameter Set ${figname}:
+        <td class="parameter_title" colspan="5">Parameter Set "${figname}":
           <span tal:condition="'enable' in json[figname]">
             <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${jsonprefix}.${figname}.enable')">enable</a></span>
           </span>
@@ -57,24 +58,27 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
         </td>
       </tr>
       <tr tal:condition="isinstance(json[figname],dict)">
-        <td tal:repeat="field sort(json[figname].keys())" >
-          <span tal:omit-tag="True" tal:condition="not field.startswith('#') and field not in ('parameters','doc','docs','enable','documentation')">
+        <span tal:omit-tag="" tal:repeat="field sort(json[figname].keys())" >
+          <td tal:condition="not field.startswith('#') and field not in ('parameters','doc','docs','enable','documentation')">
             ${field}:<input type="text" name="${jsonprefix}.${figname}.${field}" value="${json[figname][field]}"/>
-          </span>
-        </td>
+          </td>
+        </span>
       </tr>
       <tr tal:condition="isinstance(json[figname],dict) and 'parameters' in json[figname]" tal:repeat="field sort(json[figname].parameters.keys())">
-        <td colspan="10" tal:condition="field!='enable'">
+        <td colspan="10" tal:condition="field not in ('enable',)">
           <pre>${field}: ${json[figname].parameters[field]}</pre>
         </td>
       </tr>
-    </tbody>
-  </table>
-  <table  tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and subpath=='display_defaults'" class="figure" >
-    <tbody>
+    </div>
+  </div>
+</tbody></table>
+<table class="figure" tal:condition="subpath=='display_defaults'"><tbody>
+  <tr><td><big><B>Figures:</B></big></td></tr>
+  <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
+    <div tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and subpath=='display_defaults'" tal:omit-tag="">
       <tr>
         <td class="figure_title">
-          <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${jsonprefix}.${figname}.enable')">Figure: ${figname}</a></span>
+          <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${jsonprefix}.${figname}.enable')">${figname}</a></span>
         </td>
       </tr>
       <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname]" >
@@ -126,41 +130,37 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
           </span>
         </td>
       </tr>
-      <tr tal:condition="'log_linear' in json[figname]" >
+      <tr tal:condition="'log_linear' in json[figname] or 'x_log_linear' in json[figname] or 'y_log_linear' in json[figname] or 'color_log_linear' in json[figname]">
         <td>
+        <div tal:omit-tag="" tal:condition="'log_linear' in json[figname]" >
           Scale:
           <select name="${jsonprefix}.${figname}.log_linear">
             <option value="log" tal:attributes="selected json[figname].log_linear=='log'">Log</option>
             <option value="linear" tal:attributes="selected json[figname].log_linear=='linear'">Linear</option>
           </select>
-        </td>
-      </tr>
-      <tr tal:condition="'x_log_linear' in json[figname]" >
-        <td>
+        </div>
+        <div tal:omit-tag="" tal:condition="'x_log_linear' in json[figname]" >
           X Scale:
           <select name="${jsonprefix}.${figname}.x_log_linear">
             <option value="log" tal:attributes="selected json[figname].x_log_linear=='log'">Log</option>
             <option value="linear" tal:attributes="selected json[figname].x_log_linear=='linear'">Linear</option>
           </select>
-        </td>
-      </tr>
-     <tr tal:condition="'y_log_linear' in json[figname]" >
-        <td>
+        </div>
+        <div tal:omit-tag=""  tal:condition="'y_log_linear' in json[figname]" >
           Y Scale:
           <select name="${jsonprefix}.${figname}.y_log_linear">
             <option value="log" tal:attributes="selected json[figname].y_log_linear=='log'">Log</option>
             <option value="linear" tal:attributes="selected json[figname].y_log_linear=='linear'">Linear</option>
           </select>
-        </td>
-      </tr>
-      <tr tal:condition="'color_log_linear' in json[figname]" >
-        <td>
+        </div>
+        <div tal:omit-tag="" tal:condition="'color_log_linear' in json[figname]" >
           Color Scale:
           <select name="${jsonprefix}.${figname}.color_log_linear">
             <option value="log" tal:attributes="selected json[figname].color_log_linear=='log'">Log</option>
             <option value="linear" tal:attributes="selected json[figname].color_log_linear=='linear'">Linear</option>
           </select>
-        </td>
+        </div>
+      </td>
       </tr>
       <tr tal:condition="'mol_lost_level' in json[figname]" >
         <td>
@@ -181,14 +181,14 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
       <tr tal:condition="'max alt(km)' in json[figname]" >
         <td>
          <span tal:condition="'max alt(km)' in json[figname]">
-            Alt Max:
+            Alt Max (KM):
             <input type="text" name="${jsonprefix}.${figname}.max alt(km)" value="${json[figname]['max alt(km)']}"/>
           </span>
         </td>
       </tr>
-    </tbody>
-  </table>
-</div>
+    </div>
+  </div>
+</tbody></table>
 <INPUT TYPE="SUBMIT" VALUE="Submit"/>
 </FORM>
 </body>

@@ -140,20 +140,25 @@ def parseImageParametersBackground(request,session):
     #    (disp,conf)=du.get_display_defaults('web_plots.json')
     if None not in session['figstocapture']: # None indicates all should be captured, so if its not, scan structure
         data_req='images'
+        lib_filetype='data'
         for fi in disp.get_attrs(): # for each figure
             if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled
                 if fi in session['figstocapture']: #if requested, enable it
                     disp.set_value(fi,'enable',1)
-                    if fi.startswith('show'):
+                    if not fi.endswith('_image'):
                         data_req='images housekeeping'
+                        lib_filetype=None
                 else:
                     disp.set_value(fi,'enable',0) #otherwise disable it
     else:
         data_req= 'images housekeeping'
+        lib_filetype=None
 
     picnicsession.storejson(session,disp.json_representation(),'display_parameters.json')
     if 'data_request' not in session:
         session['data_request']=data_req
+    if 'lib_filetype' not in session:
+        session['lib_filetype']=lib_filetype
     picnicsession.storesession(session)
 
 
@@ -216,6 +221,7 @@ def parseNetCDFParameters(request,session):
             except:
                 pass
     session['figstocapture']=figstocapture
+    session['lib_filetype']=None
     picnicsession.storesession(session)
 
 def fromSession(session,xlate):
@@ -236,7 +242,8 @@ def makeDPLFromSession(session):
     copyToInit={
         'dataset':'instrument',
         'maxtimeslice':'maxtimeslice_timedelta',
-        'data_request':'data_request'
+        'data_request':'data_request',
+        'lib_filetype':'filetype',
     }
     copyToSearch={
         'starttime':'start_time_datetime',

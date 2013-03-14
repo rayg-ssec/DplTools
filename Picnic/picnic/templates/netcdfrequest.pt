@@ -203,7 +203,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 <DIV ALIGN="CENTER"><a href="http://lidar.ssec.wisc.edu/syst/ahsrl/export_netcdf_help.html">Documentation</a><p/></DIV>
 <DIV ALIGN="CENTER" tal:condition="False"><BIG><BIG>Select your desired datasets:</BIG></BIG></DIV>
 <TABLE ALIGN="CENTER" CELLSPACING="5" tal:define="colcount 3">
-<TR><TD colspan="${colcount}" align="center"><B>Select Desired Datasets:</B></TD></TR>
+<TR><TD colspan="${colcount}" align="center"><B>Select Desired Datasets:</B><input type="checkbox" name="allfields" onchange="checkDataAvailability();"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields');checkDataAvailability();">Select All</a></span></TD></TR>
 <TR tal:repeat="setbase range(0,setCount(netcdfsets),colcount)">
 		<TD tal:repeat="setpair setGen(netcdfsets,setbase,colcount)">
 			<TABLE tal:define="ncset setpair[0];ncsubset setpair[1]">
@@ -220,7 +220,6 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 			</TABLE>
 		</TD>
 </TR>
-<TR><TD colspan="${colcount}" align="center"><input type="checkbox" name="allfields" onchange="checkDataAvailability();"/><span class="checklink"><a href="javascript:toggleCheckbox('allfields');checkDataAvailability();">Include All</a></span></TD></TR>
 </TABLE>
 
 <DIV ALIGN="CENTER"><span id="param_part"  tal:condition="False">
