@@ -246,16 +246,6 @@ class idxholder:
     def __repr__(self):
         return '%i' % self.value()
 
-def setCount(sets):
-    ret=0
-    for s in sets:
-        #print s['name']
-        if 'sets' not in s:
-            ret+=1
-        else:
-            ret+=setCount(s)
-    return ret
-
 def setGen(sets,startid,count,cid=None):
     if cid==None:
         cid=idxholder()
@@ -263,6 +253,8 @@ def setGen(sets,startid,count,cid=None):
     else:
         toplayer=False
     for s in sets:
+        if 'disabled' in s and s['disabled']!=0:
+            continue
         if 'sets' not in s:
             #print 'singleton set',sets['name'],startid,count,cid
             if cid.value()>=startid and cid.value()<(startid+count):
@@ -276,6 +268,10 @@ def setGen(sets,startid,count,cid=None):
                     print startid,count,cid,s['name'],tuple([x['name'] for x in ss])
                 #print 'returning iterated set',sets['name'],(s['name'],)+ss,startid,count,cid
                 yield (s,)+ss
+
+
+def setCount(sets):
+    return len(tuple(setGen(sets,0,100)))
 
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')

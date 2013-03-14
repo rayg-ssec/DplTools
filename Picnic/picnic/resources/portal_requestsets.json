@@ -68,6 +68,7 @@
             ]
         }, {"name": "MMCR",
             "enabled": ["merge"],
+            "disabled": 1,
             "sets": [
                 {"name": "Radar Quantities",
                 "included":[],
@@ -100,6 +101,7 @@
             ]
         }, {"name": "AERI",
             "enabled": ["paeri0", "paeri1", "paeri2", "paeri1pca", "paeri2pca"],
+            "disabled": 1,
             "sets": [
                 {"name": "Quantities",
                 "included":[],
@@ -125,6 +127,7 @@
             ]
         }, {"name": "Micro-wave Radiometer",
             "enabled": ["mwr"],
+            "disabled": 1,
             "sets": [
                 {"name": "Quantities",
                 "included":[],
@@ -145,6 +148,7 @@
             ]
         }, {"name": "HSRL/MMCR",
             "required": ["lidar","merge"],
+            "disabled": 1,
             "sets": [
                 {"name": "Cooperative Quantities",
                 "included":[],
@@ -203,6 +207,7 @@
         }, {"name": "MMCR",
             "default": "ref",
             "enabled": ["merge"],
+            "disabled": 1,
             "sets": {
                 "none": {
                     "name": "None",
@@ -224,6 +229,7 @@
         }, {"name": "AERI",
             "default": "bright",
             "enabled": ["paeri0", "paeri1", "paeri2", "paeri1pca", "paeri2pca"],
+            "disabled": 1,
             "sets": {
                 "none": {
                     "name": "None",
@@ -245,6 +251,7 @@
         }, {"name": "MWR",
             "default": "all",
             "enabled": ["mwr"],
+            "disabled": 1,
             "sets": {
                 "none": {
                     "name": "None",
@@ -261,6 +268,7 @@
         }, {"name": "Cooperative Quantities",
             "default": "part",
             "required": ["lidar", "merge"],
+            "disabled": 1,
             "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr",
             "sets": {
                 "none": {

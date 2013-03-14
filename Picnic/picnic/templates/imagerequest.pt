@@ -62,9 +62,9 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 </TD></TR>
 <TR valign="top">
 <TD tal:repeat="imset imagesets">
-	<TABLE>
+	<TABLE tal:condition="'disabled' not in imset or imset.disabled==0">
 		<TR><TD><a tal:attributes="href imset.link" tal:omit-tag="'link' not in imset">${imset.name}</a></TD></TR>
-		<TR tal:repeat="setname imset.order"><TD>
+		<TR tal:repeat="setname imset.order"><TD tal:condition="'disabled' not in imset.sets[setname] or imset.sets[setname].disabled==0">
   			<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
   			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
 		</TD></TR>
