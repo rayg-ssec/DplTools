@@ -294,8 +294,11 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 <BR/><BR/>
 <DIV ALIGN="CENTER">
 	<INPUT type="checkbox" name="custom_processing" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="checklink"><a href="javascript: toggleCheckbox('custom_processing');updateVisibilities();checkDataAvailability();">Custom Processing Parameter File</a></span>
-	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/></span>
+	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/><br/>
+     	<a href="${req.route_path('imagecustom')}?file=process_control.json&subpath=process_defaults,corr_adjusts">Download New</a>
+	</span>
 </DIV>
+<BR/><BR/>
 <DIV ALIGN="CENTER">
 <span tal:omit-tag="True" tal:condition="userTracking">
 E-Mail: <span id="emailset"><a href="javascript: showCustomEmail()">(set)</a></span><span id="emailcustom" style="display: none"> <INPUT TYPE="TEXT" NAME="email" VALUE=""/></span>

@@ -76,7 +76,7 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 <BR/>
 <DIV ALIGN="CENTER">
 	<INPUT type="checkbox" name="custom_processing" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="radiolink"><a href="javascript: toggleCheckbox('custom_processing');updateVisibilities();checkDataAvailability();">Custom Processing Parameter File</a></span>
-	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/><br/><a href="${req.route_path('imagecustom')}?file=process_control.json&subpath=corr_adjusts">Download New</a></span>
+	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/><br/><a href="${req.route_path('imagecustom')}?file=process_control.json&subpath=process_defaults,corr_adjusts">Download New</a></span>
 	
 </DIV>
 <div align="center">

@@ -368,12 +368,16 @@ def getSizeOfFolder(folder):
 def sessinfo_gen(folder,sessTimes):
     for inf in sessTimes:
         n=inf['sessionid']
+        try:
+            sessinfo=loadsession(n)
+        except:
+            sessinfo=None
         yield {
             'sessionid':n,
             'startTime':infoOfFile(safejoin(folder,n))[0],
             'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,
             'task':tasks[n].task() if n in tasks else None,
-            'session':loadsession(n),
+            'session':sessinfo,
             'size':getSizeOfFolder(safejoin(folder,n)),
             }
 
@@ -455,15 +459,21 @@ def filelistinfo_gen(folder,filelist):
 def debugsession(request):
     sessionid=request.matchdict['session']
     folder=_sessionfolder(sessionid);
-    session=loadsession(sessionid)
+    try:
+        session=loadsession(sessionid)
+    except:
+        session=None
     if sessionid in tasks:
         task=tasks[sessionid]
         running=task.is_alive()
         if not running:
-            tses=loadsession(sessionid)
-            if 'rescode' not in tses or tses['rescode']=='':
-                tses['rescode']=task.exitcode()
-                storesession(tses)
+            try:
+                tses=loadsession(sessionid)
+                if 'rescode' not in tses or tses['rescode']=='':
+                    tses['rescode']=task.exitcode()
+                    storesession(tses)
+            except:
+                pass
     else:
         task=None
         running=False
@@ -475,7 +485,10 @@ def debugsession(request):
         filelist=None
         filelistinfo=None
     if 'session.json' in filelist:
-        session=loadsession(sessionid)
+        try:
+            session=loadsession(sessionid)
+        except:
+            session=None
     else:
         session=None
     return {'task':task.task() if task!=None else None,

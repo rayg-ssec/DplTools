@@ -46,11 +46,21 @@ def imagecustom(request):
         return HTTPBadRequest()
     ret={}
     ret['sort']=sortList
-    ret['jsonprefix']='json'
+    ret['subpath']=request.params.getone('subpath').split(',') if 'subpath' in request.params else 'display_defaults'
+    prefixes=[]
+    for f in range(0,len(ret['subpath'])):
+        if f==0:
+            prefixes.append('json')
+        else:
+            prefixes.append('json%i' % f)
+    ret['jsonprefix']=prefixes
     #ret['file']=fn
     ret['original_content']=json.dumps(content, separators=(',',':'))
-    ret['subpath']=request.params.getone('subpath') if 'subpath' in request.params else 'display_defaults'
-    ret[ret['jsonprefix']] = content if len(ret['subpath'])==0 else content[ret['subpath']]
+    bases={}
+    for f in range(0,len(ret['subpath'])):
+        ret[ret['jsonprefix'][f]] = content if len(ret['subpath'])==0 else content[ret['subpath'][f]]
+        bases[ret['jsonprefix'][f]]= content if len(ret['subpath'])==0 else content[ret['subpath'][f]]
+    ret['bases']=bases
     return ret #loadMeta(ret,'json','meta')
 
 def getarrval(a,s):
@@ -162,9 +172,14 @@ def generatejson(request):
         return HTTPBadRequest()
 
     #print request.params
-    if 'jsonprefix' in request.params: 
-        pref=request.params.getone('jsonprefix')
-        subpath=request.params.getone('subpath')
+    if 'jsonprefix' not in request.params:
+        return sidedo
+
+    prefixes=request.params.getone('jsonprefix').split(',')
+    subpaths=request.params.getone('subpath').split(',')
+    for pidx in range(0,len(prefixes)):
+        pref=prefixes[pidx]#request.params.getone('jsonprefix')
+        subpath=subpaths[pidx]#request.params.getone('subpath')
         metpref='meta'
         sided=oneleveldict(loadMeta(sidedo if len(subpath)==0 else sidedo[subpath],pref,metpref))
         res={}
@@ -184,6 +199,8 @@ def generatejson(request):
                 continue
             k=f
             ks=k.split('.')
+            if 'doc' in ks or 'docs' in ks or 'documentation' in ks or 'parameters' in ks:
+                continue
             if f not in request.params:
                 if ks[-1]=='enable':
                     v='0'#special dumb case
