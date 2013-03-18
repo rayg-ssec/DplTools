@@ -73,8 +73,8 @@ def gui_test_1():
         # Mimics DPL stream
         x = numpy.linspace(0,2*numpy.pi,1024)
         #for i in range(1,10):
-        for i in range(1,2000):
-            f = { "sine_value" : numpy.sin(x + i/10.0)+(i*0.01) }
+        for i in range(1,100):
+            f = { "sine_value" : numpy.sin(x + i/10.0) }
             #f = { "sine_value" : numpy.sin(x + i/10.0)+(i*0.01) }
             yield f
 
@@ -108,7 +108,11 @@ def gui_test_1():
     s.start()
     print "Exec'ing"
     app.exec_()
-    print "Done exec'ing"
+    print "Done exec'ing, stopping stream..."
+    s.stop()
+    print "Waiting for stream..."
+    s.wait()
+    print "Done waiting for stream thread"
     
 def main():
     from argparse import ArgumentParser

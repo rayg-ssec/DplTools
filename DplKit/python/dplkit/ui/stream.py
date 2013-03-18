@@ -33,6 +33,8 @@ class _StreamObject(QtCore.QObject):
     """Object that holds the code performed by the `Stream` object in the
     new thread.
     """
+    # Any slot connected to the `finished` signal should be through a `QtCore.Qt.DirectConnection`
+    # or the slot will not be called after `QApplication.exec_()` has returned.
     finished = QtCore.pyqtSignal()
     frame_ready = QtCore.pyqtSignal(object)
 
@@ -43,21 +45,28 @@ class _StreamObject(QtCore.QObject):
         if iterable is not None and callable is not None:
             raise ValueError("Either an iterable or a callable should be provided not both")
         elif iterable is not None:
-            self.iterable = iterable
+            self._actor   = iterable
+            self.iterable = iter(self._actor)
             self.callable = None
         else:
+            self._actor   = None
             self.iterable = None
             self.callable = callable
 
         self.delay = delay if delay is None else float(delay)
+        self._stopped = False
+        self._stop_iterator = False
 
     def run(self):
         """Iterate through the iterable and signal when new frames are ready.
         """
+        self._app_is_running = True
+
         # If we were given a callable get the iterable
         if self.iterable is None:
             try:
-                self.iterable = self.callable()
+                self._actor = self.callable()
+                self.iterable = iter(self._actor)
             except StandardError:
                 self.finished.emit()
                 raise
@@ -65,6 +74,13 @@ class _StreamObject(QtCore.QObject):
         # Iterate over the stream and signal each new frame
         try:
             for frame in self.iterable:
+                if self._stop_iterator:
+                    # if we were stopped, try closing the iterator if that is
+                    # the method used by the author. Ignored otherwise.
+                    if hasattr(self.iterable, "close"):
+                        self.iterable.close()
+                    break
+
                 self.frame_ready.emit(frame)
 
                 # If the user added artificial delay
@@ -74,6 +90,11 @@ class _StreamObject(QtCore.QObject):
             raise
         finally:
             self.finished.emit()
+
+    def stop(self):
+        if not self._stopped:
+            self._stopped = True
+            self._stop_iterator = True
 
 class Stream(QtCore.QObject):
     """An object encapsulating a DPL stream for use in a GUI.
@@ -124,6 +145,7 @@ class Stream(QtCore.QObject):
                 )
         self.exit_app_on_complete = exit_app_on_complete
 
+        self._stopped = False
         self._connect_worker_to_thread()
 
     def _connect_worker_to_thread(self):
@@ -133,7 +155,9 @@ class Stream(QtCore.QObject):
         self.worker.moveToThread(self.thread_handle)
 
         # Make it so the thread dies when the worker is done
-        self.worker.finished.connect(self.thread_handle.quit)
+        # This MUST be a direct connection or the thread will not quit when
+        # exec has already returned
+        self.worker.finished.connect(self.thread_handle.quit, QtCore.Qt.DirectConnection)
 
         # Make it so the worker starts when the thread starts
         self.thread_handle.started.connect(self.worker.run)
@@ -148,6 +172,14 @@ class Stream(QtCore.QObject):
 
     def start(self):
         self.thread_handle.start()
+
+    def stop(self):
+        """Stop iteration and the background thread.
+        """
+        if not self._stopped:
+            self._stopped = True
+            if hasattr(self.worker, "stop"):
+                self.worker.stop()
 
     def wait(self, msecs=None):
         if msecs is not None:
