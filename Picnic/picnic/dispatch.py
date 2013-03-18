@@ -90,15 +90,21 @@ def parseImageParameters(request,session):
     session['dataset']=datasetname
     session['name']=name
 
-    if 'process_parameters_content' in request.params and request.params.getone('process_parameters_content')!=None:
+    if 'custom_processing' in request.params and request.params.getone('custom_processing'):
         print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
-        f=file(picnicsession.sessionfile(session,'process_parameters.json',create=True),'w')
-        f.write(request.params.getone('process_parameters_content').file.read())
+        try:
+            d=json.loads(request.params.getone('process_parameters_content').file.read())
+            picnicsession.storejson(session,d,'process_parameters.json')
+        except:
+            return HTTPBadRequest()
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
-    if 'display_defaults_content' in request.params and request.params.getone('display_defaults_content')!=None:
+    if 'custom_display' in request.params and request.params.getone('custom_display'):
         print 'Storing custom image parameters ',request.params.getone('display_defaults_content')
-        f=file(picnicsession.sessionfile(session,'display_parameters.json',create=True),'w')
-        f.write(request.params.getone('display_defaults_content').file.read())
+        try:
+            d=json.loads(request.params.getone('display_defaults_content').file.read())
+            picnicsession.storejson(session,d,'display_parameters.json')
+        except:
+            return HTTPBadRequest()
         session['figstocapture']=[None]
     elif 'display_defaults_file' in request.params:
         session['display_defaults_file']=request.params.getone('display_defaults_file')
@@ -123,7 +129,7 @@ def parseImageParameters(request,session):
 
 def parseImageParametersBackground(request,session):
     picnicsession.updateSessionComment(session,'setup')
-    if 'display_defaults_content' in request.params and request.params.getone('display_defaults_content')!=None:
+    if 'custom_display' in request.params and request.params.getone('custom_display'):
         import hsrl.utils.json_config as jc
         disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
     else:
@@ -134,20 +140,25 @@ def parseImageParametersBackground(request,session):
     #    (disp,conf)=du.get_display_defaults('web_plots.json')
     if None not in session['figstocapture']: # None indicates all should be captured, so if its not, scan structure
         data_req='images'
+        lib_filetype='data'
         for fi in disp.get_attrs(): # for each figure
             if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled
                 if fi in session['figstocapture']: #if requested, enable it
                     disp.set_value(fi,'enable',1)
-                    if fi.startswith('show'):
+                    if not fi.endswith('_image'):
                         data_req='images housekeeping'
+                        lib_filetype=None
                 else:
                     disp.set_value(fi,'enable',0) #otherwise disable it
     else:
         data_req= 'images housekeeping'
+        lib_filetype=None
 
     picnicsession.storejson(session,disp.json_representation(),'display_parameters.json')
     if 'data_request' not in session:
         session['data_request']=data_req
+    if 'lib_filetype' not in session:
+        session['lib_filetype']=lib_filetype
     picnicsession.storesession(session)
 
 
@@ -157,20 +168,46 @@ def parseNetCDFParameters(request,session):
     session['maxtimeslice_timedelta']=60*60*2
     session['data_request']="images housekeeping"
     session['template']=request.params.getone('cdltemplatename')
+    if session['template']=='custom':
+        fn=picnicsession.sessionfile(session,'template.cdl',create=True)
+        file(fn,'w').write(request.params.getone('cdltemplate_content').file.read())
+        session['template']=fn
     stf=datetime.strptime(session['starttime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     etf=datetime.strptime(session['endtime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     session['filename']=session['dataset'] + stf + etf + ('_%gs_%gm.nc' % (session['timeres'],session['altres']))
 
+    datinfo=lib(**{session['method']:session[session['method']]})
+    instruments=datinfo['Instruments']
+    #print figstocapture
+    datasets=[]
+    for inst in instruments:
+        datasets.extend(lib.instrument(inst)['datasets'])
+ 
+    fieldstocapture=[]
+    if not 'allfields' in request.params or not request.params.getone('allfields'):
+        fieldsetlist=jsgen.formsetsForInstruments(datasets,'netcdf')
+        for inst in fieldsetlist:#per instrument
+            for subset in inst['sets']:
+                subsetincluded=False
+                for checkbox in subset['options']:
+                    formname=checkbox['formname']
+                    if formname not in request.params or not request.params.getone(formname):
+                        continue
+                    subsetincluded=True
+                    for fieldname in checkbox['included']:
+                        if fieldname not in fieldstocapture:
+                            fieldstocapture.append(fieldname)
+                if subsetincluded and 'included' in subset:
+                    for fieldname in subset['included']:
+                        if fieldname not in fieldstocapture:
+                            fieldstocapture.append(fieldname)
+
+    print fieldstocapture
+    session['selected_fields']=fieldstocapture
+
     figstocapture=[]
 
-    if 'display_defaults_content' not in request.params or request.params.getone('display_defaults_content')==None:
-        datinfo=lib(**{session['method']:session[session['method']]})
-        instruments=datinfo['Instruments']
-        #print figstocapture
-        datasets=[]
-        for inst in instruments:
-            datasets.extend(lib.instrument(inst)['datasets'])
- 
+    if 'custom_display' not in request.params or request.params.getone('custom_display'):
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         session['display_defaults_file']='all_plots.json'
       
@@ -184,6 +221,7 @@ def parseNetCDFParameters(request,session):
             except:
                 pass
     session['figstocapture']=figstocapture
+    session['lib_filetype']=None
     picnicsession.storesession(session)
 
 def fromSession(session,xlate):
@@ -204,7 +242,8 @@ def makeDPLFromSession(session):
     copyToInit={
         'dataset':'instrument',
         'maxtimeslice':'maxtimeslice_timedelta',
-        'data_request':'data_request'
+        'data_request':'data_request',
+        'lib_filetype':'filetype',
     }
     copyToSearch={
         'starttime':'start_time_datetime',
@@ -218,10 +257,16 @@ def makeDPLFromSession(session):
     process_control=None
     if os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
         process_control=picnicsession.loadjson(session,'process_parameters.json')
+        import hsrl.utils.json_config as jc
+        process_control=jc.json_config(process_control,default_key='process_defaults')
     dplobj=dpl_hsrl(process_control=process_control,**fromSession(session,copyToInit))
-    dplc=dplobj(**fromSession(session,copyToSearch))
+    try:
+        import hsrl.utils.threaded_generator
+        dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**fromSession(session,copyToSearch))
+    except:
+        dplc=dplobj(**fromSession(session,copyToSearch))
     if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
-        picnicsession.storejson(session,dplobj.get_process_control(None),'process_parameters.json')
+        picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
     return dplc    
 
@@ -235,7 +280,7 @@ def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
     
     ncfilename=picnicsession.sessionfile(session,netcdffilename,create=True)
 
-    artist=artists.dpl_netcdf_artist(DPLgen,templatefilename,ncfilename)
+    artist=artists.dpl_netcdf_artist(DPLgen,templatefilename,ncfilename,selected_bindings=session['selected_fields'])
   
     picnicsession.updateSessionComment(session,'processing')
  
@@ -261,7 +306,7 @@ def makeImagesFromDPL(session,DPLgen):
     instrument=session['dataset']
     #sessionid=session['sessionid']
     disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
-    params=picnicsession.loadjson(session,'process_parameters.json')
+    params=jc.json_config(picnicsession.loadjson(session,'process_parameters.json'),'process_defaults')
     #print session
 
     #folder=picnicsession.sessionfolder(sessionid)#safejoin('.','sessions',sessionid);

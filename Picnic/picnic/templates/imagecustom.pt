@@ -4,31 +4,94 @@
 <Title></Title>
 <link rel="stylesheet" href="${request.static_path('picnic:static/imagecustom.css')}" type="text/css" media="screen" charset="utf-8" />
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
+ <script type="text/javascript">
+function toggleCheckbox(name){
+  var itemlist = document.forms['jsonform'];
+  var cb=itemlist[name];
+  cb.checked=!cb.checked;
+}
+</script>
 </head>
 <body>
-<FORM ACTION="${req.route_path('generatejson')}" METHOD="POST">
-<INPUT TYPE="HIDDEN" NAME="jsonprefix" VALUE="${jsonprefix}"/>
+<FORM ACTION="${req.current_route_path()}" METHOD="POST" enctype="multipart/form-data" id='newfile'>
+<INPUT TYPE="HIDDEN" NAME="subpath" value="${','.join(subpath)}"/>
+Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
+<INPUT TYPE="SUBMIT" VALUE="Edit..."/>
+</FORM>
+<FORM ACTION="${req.route_path('generatejson')}" METHOD="POST" id='jsonform'>
+<INPUT TYPE="HIDDEN" NAME="jsonprefix" VALUE="${','.join(jsonprefix)}"/>
 <INPUT TYPE="HIDDEN" NAME="file" VALUE="${file}"/>
-<INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${subpath}"/>
+<INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${','.join(subpath)}"/>
 <INPUT TYPE="HIDDEN" NAME="original_content" VALUE="${original_content}"/>
-<INPUT TYPE="SUBMIT" VALUE="Submit"/>
-<div tal:repeat="figname json.keys()" class="entry">
-  <table  tal:condition="'enable' in json[figname]" class="figure" >
-    <tbody>
+<div tal:omit-tag="" tal:repeat="pidx range(0,len(subpath))">
+<div tal:omit-tag="" tal:define="json bases[jsonprefix[pidx]];asubpath subpath[pidx];ajsonprefix jsonprefix[pidx]">
+<table class="parameter"><tbody>
+  <tr><td colspan="5"><big><B>Parameters:</B></big></td></tr>
+  <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
+    <div tal:condition="(not isinstance(json[figname],dict) or ('enable' not in json[figname] and asubpath=='display_defaults') or asubpath!='display_defaults') and not figname.startswith('#')" tal:omit-tag="">
+      <tr tal:condition="not isinstance(json[figname],dict) and not isinstance(json[figname],list)">
+        <td class="parameter_title">Parameter "${figname}":</td>
+        <td>
+          <input type="text" name="${ajsonprefix}.${figname}" value="${json[figname]}"/>
+        </td>
+      </tr>
+      <tr tal:condition="isinstance(json[figname],list)">
+        <td class="parameter_title">Parameter Series "${figname}":</td>
+        <td>
+          <input tal:repeat="x range(0,len(json[figname]))" type="text" name="${ajsonprefix}.${figname}[${x}]" value="${json[figname][x]}"/>
+        </td>
+      </tr>
+       <tr tal:condition="isinstance(json[figname],dict)">
+        <td class="parameter_title" colspan="5">Parameter Set "${figname}":
+          <span tal:condition="'enable' in json[figname]">
+            <input type="checkbox" name="${ajsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${ajsonprefix}.${figname}.enable')">enable</a></span>
+          </span>
+        </td>
+       </tr>
+       <tr tal:condition="isinstance(json[figname],dict)">
+        <td tal:condition="'doc' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].doc}</pre>
+        </td>
+        <td tal:condition="'docs' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].docs}</pre>
+        </td>
+        <td tal:condition="'documentation' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].documentation}</pre>
+        </td>
+      </tr>
+      <tr tal:condition="isinstance(json[figname],dict)">
+        <span tal:omit-tag="" tal:repeat="field sort(json[figname].keys())" >
+          <td tal:condition="not field.startswith('#') and field not in ('parameters','doc','docs','enable','documentation')">
+            ${field}:<input type="text" name="${ajsonprefix}.${figname}.${field}" value="${json[figname][field]}"/>
+          </td>
+        </span>
+      </tr>
+      <tr tal:condition="isinstance(json[figname],dict) and 'parameters' in json[figname]" tal:repeat="field sort(json[figname].parameters.keys())">
+        <td colspan="10" tal:condition="field not in ('enable',)">
+          <pre>${field}: ${json[figname].parameters[field]}</pre>
+        </td>
+      </tr>
+    </div>
+  </div>
+</tbody></table>
+<table class="figure" tal:condition="asubpath=='display_defaults'"><tbody>
+  <tr><td><big><B>Figures:</B></big></td></tr>
+  <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
+    <div tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and asubpath=='display_defaults'" tal:omit-tag="">
       <tr>
         <td class="figure_title">
-          <input type="checkbox" name="${jsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/>${figname}
+          <input type="checkbox" name="${ajsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${ajsonprefix}.${figname}.enable')">${figname}</a></span>
         </td>
       </tr>
       <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname]" >
         <td>
           <span tal:condition="'x min' in json[figname]">
             X Min:
-            <input type="text" name="${jsonprefix}.${figname}.x min" value="${json[figname]['x min']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.x min" value="${json[figname]['x min']}"/>
           </span>
           <span tal:condition="'x max' in json[figname]">
             X Max:
-            <input type="text" name="${jsonprefix}.${figname}.x max" value="${json[figname]['x max']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.x max" value="${json[figname]['x max']}"/>
           </span>
         </td>
       </tr>
@@ -36,11 +99,11 @@
         <td>
          <span tal:condition="'y min' in json[figname]">
             Y Min:
-            <input type="text" name="${jsonprefix}.${figname}.y min" value="${json[figname]['y min']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.y min" value="${json[figname]['y min']}"/>
           </span>
           <span tal:condition="'y max' in json[figname]">
             Y Max:
-            <input type="text" name="${jsonprefix}.${figname}.y max" value="${json[figname]['y max']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.y max" value="${json[figname]['y max']}"/>
           </span>
         </td>
       </tr>
@@ -48,19 +111,64 @@
         <td>
          <span tal:condition="'lo_color_lmt' in json[figname]">
             Color Min:
-            <input type="text" name="${jsonprefix}.${figname}.lo_color_lmt" value="${json[figname]['lo_color_lmt']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.lo_color_lmt" value="${json[figname]['lo_color_lmt']}"/>
           </span>
           <span tal:condition="'hi_color_lmt' in json[figname]">
             Color Max:
-            <input type="text" name="${jsonprefix}.${figname}.hi_color_lmt" value="${json[figname]['hi_color_lmt']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.hi_color_lmt" value="${json[figname]['hi_color_lmt']}"/>
           </span>
         </td>
+      </tr>
+      <tr tal:condition="'number_xbins' in json[figname] or 'number_ybins' in json[figname]" >
+        <td>
+          Histogram Bin Counts:
+          <span tal:condition="'number_xbins' in json[figname]">
+            X
+            <input type="text" name="${ajsonprefix}.${figname}.number_xbins" value="${json[figname]['number_xbins']}"/>
+          </span>
+          <span tal:condition="'number_ybins' in json[figname]">
+            Y
+            <input type="text" name="${ajsonprefix}.${figname}.number_ybins" value="${json[figname]['number_ybins']}"/>
+          </span>
+        </td>
+      </tr>
+      <tr tal:condition="'log_linear' in json[figname] or 'x_log_linear' in json[figname] or 'y_log_linear' in json[figname] or 'color_log_linear' in json[figname]">
+        <td>
+        <div tal:omit-tag="" tal:condition="'log_linear' in json[figname]" >
+          Scale:
+          <select name="${ajsonprefix}.${figname}.log_linear">
+            <option value="log" tal:attributes="selected json[figname].log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].log_linear=='linear'">Linear</option>
+          </select>
+        </div>
+        <div tal:omit-tag="" tal:condition="'x_log_linear' in json[figname]" >
+          X Scale:
+          <select name="${ajsonprefix}.${figname}.x_log_linear">
+            <option value="log" tal:attributes="selected json[figname].x_log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].x_log_linear=='linear'">Linear</option>
+          </select>
+        </div>
+        <div tal:omit-tag=""  tal:condition="'y_log_linear' in json[figname]" >
+          Y Scale:
+          <select name="${ajsonprefix}.${figname}.y_log_linear">
+            <option value="log" tal:attributes="selected json[figname].y_log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].y_log_linear=='linear'">Linear</option>
+          </select>
+        </div>
+        <div tal:omit-tag="" tal:condition="'color_log_linear' in json[figname]" >
+          Color Scale:
+          <select name="${ajsonprefix}.${figname}.color_log_linear">
+            <option value="log" tal:attributes="selected json[figname].color_log_linear=='log'">Log</option>
+            <option value="linear" tal:attributes="selected json[figname].color_log_linear=='linear'">Linear</option>
+          </select>
+        </div>
+      </td>
       </tr>
       <tr tal:condition="'mol_lost_level' in json[figname]" >
         <td>
          <span tal:condition="'mol_lost_level' in json[figname]">
             Color Min:
-            <input type="text" name="${jsonprefix}.${figname}.mol_lost_level" value="${json[figname]['mol_lost_level']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.mol_lost_level" value="${json[figname]['mol_lost_level']}"/>
           </span>
         </td>
       </tr>
@@ -68,20 +176,22 @@
         <td>
          <span tal:condition="'high' in json[figname]">
             Highest Value:
-            <input type="text" name="${jsonprefix}.${figname}.high" value="${json[figname]['high']}"/>
+            <input type="text" name="${ajsonprefix}.${figname}.high" value="${json[figname]['high']}"/>
           </span>
         </td>
       </tr>
       <tr tal:condition="'max alt(km)' in json[figname]" >
         <td>
          <span tal:condition="'max alt(km)' in json[figname]">
-            Alt Max:
-            <input type="text" name="${jsonprefix}.${figname}.max alt(km)" value="${json[figname]['max alt(km)']}"/>
+            Alt Max (KM):
+            <input type="text" name="${ajsonprefix}.${figname}.max alt(km)" value="${json[figname]['max alt(km)']}"/>
           </span>
         </td>
       </tr>
-    </tbody>
-  </table>
+    </div>
+  </div>
+</tbody></table>
+</div>
 </div>
 <INPUT TYPE="SUBMIT" VALUE="Submit"/>
 </FORM>

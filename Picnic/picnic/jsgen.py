@@ -42,10 +42,18 @@ def makeUpdateFromData(asets):
 
     ret+="""
 function updateFromData(availability){
-    var itemlist = document.forms[0];
+    var itemlist = document.forms['reqform'];
     fallbackTimeout=false;
     var av=new Array();
     var doall=false;
+    var donone=false;
+    var disabledSetting=false;
+    if (itemlist['custom_display']!=null && itemlist['custom_display'].checked)
+      donone=true;
+    if (itemlist['allfields']!=null && itemlist['allfields'].checked){
+      donone=true;
+      disabledSetting=true;
+    }
     if (availability && availability=='all')
       doall=true;
     if(availability && availability.length>0)
@@ -53,15 +61,25 @@ function updateFromData(availability){
       
 """
     for aset in asets:
-        setid=0
-        for setname in aset['order']:
+        if 'order' in aset:
+          setid=0
+          for setname in aset['order']:
             shoulden='true'
             if 'enabled' in aset['sets'][setname]:
                 shoulden='||'.join(["hasString(av,'%s')"%s for s in aset['sets'][setname]['enabled']])
             if 'required' in aset['sets'][setname]:
                 shoulden='&&'.join(["hasString(av,'%s')"%s for s in aset['sets'][setname]['required']])
-            ret+="    doDisable(itemlist,'%s:%i',(!(%s))&&!doall);\n" % (aset['formname'],setid,shoulden)
+            ret+="    doDisable(itemlist,'%s:%i',((!(%s))&&!doall)||donone,disabledSetting);\n" % (aset['formname'],setid,shoulden)
             setid=setid+1
+        else:
+          for bset in aset['sets']:
+            for cset in bset['options']:
+              shoulden='true'
+              if 'enabled' in cset:
+                  shoulden='||'.join(["hasString(av,'%s')"%s for s in cset['enabled']])
+              if 'required' in cset:
+                  shoulden='&&'.join(["hasString(av,'%s')"%s for s in cset['required']])
+              ret+="    doDisable(itemlist,'%s',((!(%s))&&!doall)||donone,disabledSetting);\n" % (cset['formname'],shoulden)
     ret+="""
     if(av.length>0)
       sanityCheckSubmit();
@@ -81,8 +99,8 @@ def netcdfjavascriptgen(pathidx,instruments,dataAvailabilityPath):
 ]
 
     ret="""
-var allDatasets='%s';
 var datasetpath='%i';
+var jspath='site';
 var psetKeys_arr = new Array(%s);
 var locationelement='site=%i';
 var psets=new Array(
@@ -104,12 +122,14 @@ function sanityCheckSubmit() {
   var idxname = itemlist['filemode'].value;
   var uname = itemlist['username'];
   var invcount=0;
+  try{
   if(idxname!='single' && uname.value.length<4){
      invcount++;
      document.getElementById('fm_multi').style.backgroundColor='#ffaaaa';
   }else{
      document.getElementById('fm_multi').style.backgroundColor='';
   }
+  }catch(x){}
   var sbmt=null;
   for(i=0;i<itemlist.length;i++){
      var tempobj = itemlist.elements[i];
@@ -117,13 +137,16 @@ function sanityCheckSubmit() {
        sbmt=tempobj;
   }
 
+  try{
   if(idxname=='routine' && itemlist['sat_timeslist'].value==''){
     document.getElementById('sat_times_hi').style.backgroundColor='#ffaaaa';
     invcount++;
   }else{
     document.getElementById('sat_times_hi').style.backgroundColor='';
   }
+  }catch(e){}
     
+  try{
   if(idxname=='satellite' && parseInt(document.getElementById("overpasscount").innerHTML)<=0){ //.split(' ')[0])<=0)
     invcount++;
     document.getElementById("overpasscount_hi").style.backgroundColor='#ffaaaa';
@@ -132,12 +155,26 @@ function sanityCheckSubmit() {
     document.getElementById("overpasscount_hi").style.backgroundColor='';
     document.getElementById("overpasscount").style.color='';
   }
+  }catch(e){}
+  if(itemlist['custom_display']!=null && itemlist['custom_display'].checked && itemlist['display_defaults_content'].value=="")
+    invcount++;
+  if(itemlist['custom_processing']!=null && itemlist['custom_processing'].checked && itemlist['process_parameters_content'].value=="")
+    invcount++;
+  if(itemlist['cdltemplatename'].value=='custom' && itemlist['cdltemplate_content'].value=="")
+    invcount++;
 
   if(invcount>0){
     sbmt.disabled=true;
   }else{
     sbmt.disabled=false;
   }
+}
+
+function updateTemplateVisibility(){
+  if(itemlist['cdltemplatename'].value=='custom')
+    document.getElementById("cdltemplate_custom").style.display=""
+  else
+    document.getElementById("cdltemplate_custom").style.display="none"
 }
 
 var fallbackTimeout=false;
@@ -187,6 +224,7 @@ function remSatTime(){
 }
 
 function updateFMVisibilities() {
+return;//FIXME
   itemlist=document.forms[0];
   va=document.getElementById('fm_multi');
   ohm=document.getElementById('overhead_mins');
@@ -217,6 +255,7 @@ function updateFMVisibilities() {
 }
 
 function r2bscsUpdate(){
+return;//FIXME
   itemlist = document.forms[0];
   var lambda_radar=8.6e-3;
   var k_water_sq=0.92;  
@@ -234,6 +273,7 @@ function r2bscsUpdate(){
 }
 
 function bscs2rUpdate(){
+return;//FIXME
   itemlist = document.forms[0];
   var lambda_radar=8.6e-3;
   var k_water_sq=0.92;  
@@ -258,6 +298,7 @@ function clearPSET() {
 
 function changePSET() {
   itemlist = document.forms[0];
+  try{
   idx=itemlist['presetPSET'].selectedIndex;
   if (idx<=0)
     return;
@@ -271,13 +312,15 @@ function changePSET() {
 
   for(i=0;i<keys.length;i++)
     if(keys[i] in pset)
-      itemlist[prefix+keys[i]].value=pset[keys[i]];
+      if(itemlist[prefix+keys[i]]!=null)
+        itemlist[prefix+keys[i]].value=pset[keys[i]];
+  }catch(e){}
 }
 
 var xmlhttps=new Array(false,false);
 
 function getReq(idx){
-xmlhttp=xmlhttps[idx];
+  xmlhttp=xmlhttps[idx];
  //window.console.log('req #' + String(idx) + ' is ' + xmlhttp)
 if(xmlhttp){
   xmlhttp.abort();
@@ -322,7 +365,7 @@ function hasString(arr,str){
 
 var enState=new Object();
 
-function doDisable(objs,field,disable){
+function doDisable(objs,field,disable,checkval){
   try{
   obj=objs[field];
   wasDis=obj.disabled;
@@ -333,7 +376,7 @@ function doDisable(objs,field,disable){
     obj.disabled=true;
     if (obj.type.toLowerCase() == "checkbox"){
       enState[field]=obj.checked;
-      obj.checked=false;
+      obj.checked=checkval;
     }
   }else{
     obj.disabled=false;
@@ -432,7 +475,8 @@ function updateVisibilities() {
   else
     edp.style.display="none";
     }catch(e){
-    edp.style.display="none";
+    if(edp!=null)
+     edp.style.display="none";
     }
     try{
   if(itemlist['ParticleMeasurements'].checked)
@@ -440,8 +484,21 @@ function updateVisibilities() {
   else
     part.style.display="none";
     }catch(e){
+    if(part!=null)
     part.style.display="none";
     }
+  if(itemlist['custom_processing']!=null){
+    if (itemlist['custom_processing'].checked)
+      document.getElementById('custom_processing_field').style.display='';
+    else
+      document.getElementById('custom_processing_field').style.display='none';
+  }
+  if(itemlist['custom_display']!=null){
+    if(itemlist['custom_display'].checked)
+      document.getElementById('custom_display_field').style.display='';
+    else
+      document.getElementById('custom_display_field').style.display='none';
+  }
 }
 
 
@@ -528,7 +585,7 @@ function checkDataAvailability(enabled) {
   //var dbg=itemlist['DEBUG'];
   var bstr=itemlist['byr'].value + padString(String(itemlist['bmo'].selectedIndex+1),'0',2) + padString(itemlist['bdy'].value,'0',2)  + 'T' + padString(itemlist['bhr'].value,'0',2) + padString(itemlist['bmn'].value,'0',2);
   var estr=itemlist['eyr'].value + padString(String(itemlist['emo'].selectedIndex+1),'0',2) + padString(itemlist['edy'].value,'0',2)  + 'T' + padString(itemlist['ehr'].value,'0',2) + padString(itemlist['emn'].value,'0',2);
-  var availurl='%s?' + locationelement + '&time0='+bstr+'&time1='+estr+'&datasets='+allDatasets;
+  var availurl='%s?'+jspath+'='+datasetpath+'&time0='+bstr+'&time1='+estr;
   //dbg.value=availurl;
   var r=getReq(0);
   r.open('GET',availurl,true);
@@ -544,7 +601,7 @@ function checkDataAvailability(enabled) {
    clearFallback();
    countDownSeconds=15;
    countDown();
-   fallbackTimeout=setTimeout("updateFromData(allDatasets)",countDownSeconds*1000);
+   fallbackTimeout=setTimeout("updateFromData('all')",countDownSeconds*1000);
    r.send(null);
 }
 
@@ -564,13 +621,12 @@ function showCustomEmail(){
   ec=document.getElementById('emailcustom');
   ec.style.display="";
 }
-    """ % (','.join(instruments),pathidx,','.join(psetKeys),pathidx,makeUpdateFromData(formsetsForInstruments(instruments,'netcdf')),dataAvailabilityPath)
+    """ % (pathidx,"'" + "','".join(psetKeys) + "'",pathidx,makeUpdateFromData(formsetsForInstruments(instruments,'netcdf')),dataAvailabilityPath)
     return ret
 
 def imagejavascriptgen(pathidx,instruments,dataAvailabilityPath):
  
     ret="""
-var allDatasets='%s';
 var datasetpath='%i';
 var jspath='site';
 
@@ -730,6 +786,12 @@ function sanityCheckSubmit() {
        sbmt=tempobj;
   }
 
+  if(itemlist['custom_display']!=null && itemlist['custom_display'].checked && itemlist['display_defaults_content'].value=="")
+    invcount++;
+  if(itemlist['custom_processing']!=null && itemlist['custom_processing'].checked && itemlist['process_parameters_content'].value=="")
+    invcount++;
+
+
   if(invcount>0){
     sbmt.disabled=true;
   }else{
@@ -796,6 +858,29 @@ function setRadio(name,value){
     }
 }
 
+function toggleCheckbox(name){
+  var itemlist = document.forms[0];
+  var cb=itemlist[name];
+  if(!cb.disabled){
+    cb.checked=!cb.checked;
+  }
+}
+
+function updateVisibilities() {
+  itemlist=document.forms[0];
+  if(itemlist['custom_display']!=null){
+  if(itemlist['custom_display'].checked)
+    document.getElementById('custom_display_field').style.display='';
+  else
+    document.getElementById('custom_display_field').style.display='none';
+  }
+  if(itemlist['custom_processing']!=null){
+  if(itemlist['custom_processing'].checked)
+    document.getElementById('custom_processing_field').style.display='';
+  else
+    document.getElementById('custom_processing_field').style.display='none';
+  }
+}
 
 function showCustomEmail(){
   es=document.getElementById('emailset');
@@ -803,7 +888,7 @@ function showCustomEmail(){
   ec=document.getElementById('emailcustom');
   ec.style.display="";
 }
-""" % (','.join(instruments),pathidx,makeUpdateFromData(formsetsForInstruments(instruments,'images')),dataAvailabilityPath)
+""" % (pathidx,makeUpdateFromData(formsetsForInstruments(instruments,'images')),dataAvailabilityPath)
     return ret
 
 

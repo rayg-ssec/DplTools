@@ -24,7 +24,7 @@ function autoIframe(frameId){
 </script>
 		<title>${session.name} NetCDF Creation ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime(dateformat) + ' - ' + session.endtime.strftime(hourformat if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else dateformat))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }</title>
 	</head>
-	<body>
+	<body tal:define="global hadImage False">
 		<center>
 			<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/about_image.htm">About these images</a><br />
 ${session.name} NetCDF Creation<BR/>Requested: ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime(dateformat) + ' - ' + session.endtime.strftime(hourformat if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else dateformat))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) }
@@ -35,7 +35,7 @@ ${session.name} NetCDF Creation<BR/>Requested: ${'' if ('starttime' not in sessi
 				<BR/>
 				<div tal:omit-tag="" tal:condition="('base_time' in nc.variables) and ('time' in nc.variables) and (len(nc.variables['time'])>0)">
 					<div tal:omit-tag="" tal:define="base_time datetime(1970,1,1,0,0,0)+timedelta(seconds=int(nc.variables['base_time'][0]))">
-						${(base_time + timedelta(seconds=nc.variables['time'][0])).strftime(dateformat)} - ${(base_time + timedelta(seconds=nc.variables['time'][-1])).strftime(dateformat)} (${len(nc.variables['time'])} records)
+						${(base_time + timedelta(seconds=nc.variables['time'][0])).strftime(dateformat)} - ${(base_time + timedelta(seconds=nc.variables['time'][-1])).strftime(dateformat)} (${len(nc.variables['time'])} records, ${printNumber(info[2],'%.1f',1024,['bytes','KB','MB','GB'])})
 						<div tal:omit-tag="" tal:condition="(session.endtime-(base_time + timedelta(seconds=nc.variables['time'][-1]))).total_seconds()>(2*session.timeres)">
 							<font color="#cc0000">NetCDF file is incomplete. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>. Terminated at state "${session.comment}"</div></font>
 						</div>
@@ -46,21 +46,21 @@ ${session.name} NetCDF Creation<BR/>Requested: ${'' if ('starttime' not in sessi
 				<font color="#cc0000">Failed to create valid NetCDF file. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div> Terminated at state "${session.comment}"</font>
 			</div>
 		</center>
-	<a href="${request.route_path('logbook',accesstype=session.method,access=session.methodkey)+'?rss=off&'+ session.starttime.strftime('byr=%Y&bmo=%m&bdy=%d&bhr=%H&bmn=%M') +'&' + session.endtime.strftime('eyr=%Y&emo=%m&edy=%d&ehr=%H&emn=%M')}">logbook entry</a><br />
+	<a href="${request.route_path('logbook',accesstype='by_'+session.method,access=session.methodkey)+'?rss=off&'+ session.starttime.strftime('byr=%Y&bmo=%m&bdy=%d&bhr=%H&bmn=%M') +'&' + session.endtime.strftime('eyr=%Y&emo=%m&edy=%d&ehr=%H&emn=%M')}">logbook entry</a><br />
 		<center>
-			<div tal:omit-tag="" tal:condition="len(imageurls)==0 and nc!=None">
-				<font color="#cc0000">Image generation failed. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div> Terminated at state "${session.comment}"</font>
-			</div>
 			<div tal:repeat="imurl imageurls">
-  				<img src="${imurl if 'url' not in imurl else imurl.url}" alt="${'' if 'name' not in imurl else imurl.name}"/>
+  				<img tal:define="global hadImage True" src="${imurl if 'url' not in imurl else imurl.url}" alt="${'' if 'name' not in imurl else imurl.name}"/>
 				<br /><br /><br /><br />
 			</div>
+			<div tal:omit-tag="" tal:condition="not hadImage and nc!=None">
+				<font color="#cc0000">Image generation failed. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div> Terminated at state "${session.comment}"</font>
+			</div>
 		</center>
 		<center>
-			<a tal:repeat="jsonurl jsonurls" tal:attributes="href jsonurl if 'url' not in jsonurl else jsonurl.url" tal:content="'JSON' if 	'name' not in jsonurl else jsonurl.name"/>
+			<a tal:repeat="url plainurls" tal:attributes="href url.url" tal:content="url.name"/>
 		</center>
 	    <a tal:condition="'logfileurl' in session" tal:attributes="href session.logfileurl">&lambda;</a><a tal:condition="nc!=None" href="${request.route_path('netcdfreimage',session=session.sessionid)}">Reimage</a>
-<iframe tal:condition="request.client_addr=='127.0.0.1' and len(imageurls)==0" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
+<iframe tal:condition="request.client_addr=='127.0.0.1' and not hadImage" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
 	</body>
 	${'' if nc==None else nc.close()}
 </html>

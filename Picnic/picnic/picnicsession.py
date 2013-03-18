@@ -8,6 +8,8 @@ import time
 import resource
 import multiprocessing
 import copy
+import stat
+import traceback
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
@@ -121,11 +123,14 @@ def taskdispatch(dispatcher,request,session,logstream=None):
     resssize=16*1024*1024*1024
     for res in ress:
         resource.setrlimit(res,(resssize,resssize))
-    updateSessionComment(session,'dispatching')
+    starttime=datetime.utcnow()
+    print 'started ',starttime
     try:
         dispatchers[dispatcher](request,session,isBackground=(None if logstream==None else True))
     except Exception,e:
         updateSessionComment(loadsession(session['sessionid']),'ERROR- %s :%s' % (type(e).__name__,e))
+        print traceback.format_exc()
+    print 'finished ',datetime.utcnow(),'(',(datetime.utcnow()-starttime).total_seconds(),'seconds )'
  
 def sessionfile(sessionid,filename,create=False):
     if not isinstance(sessionid,basestring):
@@ -195,7 +200,7 @@ def newSessionProcess(dispatch,request,session):
     session['rescode']=''
     folder=_sessionfolder(sessionid)
     for s in os.listdir(folder):
-        if s.startswith('.') or s=='logfile' or s.endswith('.json') or s.endswith('.nc'):
+        if s.startswith('.') or s=='logfile' or s.endswith('.json') or s.endswith('.nc') or s.endswith('.cdl'):
             continue
         os.unlink(safejoin(folder,s))
     stdt=file(logfilepath,'w')
@@ -232,12 +237,16 @@ def newSessionProcess(dispatch,request,session):
             processDescription['parameterstructure']=json.dumps(session['process_control'],separators=(',', ':'))
         elif os.access(sessionfile(session,'process_parameters.json'),os.R_OK):
             processDescription['parameterstructure']=json.dumps(loadjson(session,'process_parameters.json'),separators=(',', ':'))
-        if 'process_control' in session or 'display_defaults' in session:
+        if 'process_control' in session or 'display_defaults' in session or 'selected_fields' in session or 'figstocapture' in session:
             tsess=copy.deepcopy(session)
             if 'process_control' in session:
                 del tsess['process_control']
             if 'display_defaults' in session:
                 del tsess['display_defaults']
+            if 'selected_fields' in session:
+                tsess['selected_fields']='omitted'
+            if 'figstocapture' in session:
+                tsess['figstocapture']='omitted'
         else:
             tsess=session
         processDescription['commandline']=json.dumps(tsess,separators=(',', ':')),
@@ -271,6 +280,8 @@ def session_resource(request):
         m='text/plain'
     if fn.endswith('.json'):
         m='application/json'
+    if fn.endswith('.cdl'):
+        m='application/x-netcdf'
     if fn.endswith('.nc') or fn.endswith('.cdf'):
         m='application/x-netcdf'
 
@@ -325,10 +336,59 @@ def progresspage(request):
 
 
 #### STATUS bits
+def printNumber(fn,fmt,base,orders):
+    powr=1.0
+    order=None
+    for o in range(0,len(orders)):
+        if fn<(powr*base):
+            order=o
+            break
+        powr*=base
+    if order==None:
+        order=-1
+    stri=fmt+' %s '
+    return stri % (fn/(powr),orders[order])
 
 def infoOfFile(fn):
     tmp=os.stat(fn)
-    return (datetime.utcfromtimestamp(tmp.st_ctime),datetime.utcfromtimestamp(tmp.st_mtime),tmp.st_size)
+    return (datetime.utcfromtimestamp(tmp.st_ctime),datetime.utcfromtimestamp(tmp.st_mtime),tmp.st_size,tmp.st_mode)
+
+def getSizeOfFolder(folder):
+    ret=0
+    for fn in os.listdir(folder):
+        if fn.startswith('.'):
+            continue
+        inf=infoOfFile(safejoin(folder,fn))
+        if stat.S_ISDIR(inf[3]):
+            ret+=getSizeOfFolder(safejoin(folder,fn))
+        elif stat.S_ISREG(inf[3]):
+            ret+=inf[2]
+    return ret
+
+def sessinfo_gen(folder,sessTimes):
+    for inf in sessTimes:
+        n=inf['sessionid']
+        try:
+            sessinfo=loadsession(n)
+        except:
+            sessinfo=None
+        yield {
+            'sessionid':n,
+            'startTime':infoOfFile(safejoin(folder,n))[0],
+            'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,
+            'task':tasks[n].task() if n in tasks else None,
+            'session':sessinfo,
+            'size':getSizeOfFolder(safejoin(folder,n)),
+            }
+
+def __removeSession(sess):
+    sesf=_sessionfolder(sess)
+    fs=os.listdir(sesf)
+    for f in fs:
+        os.unlink(safejoin(sesf,f))
+        print 'unlinked ',safejoin(sesf,f)
+    os.rmdir(sesf)
+    print 'unlinked ',sesf
 
 from operator import itemgetter
             
@@ -341,35 +401,33 @@ def statuspage(request):
         if s.startswith('.') or not os.path.isdir(safejoin(folder,s)):
             continue
         sess.append(s)
-    sessinfo=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0],'running':tasks[n].is_alive() if n in tasks and tasks[n]!=None else False,'task':tasks[n].task() if n in tasks else None,'session':loadsession(n)} for n in sess]
-    sessinfo.sort(key=itemgetter('startTime'),reverse=True)
+    sessTimes=[{'sessionid':n,'startTime':infoOfFile(safejoin(folder,n))[0]}  for n in sess]
+    sessTimes.sort(key=itemgetter('startTime'),reverse=True)
+    if 'purgeone' in request.params:
+        purge=request.params.getone('purgeone')
+        if purge in sess:
+            __removeSession(purge)
+            return HTTPTemporaryRedirect(location=request.current_route_path())
     if 'purge' in request.params:
         purgefrom=request.params.getone('purge')
         found=False
-        for inf in sessinfo:#(sessid,sdate,running,task) in sessinfo:
+        for inf in sessTimes:#(sessid,sdate,running,task) in sessinfo:
             if inf['sessionid']==purgefrom:
                 found=True
                 continue
             if found:
-                sesf=_sessionfolder(inf['sessionid'])
-                fs=os.listdir(sesf)
-                for f in fs:
-                    os.unlink(safejoin(sesf,f))
-                    print 'unlinked ',safejoin(sesf,f)
-                os.rmdir(sesf)
-                print 'unlinked ',sesf
+                __removeSession(inf['sessionid'])
         if found:
-            return HTTPTemporaryRedirect(location=request.route_path('status'))
+            return HTTPTemporaryRedirect(location=request.current_route_path())
     if 'terminate' in request.params:
         terminate=request.params.getone('terminate')
         found=False
-        for inf in sessinfo:
-            if inf['sessionid']==terminate:
-                sessid=inf['sessionid']
+        for sessid in sess:
+            if sessid==terminate:
                 print 'will try to terminate ',sessid
                 if sessid in tasks and tasks[sessid].is_alive():
                     tasks[sessid].terminate()
-                    return HTTPTemporaryRedirect(location=request.route_path('status'))
+                    return HTTPTemporaryRedirect(location=request.current_route_path())
                 break
     runningtasks=0
     for ses in tasks:
@@ -379,9 +437,9 @@ def statuspage(request):
                 tasks[ses].exitcode()#update the session exitcode
 
     return {'sessions':sess,
-            'sessioninfo':sessinfo,
+            'sessioninfo':sessinfo_gen(folder,sessTimes),
             'runningtasks':runningtasks,
-            'datetime':datetime,'timedelta':timedelta}
+            'datetime':datetime,'timedelta':timedelta,'printNumber':printNumber}
 
 @view_config(route_name='debug',renderer='templates/debug.pt')
 def debugpage(request):
@@ -392,34 +450,45 @@ def debugpage(request):
     info.append({'name':'Python Path','content':os.getenv('PYTHONPATH',"")})
     return {'simpleinfos':info}
 
+def filelistinfo_gen(folder,filelist):
+    for f in filelist:
+        inf=infoOfFile(safejoin(folder,f))
+        yield {'name':f,'stats':[printNumber(inf[2],'%.2f',1024,['bytes','KB','MB','GB']),inf[0],inf[1]]}
+
 @view_config(route_name='debugsession',renderer='templates/debugsession.pt')
 def debugsession(request):
     sessionid=request.matchdict['session']
     folder=_sessionfolder(sessionid);
-    session=loadsession(sessionid)
+    try:
+        session=loadsession(sessionid)
+    except:
+        session=None
     if sessionid in tasks:
         task=tasks[sessionid]
         running=task.is_alive()
         if not running:
-            tses=loadsession(sessionid)
-            if 'rescode' not in tses or tses['rescode']=='':
-                tses['rescode']=task.exitcode()
-                storesession(tses)
+            try:
+                tses=loadsession(sessionid)
+                if 'rescode' not in tses or tses['rescode']=='':
+                    tses['rescode']=task.exitcode()
+                    storesession(tses)
+            except:
+                pass
     else:
         task=None
         running=False
     if os.access(folder,os.R_OK):
         filelist=os.listdir(folder)
         filelist.sort()
-        filelistinfo=[]
-        for f in filelist:
-            inf=infoOfFile(safejoin(folder,f))
-            filelistinfo.append({'name':f,'stats':[inf[2],inf[0],inf[1]]})
+        filelistinfo=filelistinfo_gen(folder,filelist)
     else:
         filelist=None
         filelistinfo=None
     if 'session.json' in filelist:
-        session=loadsession(sessionid)
+        try:
+            session=loadsession(sessionid)
+        except:
+            session=None
     else:
         session=None
     return {'task':task.task() if task!=None else None,
@@ -427,7 +496,7 @@ def debugsession(request):
             'fileinfo':filelistinfo,
             'session':session,
             'running':running,
-            'sessionid':sessionid}
+            'sessionid':sessionid,'printNumber':printNumber}
 
 
 def isValidEmailAddress(stringval):
@@ -472,15 +541,19 @@ def userCheck(request):
     try:
         import cgi_datauser
     except:
+        if 'URL' in request.POST:
+            params=request.POST
+        else:
+            params=request.GET
         print "Couldn't load cgi_datauser from hsrl git codebase. user tracking disabled"
         parms=''
         jumpurl=''
-        if "PARAMS" in request.params:
-            parms='?'+request.params.getone('PARAMS')
+        if "PARAMS" in params:
+            parms='?'+params.getone('PARAMS')
         if len(parms)<=1:
             parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-        if "URL" in request.params:
-            jumpurl=request.params.getone('URL')
+        if "URL" in params:
+            jumpurl=params.getone('URL')
         if len(jumpurl)<=0:
             jumpurl='/'
             parms=''
@@ -491,22 +564,26 @@ def userCheck(request):
     doForm=True
     fromSQL=False
     indebug=False #True
-    if (keyfield in request.params and len(request.params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
+    if 'keyfield' in request.POST:
+        params=request.POST
+    else:
+        params=request.GET
+    if (keyfield in params and len(params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
         doForm=False
-        if keyfield in request.params and len(request.params.getone(keyfield))>0:
-            if not isValidEmailAddress(request.params.getone(keyfield)):
+        if keyfield in params and len(params.getone(keyfield))>0:
+            if not isValidEmailAddress(params.getone(keyfield)):
                 doForm=True
             else:
-                info[keyfield]=request.params.getone(keyfield)
+                info[keyfield]=params.getone(keyfield)
                 hasreq=True;
                 for f in reqfields:
-                    if f in request.params and len(request.params.getone(f))>0:
-                        info[f]=request.params.getone(f)
+                    if f in params and len(params.getone(f))>0:
+                        info[f]=params.getone(f)
                     else:
                         hasreq=False
                 for f in optionalfields:
-                    if f in request.params and len(request.params.getone(f))>0:
-                        info[f]=request.params.getone(f)
+                    if f in params and len(params.getone(f))>0:
+                        info[f]=params.getone(f)
                 if not hasreq:#work by lookup
                     ti=dbc.getUserByEMail(info[keyfield])
                     if ti:
@@ -536,12 +613,12 @@ def userCheck(request):
         if uid!=None:
             parms=''
             jumpurl=''
-            if "PARAMS" in request.params:
-                parms='?'+request.params.getone('PARAMS')
+            if "PARAMS" in params:
+                parms='?'+params.getone('PARAMS')
             if len(parms)<=1:
                 parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-            if "URL" in request.params:
-                jumpurl=request.params.getone('URL')
+            if "URL" in params:
+                jumpurl=params.getone('URL')
             if len(jumpurl)<=0:
                 jumpurl='/'
                 parms=''
@@ -570,8 +647,8 @@ def userCheck(request):
     #if len(cookies)>0:
     #    print cookies
     #print
-    if "URL" in request.params:
-        info["URL"]=request.params.getone('URL')
+    if "URL" in params:
+        info["URL"]=params.getone('URL')
     else:
         info["URL"]=""
     info["PARAMS"]=request.query_string#os.environ.get("QUERY_STRING","")

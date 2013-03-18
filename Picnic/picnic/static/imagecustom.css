@@ -10,6 +10,17 @@
     font-style: italic;
     font-weight:  bold;
 }
+.parameter{
+     border: 1px solid black;
+     width: 500px;
+}
+
+.parameter_title{
+    background: #CCC;
+    border: 1px solid black;
+    font-style: italic;
+    font-weight:  bold;
+}
 
 
 .item_guid {

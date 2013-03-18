@@ -1,11 +1,182 @@
 {
-     "netcdf":[],
-     "images":
-         [
-            {"name": "HSRL",
-             "default": "most",
-             "enabled": ["lidar"],
-             "sets": {
+     "netcdf":[
+        {   "name": "HSRL",
+            "enabled": ["lidar"],
+            "sets": [
+                {   "name": "Derived Quantities", 
+                    "included": ["rs_inv.times","rs_mean.times","rs_mean.msl_altitudes"],
+                    "options" : [
+                        {   "name": "Particulate Backscatter Cross Section",
+                            "included": ["rs_inv.beta_a_backscat_par","rs_inv.beta_a_backscat_perp","rs_inv.beta_a_backscat","profiles.inv.beta_a_backscat_par","profiles.inv.beta_a_backscat_perp","profiles.inv.beta_a_backscat"],
+                            "enabled" : ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_pbcs"
+                        }, {"name": "Particulate Optical Depth",
+                            "included": ["rs_inv.optical_depth","profiles.inv.optical_depth"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_pod"
+                        }, {"name": "Particulate Depolarization",
+                            "included": ["rs_inv.circular_depol","rs_inv.linear_depol","profiles.inv.circular_depol","profiles.inv.linear_depol"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_pd"
+                        }, {"name": "Particulate Extinction Cross Section",
+                            "included": ["rs_inv.extinction","profiles.inv.extinction"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_pecs"
+                        }, {"name": "Attenuated Molecular Backscatter",
+                            "included": ["rs_inv.atten_beta_a_backscat","profiles.inv.atten_beta_a_backscat"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_amb"
+                        }
+                    ]
+                }, {"name": "Raw Data",
+                    "included": ["rs_raw.times"],
+                    "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#rawdata",
+                    "options": [
+                        { "name": "Combined Channel Counts",
+                            "included": ["rs_raw.combined_lo_counts","rs_raw.combined_hi_counts","rs_raw.combined_counts","profiles.combined_lo_counts","profiles.combined_hi_counts","profiles.combined_counts"],
+                            "enabled" : ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_raw_ccc"
+                        }, {"name": "Molecular Channel Counts",
+                            "included": ["rs_raw.molecular_counts","rs_raw.molecular_i2a_counts","profiles.molecular_counts","profiles.molecular_i2a_counts"],
+                            "enabled" : ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_raw_mcc"
+                        }, {"name": "Cross Polarized Channel Counts",
+                            "included": ["rs_raw.cross_pol_counts","profiles.cross_pol_counts"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_raw_cpcc"
+                        }, {"name": "Molecular Scattering Cross Section",
+                            "included": ["rs_inv.beta_r_backscat"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_raw_mscs"
+                        }, {"name": "Calibration/System Measurements",
+                            "included": [],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_raw_csm"
+                        }
+                    ]
+                }
+            ]
+        }, {"name": "MMCR",
+            "enabled": ["merge"],
+            "disabled": 1,
+            "sets": [
+                {"name": "Radar Quantities",
+                "included":[],
+                "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#mmcr",
+                "options":[
+                        { "name": "Reflectivity",
+                            "included": [],
+                            "enabled" : ["merge"],
+                            "default" : 1,
+                            "formname": "mmcr_ref"
+                        }, {"name": "Backscatter Cross Section",
+                            "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#mmcrbsxs",
+                            "included": [],
+                            "enabled" : ["merge"],
+                            "default" : 1,
+                            "formname": "mmcr_bsxs"
+                        }, {"name": "Spectral Width",
+                            "included": [],
+                            "enabled": ["merge"],
+                            "default" : 1,
+                            "formname": "mmcr_spect"
+                        }, {"name": "Doppler Velocity",
+                            "included": [],
+                            "enabled": ["merge"],
+                            "default" : 1,
+                            "formname": "mmcr_vel"
+                        }
+                    ]
+                }
+            ]
+        }, {"name": "AERI",
+            "enabled": ["paeri0", "paeri1", "paeri2", "paeri1pca", "paeri2pca"],
+            "disabled": 1,
+            "sets": [
+                {"name": "Quantities",
+                "included":[],
+                "options":[
+                        { "name": "Brightness Temperature",
+                            "included": [],
+                            "enabled" : ["paeri0"],
+                            "default" : 1,
+                            "formname": "aeri_btemp"
+                        }, {"name": "Non-Filtered Radiance",
+                            "included": [],
+                            "enabled" : ["paeri1","paeri2"],
+                            "default" : 1,
+                            "formname": "aeri_rad"
+                        }, {"name": "PCA-Filtered Radiance",
+                            "included": [],
+                            "enabled": ["paeripc1","paeripc2"],
+                            "default" : 1,
+                            "formname": "aeri_pcrad"
+                        }
+                    ]
+                }
+            ]
+        }, {"name": "Micro-wave Radiometer",
+            "enabled": ["mwr"],
+            "disabled": 1,
+            "sets": [
+                {"name": "Quantities",
+                "included":[],
+                "options":[
+                        { "name": "Brightness Temperature",
+                            "included": [],
+                            "enabled" : ["mwr"],
+                            "default" : 1,
+                            "formname": "mwr_btemp"
+                        }, {"name": "Water Path",
+                            "included": [],
+                            "enabled" : ["mwr"],
+                            "default" : 1,
+                            "formname": "mwr_water"
+                        }
+                    ]
+                }
+            ]
+        }, {"name": "HSRL/MMCR",
+            "required": ["lidar","merge"],
+            "disabled": 1,
+            "sets": [
+                {"name": "Cooperative Quantities",
+                "included":[],
+                "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr",
+                "options":[
+                        { "name": "Effective Diameter Prime",
+                            "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partdiameterprime",
+                            "included": [],
+                            "required": ["lidar","merge"],
+                            "default" : 1,
+                            "formname": "hsrlmmcr_dprime"
+                        }, {"name": "Particle Measurements",
+                            "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#partmeasurements",
+                            "included": [],
+                            "required": ["lidar","merge"],
+                            "default" : 1,
+                            "formname": "hsrlmmcr_particle"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+     "images":[
+        {   "name": "HSRL",
+            "default": "most",
+            "enabled": ["lidar"],
+            "sets": {
                 "most": {
                     "enabled": ["lidar"],
                     "name": "Bscat, depol, line plots",
@@ -36,6 +207,7 @@
         }, {"name": "MMCR",
             "default": "ref",
             "enabled": ["merge"],
+            "disabled": 1,
             "sets": {
                 "none": {
                     "name": "None",
@@ -57,6 +229,7 @@
         }, {"name": "AERI",
             "default": "bright",
             "enabled": ["paeri0", "paeri1", "paeri2", "paeri1pca", "paeri2pca"],
+            "disabled": 1,
             "sets": {
                 "none": {
                     "name": "None",
@@ -78,6 +251,7 @@
         }, {"name": "MWR",
             "default": "all",
             "enabled": ["mwr"],
+            "disabled": 1,
             "sets": {
                 "none": {
                     "name": "None",
@@ -94,6 +268,7 @@
         }, {"name": "Cooperative Quantities",
             "default": "part",
             "required": ["lidar", "merge"],
+            "disabled": 1,
             "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr",
             "sets": {
                 "none": {

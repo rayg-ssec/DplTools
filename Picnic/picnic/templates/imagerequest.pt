@@ -7,7 +7,7 @@
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
 </head>
 <body>
-<FORM ACTION="${imagedestinationurl}" METHOD="POST" enctype="multipart/form-data">
+<FORM ACTION="${imagedestinationurl}" id="reqform" METHOD="POST" enctype="multipart/form-data">
 <INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
 <P>
 <div align="center">
@@ -61,18 +61,23 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 <TR><TD colspan="${len(imagesets)}" align="center"><B>Select desired figure layout</B>
 </TD></TR>
 <TR valign="top">
-<TD tal:repeat="imset imagesets"><TABLE>
-<TR><TD><a tal:attributes="href imset.link" tal:omit-tag="'link' not in imset">${imset.name}</a></TD></TR>
-<TR tal:repeat="setname imset.order"><TD>
-  <INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
-  <span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
-</TD></TR>
-</TABLE></TD>
-</TR></TABLE>
+<TD tal:repeat="imset imagesets">
+	<TABLE tal:condition="'disabled' not in imset or imset.disabled==0">
+		<TR><TD><a tal:attributes="href imset.link" tal:omit-tag="'link' not in imset">${imset.name}</a></TD></TR>
+		<TR tal:repeat="setname imset.order"><TD tal:condition="'disabled' not in imset.sets[setname] or imset.sets[setname].disabled==0">
+  			<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
+  			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
+		</TD></TR>
+	</TABLE>
+</TD>
+</TR>
+<TR><TD colspan="${len(imagesets)}" align="center"><INPUT type="checkbox" name="custom_display" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="radiolink"><a href="javascript: toggleCheckbox('custom_display');updateVisibilities();checkDataAvailability();">Custom Image Parameter File</a></span><span id='custom_display_field' style='display: none'><INPUT TYPE="FILE" name="display_defaults_content" onchange="checkDataAvailability()" size="40"/><br/><a href="${req.route_path('imagecustom')}?subpath=display_defaults">Create New and Download</a></span></TD></TR>
+</TABLE>
 <BR/>
 <DIV ALIGN="CENTER">
-	Custom Processing Parameter File:<INPUT TYPE="FILE" name="process_parameters_content" size="40"/><BR/>
-	Custom Image Parameter File:<INPUT TYPE="FILE" name="display_defaults_content" size="40"/>
+	<INPUT type="checkbox" name="custom_processing" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="radiolink"><a href="javascript: toggleCheckbox('custom_processing');updateVisibilities();checkDataAvailability();">Custom Processing Parameter File</a></span>
+	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/><br/><a href="${req.route_path('imagecustom')}?file=process_control.json&subpath=process_defaults,corr_adjusts">Download New</a></span>
+	
 </DIV>
 <div align="center">
 <span tal:omit-tag="True" tal:condition="userTracking">

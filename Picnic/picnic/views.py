@@ -13,7 +13,19 @@ from timeutils import validdate
 
 from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
 lib=HSRLImageArchiveLibrarian(indexdefault='site')
-     
+
+def sessionUrls(request,sessionid,extensions):
+    try:
+        fl=os.listdir(picnicsession.sessionfile(sessionid,None))
+        fl.sort()
+    except:
+        return
+    for f in fl:
+        for e in extensions:
+            if f.endswith(e):
+                yield {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f}
+                break
+
 @view_config(route_name='imageresult',renderer='templates/imageresult.pt')
 def imageresult(request):
     #print 'URLREQ: ',request.matched_route.name
@@ -23,24 +35,13 @@ def imageresult(request):
     #session=sessiontask['session']
     #scan session folder for images
     session=picnicsession.loadsession(sessionid)
-    ims = []
-    jsonfiles=[]
-    try:
-        fl=os.listdir(picnicsession.sessionfile(sessionid,None))
-    except:
-        fl=[]
-    for f in fl:
-        if f.endswith('.png'):
-            ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
-        if f.endswith('.json'):
-            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
-    ims.sort()
+
     if 'starttime' in session:
         session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
     if 'endtime' in session:
         session['endtime']=datetime.strptime(session['endtime'],picnicsession.json_dateformat)
     #send to template
-    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'timedelta':timedelta } 
+    return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')) , 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session, 'timedelta':timedelta } 
 
 @view_config(route_name='netcdfresult',renderer='templates/netcdfresult.pt')
 def netcdfresult(request):
@@ -51,18 +52,7 @@ def netcdfresult(request):
     #session=sessiontask['session']
     #scan session folder for images
     session=picnicsession.loadsession(sessionid)
-    ims = []
-    jsonfiles=[]
-    try:
-        fl=os.listdir(picnicsession.sessionfile(sessionid,None))#folder)
-    except:
-        fl=[]
-    for f in fl:
-        if f.endswith('.png'):
-            ims.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f} )
-        if f.endswith('.json'):
-            jsonfiles.append( {'url':request.route_path('session_resource',session=sessionid,filename=f),'name':f})
-    ims.sort()
+
     if 'starttime' in session:
         session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
     if 'endtime' in session:
@@ -71,9 +61,11 @@ def netcdfresult(request):
     try:
         from netCDF4 import Dataset
         nc=Dataset(fullfilename,'r')
+        inf=picnicsession.infoOfFile(fullfilename)
         e=None
     except Exception, err:
         nc=None
+        inf=[None,None,0,None]
         e=err
     if nc==None:
         print nc
@@ -81,7 +73,8 @@ def netcdfresult(request):
         print err
     #print file(safejoin(folder,'logfile')).read()
     #send to template
-    return { 'imageurls':ims, 'jsonurls':jsonfiles, 'session':session, 'datetime':datetime, 'timedelta':timedelta, 'nc':nc }
+    return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')), 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session,
+        'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber}
 
 
 
@@ -202,7 +195,7 @@ def dataAvailability(request):
                 datasets.extend(lib.instrument(inst)['datasets'])
         except RuntimeError:
             return HTTPNotFound("unknown data storage search method 2")
-    starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')
+    starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')#some OSes strptime don't assue %Y consumes 4 characters
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
     
     Q=Queue()
@@ -239,6 +232,46 @@ def logbook(request):
             parms[f]=request.params.getone(f)
     return HTTPTemporaryRedirect(location='http://lidar.ssec.wisc.edu/cgi-bin/logbook/showlogbook.cgi?'+'&'.join([(k + '=' + parms[k]) for k in parms.keys()]))
 
+
+class idxholder:
+    def __init__(self):
+        self.ctr=0
+
+    def increment(self):
+        self.ctr+=1
+
+    def value(self):
+        return self.ctr
+
+    def __repr__(self):
+        return '%i' % self.value()
+
+def setGen(sets,startid,count,cid=None):
+    if cid==None:
+        cid=idxholder()
+        toplayer=False
+    else:
+        toplayer=False
+    for s in sets:
+        if 'disabled' in s and s['disabled']!=0:
+            continue
+        if 'sets' not in s:
+            #print 'singleton set',sets['name'],startid,count,cid
+            if cid.value()>=startid and cid.value()<(startid+count):
+                if toplayer:
+                    print startid,count,cid,s['name']
+                yield (s,)
+            cid.increment()
+        else:
+            for ss in setGen(s['sets'],startid,count,cid):
+                if toplayer:
+                    print startid,count,cid,s['name'],tuple([x['name'] for x in ss])
+                #print 'returning iterated set',sets['name'],(s['name'],)+ss,startid,count,cid
+                yield (s,)+ss
+
+
+def setCount(sets):
+    return len(tuple(setGen(sets,0,100)))
 
 @view_config(route_name='netcdfgen',renderer='templates/netcdfrequest.pt')
 @view_config(route_name='imagegen',renderer='templates/imagerequest.pt')
@@ -334,7 +367,15 @@ def form_view(request):
             'oldurl':oldurl,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
+            'cdltemplates':{
+                "hsrl_nomenclature.cdl":"UW HSRL(NetCDF4)",
+                "hsrl_cfradial.cdl":"NCAR CFRadial",
+                "hsrl3_processed.cdl":"UW Processed (NetCDF3)",
+                "hsrl3_raw.cdl":"UW Raw (NetCDF3)",
+                "custom":"User Provided:"
+            },
+            'cdltemplateorder':[ "hsrl_nomenclature.cdl","hsrl_cfradial.cdl","hsrl3_processed.cdl","hsrl3_raw.cdl","custom"],
             'userTracking':picnicsession.haveUserTracking(),
             #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
-            'sitename':name}
+            'sitename':name,'setCount':setCount,'setGen':setGen}
