@@ -98,17 +98,17 @@ Format:
 <A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#filemode"  TARGET="lidarwebdoc">File Mode:</A> 
 </TD><TD align="left">
 <span id="filemoderecommend" style="display: none"><font color="#cc0000">Grid size is huge.<BR/>Recommend breaking into multiple smaller files.<BR/></font></span>
-<select name="filemode" size="1" disabled="true" disabled_onchange="updateFMVisibilities();checkOverpassCount();checkGridSize();sanityCheckSubmit();" >
+<select name="filemode" size="1" onchange="updateFMVisibilities();checkOverpassCount();checkGridSize();sanityCheckSubmit();" >
 <option value="single" selected="true">single</option>
-<option value="satellite">satellite</option>
-<option value="routine">routine</option>
+<option tal:condition="False" value="satellite">satellite</option>
+<option tal:condition="False" value="routine">routine</option>
 <option value="30minute">30minute</option>
 <option value="hour">hour</option>
 <option value="day">day</option>
 <option value="week">week</option>
 <option value="month">month</option>
 </select>
-</TD></TR><TR id="fm_multi" tal:condition="False"><TD align="right" style="background-color: transparent" >
+</TD></TR><TR id="fm_multi" ><TD align="right" style="background-color: transparent" >
 Username: 
 </TD><TD align="left">
 <INPUT TYPE="TEXT" NAME="username" value="" size="10" maxsize="16" onchange="sanityCheckSubmit();"/><BR/>(4 or more characters)

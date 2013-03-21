@@ -25,6 +25,7 @@ def main(global_config, **settings):
     config.add_route('netcdfreimage','/netcdf_result/{session}/reimage')
     config.add_route('netcdfgen', '/{accesstype}/{access}/custom_netcdf/')
     config.add_route('netcdfjavascript', '/{accesstype}/{access}/custom_netcdf/req.js')
+    config.add_route('multinetcdfresult', '/multinetcdf_result/{session}')#
  
     #logbook redirect
     config.add_route('logbook', '/{accesstype}/{access}/logbook/')

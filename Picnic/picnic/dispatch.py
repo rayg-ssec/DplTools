@@ -40,6 +40,22 @@ def newnetcdf(request,session,isBackground):
     if isBackground in [True,None]:
         parseImageParametersBackground(request,session)
         createnetcdf(request,session,isBackground)
+
+#get parameters from session, call function to make DPL and make a netcdf
+def createmultinetcdf(request,session,isBackground):
+    if isBackground in [True, None]:
+        dpl,dplp=makeDPLFromSession(session,doSearch=False)
+        makeMultiNetCDFFromDPL(session,dpl,dplp,session['template'])
+        picnicsession.updateSessionComment(session,'done.')
+
+   
+#parse parameters, put in session
+def newmultinetcdf(request,session,isBackground):
+    if isBackground in [False, None]:
+        parseImageParameters(request,session)
+        parseNetCDFParameters(request,session)
+    if isBackground in [True,None]:
+        createmultinetcdf(request,session,isBackground)
     
 def getDispatchers():
     return {
@@ -47,7 +63,9 @@ def getDispatchers():
         'createimages':createimages,
         'readnetcdf':readnetcdf,
         'createnetcdf':createnetcdf,
-        'newnetcdf':newnetcdf
+        'newnetcdf':newnetcdf,
+        'createmultinetcdf':createmultinetcdf,
+        'newmultinetcdf':newmultinetcdf
     }
 
 from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
@@ -174,7 +192,11 @@ def parseNetCDFParameters(request,session):
         session['template']=fn
     stf=datetime.strptime(session['starttime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     etf=datetime.strptime(session['endtime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
-    session['filename']=session['dataset'] + stf + etf + ('_%gs_%gm.nc' % (session['timeres'],session['altres']))
+    session['filesuffix']=('_%gs_%gm' % (session['timeres'],session['altres']))
+    session['filemode']=request.params.getone('filemode')
+    session['fileprefix']=session['dataset']+ '_' + session['filemode']
+    session['filename']=session['dataset'] + stf + etf + session['filesuffix'] + '.nc'
+    session['username']=request.params.getone('username')
 
     datinfo=lib(**{session['method']:session[session['method']]})
     instruments=datinfo['Instruments']
@@ -238,7 +260,7 @@ def fromSession(session,xlate):
     return ret
 
 
-def makeDPLFromSession(session):
+def makeDPLFromSession(session,doSearch=True):
     copyToInit={
         'dataset':'instrument',
         'maxtimeslice':'maxtimeslice_timedelta',
@@ -260,6 +282,8 @@ def makeDPLFromSession(session):
         import hsrl.utils.json_config as jc
         process_control=jc.json_config(process_control,default_key='process_defaults')
     dplobj=dpl_hsrl(process_control=process_control,**fromSession(session,copyToInit))
+    if not doSearch:
+        return dplobj,fromSession(session,copyToSearch)
     try:
         import hsrl.utils.threaded_generator
         dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**fromSession(session,copyToSearch))
@@ -269,6 +293,59 @@ def makeDPLFromSession(session):
         picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
     return dplc    
+
+def makeMultiNetCDFFromDPL(session,DPL,DPLParms,templatefilename):
+    picnicsession.updateSessionComment(session,'loading artist')
+    #import hsrl.data_stream.open_config as oc
+    import hsrl.dpl_experimental.dpl_artists as artists
+    ftpbase=os.getenv('FTPPATH','/var/ftp/data')
+    ftpurlbase=os.getenv('FTPURL','ftp://lidar.ssec.wisc.edu/data')
+    if len(session['username'])==0:
+        print 'bad username'
+        raise RuntimeError,'Bad username'
+    baseftpdir=picnicsession.safejoin(ftpbase,session['username'])
+    sessiondir=picnicsession.safejoin(baseftpdir,session['sessionid'])
+    try:
+        os.mkdir(baseftpdir)
+    except:
+        pass
+    try:
+        os.mkdir(sessiondir)
+    except:
+        pass
+    tarname=session['fileprefix'] + DPLParms['start_time_datetime'].strftime('_%Y%m%dT%H%M') + DPLParms['end_time_datetime'].strftime('_%Y%m%dT%H%M') + session['filesuffix'] + '_' + session['sessionid'] + '.tar.bz2'
+    tarcompoutputfilename=picnicsession.safejoin(baseftpdir,tarname)
+    session['ftpfolder']=ftpurlbase+'/'+session['username']+'/'+session['sessionid']
+    session['ftpfile']=ftpurlbase+'/'+session['username']+'/'+tarname
+    namer=artists.default_multi_netcdf_namer(sessiondir,session['fileprefix'],session['filesuffix']+'.nc')
+    times=artists.multi_netcdf_filewindow('start_time_datetime','end_time_datetime',
+        DPLParms['start_time_datetime'],DPLParms['end_time_datetime'],session['filemode'])
+
+    artist=artists.dpl_multi_netcdf_artist(DPL,DPLParms,template=templatefilename,filewindowgenerator=times,filename_maker=namer,selected_bindings=session['selected_fields'])
+  
+    picnicsession.updateSessionComment(session,'processing')
+ 
+    findTimes=['rs_raw','rs_mean','rs_inv']
+    for frame in artist:
+        timewindow='blank'
+        for f in findTimes:
+            if hasattr(frame,f) and hasattr(getattr(frame,f),'times') and len(getattr(frame,f).times)>0:
+                t=getattr(frame,f).times
+                timewindow=t[0].strftime('%Y.%m.%d %H:%M') + ' - ' + t[-1].strftime('%Y.%m.%d %H:%M')
+
+        picnicsession.updateSessionComment(session,'appended data %s' % (timewindow))
+  
+    del artist
+
+    pid=os.fork()
+    if pid==0:
+        os.execvp('tar',('tar','-jcvf',tarcompoutputfilename,'--directory='+baseftpdir,session['sessionid']))
+    if pid<0:
+        raise RuntimeError,"compression failed due to fork"
+    (pid,status)=os.waitpid(pid,0)
+    if os.WEXITSTATUS(status)!=0:
+        raise RuntimeError,"Compression failed on error %i" % os.WEXITSTATUS(status)
+
 
 def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
     picnicsession.updateSessionComment(session,'loading artist')

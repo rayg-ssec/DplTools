@@ -8,6 +8,7 @@ import picnicsession
 import jsgen
 from multiprocessing import Process,Queue
 import json
+import time
 
 from timeutils import validdate
 
@@ -76,6 +77,24 @@ def netcdfresult(request):
     return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')), 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session,
         'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber}
 
+@view_config(route_name='multinetcdfresult',renderer='templates/multinetcdfresult.pt')
+def multinetcdfresult(request):
+    #print 'URLREQ: ',request.matched_route.name
+    sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
+    #folder=picnicsession.sessionfolder(sessionid);
+    #sessiontask=tasks[sessionid]
+    #session=sessiontask['session']
+    #scan session folder for images
+    session=picnicsession.loadsession(sessionid)
+
+    if 'starttime' in session:
+        session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
+    if 'endtime' in session:
+        session['endtime']=datetime.strptime(session['endtime'],picnicsession.json_dateformat)
+
+    return { 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session,
+        'datetime':datetime, 'timedelta':timedelta, 'printNumber':picnicsession.printNumber, 'sessionActive':picnicsession.sessionActive(session)}
+
 
 
 @view_config(route_name='imagereq')
@@ -124,8 +143,13 @@ def netcdfrequest(request):
     sessionid=session.new_csrf_token()
     sessiondict={}
     sessiondict['sessionid']=sessionid
-    sessiondict['finalpage']=request.route_path('netcdfresult',session=sessionid);
-    return picnicsession.newSessionProcess("newnetcdf",request,sessiondict)
+    if request.params.getone('filemode')=='single':
+        sessiondict['finalpage']=request.route_path('netcdfresult',session=sessionid);
+        return picnicsession.newSessionProcess("newnetcdf",request,sessiondict)
+    sessiondict['finalpage']=request.route_path('multinetcdfresult',session=sessionid);
+    picnicsession.newSessionProcess("newmultinetcdf",request,sessiondict,force_time=datetime.utcnow()+timedelta(days=1))
+    time.sleep(1)
+    return HTTPTemporaryRedirect(location=sessiondict['finalpage'])
 
 def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
     ret=[]

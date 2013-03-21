@@ -99,6 +99,12 @@ def safejoin(*args):
     return ret
 
 
+def sessionActive(sessionid):
+    if not isinstance(sessionid,basestring):
+        sessionid = sessionid['sessionid']
+    return sessionid in tasks and tasks[sessionid].is_alive()
+
+
 # requests take 4 stages:
 # - fork/dispatch: sets up session, logfile, forks, and calls specific function
 # - parse parameters
@@ -136,10 +142,10 @@ def sessionfile(sessionid,filename,create=False):
     if not isinstance(sessionid,basestring):
         sessionid = sessionid['sessionid']
     fold=_sessionfolder(sessionid)
-    if filename==None:
-        return fold
     if create and not os.access(fold,os.R_OK):
         os.mkdir(fold)
+    if filename==None:
+        return fold
     return safejoin(fold,filename)
 
 def _sessionfolder(sessionid):
@@ -187,7 +193,7 @@ def updateSessionComment(sessionid,value):
     print datetime.utcnow(),' Updating Session Comment :',value
     storesession(session)
 
-def newSessionProcess(dispatch,request,session):
+def newSessionProcess(dispatch,request,session,*args,**kwargs):
     storesession(session)
     sessionid=session['sessionid']
     logfilepath=sessionfile(sessionid,'logfile',create=True)
@@ -254,7 +260,7 @@ def newSessionProcess(dispatch,request,session):
         b.addProcess(processDescription)
 
     print 'starting task for ',sessionid, ' dispatch named ', dispatch
-    tasks[sessionid].start(updateseconds=120)
+    tasks[sessionid].start(updateseconds=120,*args,**kwargs)
     stdt.close()
     return HTTPTemporaryRedirect(location=makeUserCheckURL(request,request.route_path('progress_withid',session=sessionid)))
 
