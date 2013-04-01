@@ -31,8 +31,12 @@ setTimeout("self.location.replace('${request.route_path('debugsession',session=s
     </tr>
     <tr>
       <td>Destination URL:</td>
-      <td tal:condition="session!=None"><a tal:attributes="href session.finalpage">here </a></td>
+      <td tal:condition="session!=None"><a tal:attributes="href session.finalpage">here</a></td>
       <td tal:condition="session==None">unknown</td>
+    </tr>
+    <tr tal:condition="session!=None and 'ftpfolder' in session">
+      <td>FTP Storage:</td>
+      <td><a tal:attributes="href session.ftpfolder">here</a></td>
     </tr>
     <tr tal:condition="session!=None and 'name' in session">
       <td>Dataset:</td>
