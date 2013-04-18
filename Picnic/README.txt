@@ -21,3 +21,4 @@ PYTHONPATH should point to Picnic and an operational version of hsrl_python code
 HSRL_CONFIG for the hsrl_python code
 FTPPATH must point to a writable location on disk to store multiple output requests. actual content will be stored as $(FTPPATH)/username/sessionid/* and $(FTPPATH)/username/filename_with_sessionid.tar.bz2
 FTPURL must point to the same location as FTPPATH, but as a completely parallel URL for listing and retrieval of its content by remote
+SESSIONFOLDER location for each session's working directory to be stored.  default is './sessions'

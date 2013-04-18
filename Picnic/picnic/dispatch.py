@@ -403,7 +403,7 @@ def makeImagesFromDPL(session,DPLgen):
         capturingfigs=session['figstocapture']
         print capturingfigs
         for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
-            if x in alreadycaptured or x.startswith('#'):
+            if x in alreadycaptured or (x!=None and x.startswith('#')):
                 continue
             alreadycaptured.append(x)
             if x == None:

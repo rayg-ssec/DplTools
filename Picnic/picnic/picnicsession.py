@@ -150,8 +150,8 @@ def sessionfile(sessionid,filename,create=False):
 
 def _sessionfolder(sessionid):
     if sessionid==None:
-        return safejoin('.','sessions')
-    return safejoin('.','sessions',sessionid);
+        return os.getenv('SESSIONFOLDER',safejoin('.','sessions'))
+    return safejoin(_sessionfolder(None),sessionid);
 
 def loadjson(session,filename):
     if isinstance(session,basestring):
