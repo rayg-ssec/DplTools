@@ -161,7 +161,7 @@ def parseImageParametersBackground(request,session):
         lib_filetype='data'
         for fi in disp.get_attrs(): # for each figure
             if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled
-                if fi in session['figstocapture']: #if requested, enable it
+                if fi in session['figstocapture'] or ('#'+fi) in session['figstocapture']: #if requested, enable it
                     disp.set_value(fi,'enable',1)
                     if not fi.endswith('_image'):
                         data_req='images housekeeping'
@@ -403,7 +403,7 @@ def makeImagesFromDPL(session,DPLgen):
         capturingfigs=session['figstocapture']
         print capturingfigs
         for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
-            if x in alreadycaptured:
+            if x in alreadycaptured or x.startswith('#'):
                 continue
             alreadycaptured.append(x)
             if x == None:
