@@ -541,25 +541,27 @@ def makeUserCheckURL(request,destination,destparms=None):#only works with a simp
         returl+='&' + '&'.join([(f+'='+parms[f]) for f in parms])
     return returl
 
+def getFirst(req,val,deflt=None):
+    for r in (req.POST,req.GET):
+        if val in r:
+            v=r.getone(val)
+            if len(v)>0:
+                return v
+    return deflt
+
 @view_config(route_name='userCheck',renderer='templates/userCheck.pt')
 def userCheck(request):
     #print 'URLREQ: ',request.matched_route.name
+    req=request
     try:
         import cgi_datauser
     except:
-        if 'URL' in request.POST:
-            params=request.POST
-        else:
-            params=request.GET
         print "Couldn't load cgi_datauser from hsrl git codebase. user tracking disabled"
-        parms=''
         jumpurl=''
-        if "PARAMS" in params:
-            parms='?'+params.getone('PARAMS')
+        parms='?'+getFirst(req,'PARAMS','')
         if len(parms)<=1:
             parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-        if "URL" in params:
-            jumpurl=params.getone('URL')
+        jumpurl=getFirst(req,'URL','')
         if len(jumpurl)<=0:
             jumpurl='/'
             parms=''
@@ -570,26 +572,23 @@ def userCheck(request):
     doForm=True
     fromSQL=False
     indebug=False #True
-    if 'keyfield' in request.POST:
-        params=request.POST
-    else:
-        params=request.GET
-    if (keyfield in params and len(params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
+    if len(getFirst(req,keyfield,''))>0 or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
         doForm=False
-        if keyfield in params and len(params.getone(keyfield))>0:
-            if not isValidEmailAddress(params.getone(keyfield)):
+        if len(getFirst(req,keyfield,''))>0:
+            keyv=getFirst(req,keyfield)
+            if not isValidEmailAddress(keyv):
                 doForm=True
             else:
-                info[keyfield]=params.getone(keyfield)
+                info[keyfield]=keyv
                 hasreq=True;
                 for f in reqfields:
-                    if f in params and len(params.getone(f))>0:
-                        info[f]=params.getone(f)
+                    if len(getFirst(req,f,''))>0:
+                        info[f]=getFirst(req,f)
                     else:
                         hasreq=False
                 for f in optionalfields:
-                    if f in params and len(params.getone(f))>0:
-                        info[f]=params.getone(f)
+                    if len(getFirst(req,f,''))>0:
+                        info[f]=getFirst(req,f)
                 if not hasreq:#work by lookup
                     ti=dbc.getUserByEMail(info[keyfield])
                     if ti:
@@ -612,19 +611,21 @@ def userCheck(request):
                 doForm=True
                 break
     if not doForm:
+        #print 'Not doing form'
         if not fromSQL:
+            #print 'Not from SQL'
             uid=dbc.addClient(info)
         else:
+            #print 'From SQL'
             uid=info['uid']
         if uid!=None:
+            #print 'have UID'
             parms=''
             jumpurl=''
-            if "PARAMS" in params:
-                parms='?'+params.getone('PARAMS')
+            parms='?'+getFirst(req,"PARAMS",'')
             if len(parms)<=1:
                 parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-            if "URL" in params:
-                jumpurl=params.getone('URL')
+            jumpurl=getFirst(req,"URL","")
             if len(jumpurl)<=0:
                 jumpurl='/'
                 parms=''
@@ -646,19 +647,19 @@ def userCheck(request):
                """  % dest
             resp = Response(body=bod,content_type="text/html")
             resp.set_cookie(datacookiename,uid,max_age=timedelta(weeks=12))
+            #print 'done. returning forward to',dest
             return resp
+    #print 'Doing form'
     #form
     #info=dbc.getUserByEMail("null")
     #print "Content-Type: text/html"
     #if len(cookies)>0:
     #    print cookies
     #print
-    if "URL" in params:
-        info["URL"]=params.getone('URL')
-    else:
-        info["URL"]=""
-    info["PARAMS"]=request.query_string#os.environ.get("QUERY_STRING","")
+    info["URL"]=getFirst(req,"URL","")
+    info['PARAMS']=getFirst(req,'PARAMS',request.query_string)
     info["MYURL"]=request.path#os.environ.get("SCRIPT_NAME","")
+    #print 'form ops are',info
 
     fields=("email","name","org");
     fielddesc={"email":"E-Mail Address",
