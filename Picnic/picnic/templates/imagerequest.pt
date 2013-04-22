@@ -8,7 +8,9 @@
 </head>
 <body>
 <FORM ACTION="${imagedestinationurl}" id="reqform" METHOD="POST" enctype="multipart/form-data">
-<INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
+<INPUT tal:condition="method=='site'" TYPE="HIDDEN" NAME="site" value="${site}"/>
+<INPUT tal:condition="method=='dataset'" TYPE="HIDDEN" NAME="dataset" value="${dataset}"/>
+<INPUT tal:condition="method=='instrument'" TYPE="HIDDEN" NAME="instrument" value="${instrument}"/>
 <P>
 <div align="center">
 <B>${sitename}<BR/><BR/>

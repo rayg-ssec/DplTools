@@ -387,7 +387,7 @@ def form_view(request):
             'timeres':timeres,'altres':altres,
             'imagesets':jsgen.formsetsForInstruments(datasets,'images'),
             'netcdfsets':jsgen.formsetsForInstruments(datasets,'netcdf'),
-            'datasets':datasets,methodtype[3:]:methodkey,
+            'datasets':datasets,'method':methodtype[3:],methodtype[3:]:methodkey,
             'oldurl':oldurl,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),

@@ -73,10 +73,19 @@ lib=HSRLImageArchiveLibrarian(indexdefault='site')
 
 def parseImageParameters(request,session):
 
-    method='site'
-    session['method']=method
-    session[method]=int(request.params.getone(method));
-    session['methodkey']=int(request.params.getone(method));
+    methods=['site','dataset','instrument']
+    for m in methods:
+        if m not in request.params:
+            continue
+        method=m
+        session['method']=method
+        try:
+            session[method]=int(request.params.getone(method));
+            session['methodkey']=int(request.params.getone(method));
+        except:
+            session[method]=request.params.getone(method);
+            session['methodkey']=request.params.getone(method);
+        break
     starttime=datetime(int(request.params.getone('byr')),
                        int(request.params.getone('bmo')),
                        int(request.params.getone('bdy')),
