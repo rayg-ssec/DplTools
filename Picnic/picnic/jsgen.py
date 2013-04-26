@@ -17,8 +17,8 @@ def formjavascript(request):
     except RuntimeError:
         return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
     if request.matched_route.name=='imagejavascript':
-        return imagejavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
-    return netcdfjavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
+        return imagejavascriptgen(methodtype,methodkey,datasets,request.route_path('dataAvailability'))
+    return netcdfjavascriptgen(methodtype,methodkey,datasets,request.route_path('dataAvailability'))
 
 setsfile='picnic/resources/portal_requestsets.json'
 
@@ -87,7 +87,7 @@ function updateFromData(availability){
 """
     return ret
 
-def netcdfjavascriptgen(pathidx,instruments,dataAvailabilityPath):
+def netcdfjavascriptgen(locationtype,location,instruments,dataAvailabilityPath):
     psetKeys=['Dr','sigma_a','sigma_v','delta_a1','delta_v1','delta_a2','delta_v2','psettype']
     psets=[{'g_ice':'1','alpha_ice':'4','delta_v1':'3','psettype':'Solid Spheres','sigma_v':'1','alpha_water':'2','delta_a2':'2','delta_a1':'2','delta_v2':'3','g_water':'1','sigma_a':'1','Dr':'100'},
 {'g_ice':'1','alpha_ice':'4','delta_v1':'3','psettype':'Fire II (Arnott 1994)','sigma_v':'0.266','alpha_water':'2','delta_a2':'1.27','delta_a1':'2','delta_v2':'2.26','g_water':'1','sigma_a':'0.76','Dr':'200'},
@@ -99,10 +99,10 @@ def netcdfjavascriptgen(pathidx,instruments,dataAvailabilityPath):
 ]
 
     ret="""
-var datasetpath='%i';
-var jspath='site';
+var datasetpath='%s';
+var jspath='%s';
 var psetKeys_arr = new Array(%s);
-var locationelement='site=%i';
+var locationelement='%s=%s';
 var psets=new Array(
 {g_ice:'1',alpha_ice:'4',delta_v1:'3',psettype:'Solid Spheres',sigma_v:'1',alpha_water:'2',delta_a2:'2',delta_a1:'2',delta_v2:'3',g_water:'1',sigma_a:'1',Dr:'100'},
 {g_ice:'1',alpha_ice:'4',delta_v1:'3',psettype:'Fire II (Arnott 1994)',sigma_v:'0.266',alpha_water:'2',delta_a2:'1.27',delta_a1:'2',delta_v2:'2.26',g_water:'1',sigma_a:'0.76',Dr:'200'},
@@ -623,14 +623,14 @@ function showCustomEmail(){
   ec=document.getElementById('emailcustom');
   ec.style.display="";
 }
-    """ % (pathidx,"'" + "','".join(psetKeys) + "'",pathidx,makeUpdateFromData(formsetsForInstruments(instruments,'netcdf')),dataAvailabilityPath)
+    """ % (location,locationtype,"'" + "','".join(psetKeys) + "'",locationtype,location,makeUpdateFromData(formsetsForInstruments(instruments,'netcdf')),dataAvailabilityPath)
     return ret
 
-def imagejavascriptgen(pathidx,instruments,dataAvailabilityPath):
+def imagejavascriptgen(locationtype,location,instruments,dataAvailabilityPath):
  
     ret="""
-var datasetpath='%i';
-var jspath='site';
+var datasetpath='%s';
+var jspath='%s';
 
 var xmlhttp=false;
 
@@ -890,7 +890,7 @@ function showCustomEmail(){
   ec=document.getElementById('emailcustom');
   ec.style.display="";
 }
-""" % (pathidx,makeUpdateFromData(formsetsForInstruments(instruments,'images')),dataAvailabilityPath)
+""" % (location,locationtype,makeUpdateFromData(formsetsForInstruments(instruments,'images')),dataAvailabilityPath)
     return ret
 
 

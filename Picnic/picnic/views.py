@@ -9,6 +9,7 @@ import jsgen
 from multiprocessing import Process,Queue
 import json
 import time
+import traceback
 
 from timeutils import validdate
 
@@ -191,7 +192,10 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
 
         if success:
             ret.append("lidar")
-    except:
+    except RuntimeError, e:
+        print e
+        print traceback.format_exc()      
+        print 'exception while looking for data availability'
         pass
     Q.put(ret)
 
@@ -221,7 +225,6 @@ def dataAvailability(request):
             return HTTPNotFound("unknown data storage search method 2")
     starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')#some OSes strptime don't assue %Y consumes 4 characters
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
-    
     Q=Queue()
     p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
     #print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
