@@ -12,10 +12,10 @@ def formjavascript(request):
     request.response.content_type='text/javascript'
     datasets=[]
     try:
-        for inst in lib(**{methodtype[3:]:methodkey})['Instruments']:
+        for inst in lib(**{methodtype:methodkey})['Instruments']:
             datasets.extend(lib.instrument(inst)['datasets'])
     except RuntimeError:
-        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+        return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
     if request.matched_route.name=='imagejavascript':
         return imagejavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))
     return netcdfjavascriptgen(int(methodkey),datasets,request.route_path('dataAvailability'))

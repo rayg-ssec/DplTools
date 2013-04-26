@@ -246,9 +246,9 @@ def logbook(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        datasetid=lib('dataset',lib(**{methodtype[3:]:methodkey})['Instruments'][0])['DatasetID']
+        datasetid=lib('dataset',lib(**{methodtype:methodkey})['Instruments'][0])['DatasetID']
     except RuntimeError:
-        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+        return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
     parms={'dataset':'%i' % datasetid}
     for f in ['byr','bmo','bdy','bhr','bmn','eyr','emo','edy','ehr','emn','rss']:
@@ -304,9 +304,9 @@ def form_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
+        mylib=HSRLImageArchiveLibrarian(**{methodtype:methodkey})
     except RuntimeError:
-        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+        return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
     st=mylib()
     instruments=st['Instruments']
@@ -339,7 +339,7 @@ def form_view(request):
         endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
         starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
 
-    oldformparmsdict={methodtype[3:]:methodkey,
+    oldformparmsdict={methodtype:methodkey,
                       'byr':'%i' % starttime.year,
                       'bmo':'%i' % starttime.month,
                       'bdy':'%i' % starttime.day,
@@ -358,7 +358,7 @@ def form_view(request):
         oldurl="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?%s" % (oldformparams)
     if request.matched_route.name=='imagegen':
         oldurl="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?%s" % (oldformparams)
-    if False:#instcount>3:#more than just HSRL. python doesn't support it yet
+    if False:#instcount>3 :#more than just HSRL. python doesn't support it yet
         return HTTPTemporaryRedirect(location=oldurl)
 
 
@@ -387,7 +387,7 @@ def form_view(request):
             'timeres':timeres,'altres':altres,
             'imagesets':jsgen.formsetsForInstruments(datasets,'images'),
             'netcdfsets':jsgen.formsetsForInstruments(datasets,'netcdf'),
-            'datasets':datasets,'method':methodtype[3:],methodtype[3:]:methodkey,
+            'datasets':datasets,'method':methodtype,methodtype:methodkey,
             'oldurl':oldurl,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),

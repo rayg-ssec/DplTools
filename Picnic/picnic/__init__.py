@@ -16,33 +16,35 @@ def main(global_config, **settings):
     config.add_route('imagereq', '/rti_request/')#will set up process, and forward to progress#
     config.add_route('imageresult', '/rti_result/{session}')#
     config.add_route('reimagereq', '/rti_result/{session}/reimage')#
-    config.add_route('imagegen', '/{accesstype}/{access}/custom_rti/')
-    config.add_route('imagejavascript', '/{accesstype}/{access}/custom_rti/req.js')
+    config.add_route('imagegen', '/by_{accesstype}/{access}/custom_rti/')
+    config.add_route('imagejavascript', '/by_{accesstype}/{access}/custom_rti/req.js')
 
     #netcdf gen redirect
     config.add_route('netcdfreq', '/netcdf_request/')#will set up process, and forward to progress#
     config.add_route('netcdfresult', '/netcdf_result/{session}')#
     config.add_route('netcdfreimage','/netcdf_result/{session}/reimage')
-    config.add_route('netcdfgen', '/{accesstype}/{access}/custom_netcdf/')
-    config.add_route('netcdfjavascript', '/{accesstype}/{access}/custom_netcdf/req.js')
+    config.add_route('netcdfgen', '/by_{accesstype}/{access}/custom_netcdf/')
+    config.add_route('netcdfjavascript', '/by_{accesstype}/{access}/custom_netcdf/req.js')
     config.add_route('multinetcdfresult', '/multinetcdf_result/{session}')#
  
     #logbook redirect
-    config.add_route('logbook', '/{accesstype}/{access}/logbook/')
+    config.add_route('logbook', '/by_{accesstype}/{access}/logbook/')
 
     #month
-    config.add_route('thumb', '/{accesstype}/{access}/{thumbtype}/')#goes to month
-    config.add_route('month', '/{accesstype}/{access}/{thumbtype}/{year}/{month}/')
-    config.add_route('multiview', '/{accesstype}/{access}/all/{year}/{month}/{day}/')
+    config.add_route('thumb', '/by_{accesstype}/{access}/{thumbtype}/')#goes to month
+    config.add_route('month', '/by_{accesstype}/{access}/{thumbtype}/{year}/{month}/')
+    config.add_route('multiview', '/by_{accesstype}/{access}/all/{year}/{month}/{day}/')
     #images
-    config.add_route('today', '/{accesstype}/{access}/')#goes to today
-    config.add_route('date','/{accesstype}/{access}/{year}/{month}/{day}/{ampm}/')
+    config.add_route('today', '/by_{accesstype}/{access}/')#goes to today
+    config.add_route('date','/by_{accesstype}/{access}/{year}/{month}/{day}/{ampm}/')
     #portal
     config.add_route('home', '/')
+    config.add_route('site', '/by_site/')
+    config.add_route('dataset', '/by_dataset/')
 
     #utilities
     config.add_route('session_resource','/session/{session}/{filename}')
-    config.add_route('image_resource','/{accesstype}/{access}/{year}/{month}/{day}/{filename}')
+    config.add_route('image_resource','/by_{accesstype}/{access}/{year}/{month}/{day}/{filename}')
     config.add_route('resource_request','/statichash/{statickey}')#static file
     config.add_route('progress', '/progress/')#
     config.add_route('progress_withid', '/progress/{session}')#

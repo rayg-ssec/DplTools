@@ -42,7 +42,7 @@ setTimeout("self.location.replace('${session.finalpage}')",5000)
 				<font color="#cc0000">Failed to start NetCDF file creation. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div> Terminated at state "${session.comment}"</font>
 			</div>
 		</center>
-	<a href="${request.route_path('logbook',accesstype='by_'+session.method,access=session.methodkey)+'?rss=off&'+ session.starttime.strftime('byr=%Y&bmo=%m&bdy=%d&bhr=%H&bmn=%M') +'&' + session.endtime.strftime('eyr=%Y&emo=%m&edy=%d&ehr=%H&emn=%M')}">logbook entry</a><br />
+	<a href="${request.route_path('logbook',accesstype=session.method,access=session.methodkey)+'?rss=off&'+ session.starttime.strftime('byr=%Y&bmo=%m&bdy=%d&bhr=%H&bmn=%M') +'&' + session.endtime.strftime('eyr=%Y&emo=%m&edy=%d&ehr=%H&emn=%M')}">logbook entry</a><br />
 		<center>
 			<a tal:repeat="url plainurls" tal:attributes="href url.url" tal:content="url.name"/>
 		</center>

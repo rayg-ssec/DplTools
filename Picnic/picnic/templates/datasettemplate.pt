@@ -15,55 +15,27 @@
   <![endif]-->
 </head>
 <body>
-<div id="wrap" tal:define="accesstype 'site'">
+<div id="wrap" tal:define="accesstype 'dataset'">
   Return to the <A HREF="http://lidar.ssec.wisc.edu/">University of Wisconsin Lidar Homepage</A>.<BR>
   <B>University of Wisconsin - Madison HSRL Data Archives</B>
   <UL>
-    <B><I>Active Sites:</I></B>
-    <LI tal:repeat="site lib(index=accesstype,isactive=True,reverseOrder=True)"><B>${site.Name}</B>
+    <B><I>Datasets:</I></B>
+    <LI tal:repeat="site lib(index=accesstype)"><B>${site.Name}</B>
     <UL>
-       <LI>Archive: <A HREF="${request.route_path('thumb',accesstype=accesstype,access=site.SiteID,thumbtype='all')}">Multi-View</A>
+       <LI>Archive: <A HREF="${request.route_path('thumb',accesstype=accesstype,access=site.Name,thumbtype='all')}">Multi-View</A>
        <span tal:repeat="instname site.Instruments">
         <span tal:condition="'thumbsets' in lib.instrument(instname) and len(lib.instrument(instname)['thumbsets'])>0">
-         - <a href="${request.route_path('thumb',accesstype=accesstype,access=site.SiteID,thumbtype=lib.instrument(instname)['thumbsets'][0]['prefix'])}">${instname}</a>
+         - <a href="${request.route_path('thumb',accesstype=accesstype,access=site.Name,thumbtype=lib.instrument(instname)['thumbsets'][0]['prefix'])}">${instname}</a>
        </span>
        </span>
       </LI>
       <LI>
-        <A HREF="${request.route_path('imagegen',accesstype=accesstype,access=site.SiteID)}">Custom Images</A>
+        <A HREF="${request.route_path('imagegen',accesstype=accesstype,access=site.Name)}">Custom Images</A>
       </LI>
       <LI>
-        <A HREF="${request.route_path('netcdfgen',accesstype=accesstype,access=site.SiteID)}">Custom NetCDF</A>
+        <A HREF="${request.route_path('netcdfgen',accesstype=accesstype,access=site.Name)}">Custom NetCDF</A>
       </LI>
      </UL>
-    </LI>
-    <BR>
-    <B><I>Archived Sites:</I></B>
-    <LI tal:repeat="site lib(index='site',isactive=False,reverseOrder=True)"><B>${site.Name}</B>
-    <UL>
-      <LI>Archive: <A HREF="${request.route_path('thumb',accesstype=accesstype,access=site.SiteID,thumbtype='all')}">Multi-View</A>
-       <span tal:repeat="instname site.Instruments">
-        <span tal:condition="'thumbsets' in lib.instrument(instname) and len(lib.instrument(instname)['thumbsets'])>0">
-         - <a href="${request.route_path('thumb',accesstype=accesstype,access=site.SiteID,thumbtype=lib.instrument(instname)['thumbsets'][0]['prefix'])}">${instname}</a>
-       </span>
-       </span>
-      </LI>
-      <LI tal:condition="'Eureka, Nunavut, Canada - SEARCH' in site.Name">
-      <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/about_image.htm#processeddata">Pre-processed monthly data files:</a>
-      <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processed_2005.htm">2005</a>
-      - <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processed_2006.htm">2006</a>
-      - <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processed_2007.htm">2007</a>
-      - <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processed_2008.htm">2008</a>
-      - <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processed_2009.htm">2009</a>
-      - <a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processed_2010.htm">2010</a>
-      </LI>
-      <LI>
-        <A HREF="${request.route_path('imagegen',accesstype=accesstype,access=site.SiteID)}">Custom Images</A>
-      </LI>
-      <LI>
-        <A HREF="${request.route_path('netcdfgen',accesstype=accesstype,access=site.SiteID)}">Custom NetCDF</A>
-      </LI>
-    </UL>
     </LI>
    <BR>
    <B><I>Additional Links:</I></B>
