@@ -1,7 +1,10 @@
 import picnicsession
 from datetime import datetime,timedelta
 import jsgen
+import json
 import os
+from pyramid.httpexceptions import HTTPBadRequest
+import traceback
 
 #get parameters from session, call function to make DPL and make images
 def createimages(request,session,isBackground):
@@ -118,19 +121,23 @@ def parseImageParameters(request,session):
     session['name']=name
 
     if 'custom_processing' in request.params and request.params.getone('custom_processing'):
+        pd.request.params.getone('process_parameters_content')
         print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
         try:
-            d=json.loads(request.params.getone('process_parameters_content').file.read())
+            d=json.loads(pd.file.read())
             picnicsession.storejson(session,d,'process_parameters.json')
         except:
+            traceback.format_exc()
             return HTTPBadRequest()
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
     if 'custom_display' in request.params and request.params.getone('custom_display'):
-        print 'Storing custom image parameters ',request.params.getone('display_defaults_content')
+        pd=request.params.getone('display_defaults_content')
+        print 'Storing custom image parameters to',session['sessionid'],'display_parameters.json'
         try:
-            d=json.loads(request.params.getone('display_defaults_content').file.read())
+            d=json.loads(pd.file.read())
             picnicsession.storejson(session,d,'display_parameters.json')
         except:
+            traceback.format_exc()
             return HTTPBadRequest()
         session['figstocapture']=[None]
     elif 'display_defaults_file' in request.params:
