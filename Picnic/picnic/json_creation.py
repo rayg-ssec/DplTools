@@ -36,7 +36,9 @@ def imagecustom(request):
     #print 'URLREQ: ',request.matched_route.name
     try:
         if 'source' in request.params and len(request.parms.getone('source'))>0:
-            content=json.loads(request.params.getone('source'))
+            pd=request.params.getone('source')
+            content=json.loads(pd.file.read())
+            fn=pd.filename
         else:
             fn='all_plots.json'
             if 'file' in request.params:
@@ -54,7 +56,7 @@ def imagecustom(request):
         else:
             prefixes.append('json%i' % f)
     ret['jsonprefix']=prefixes
-    #ret['file']=fn
+    ret['file']=fn
     ret['original_content']=json.dumps(content, separators=(',',':'))
     bases={}
     for f in range(0,len(ret['subpath'])):
@@ -234,4 +236,5 @@ def generatejson(request):
             sidedo=res[pref]
         else:
             sidedo[subpath]=res[pref]
+    request.response.content_disposition='attachment; filename="%s"' % (request.params.getone('file'))
     return sidedo

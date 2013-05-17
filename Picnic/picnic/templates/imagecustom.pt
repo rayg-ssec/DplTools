@@ -204,7 +204,7 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 </tbody></table>
 </div>
 </div>
-<INPUT TYPE="SUBMIT" VALUE="Submit"/>
+<INPUT TYPE="SUBMIT" VALUE="Download JSON Parameter File"/>
 </FORM>
 </body>
 </html>
