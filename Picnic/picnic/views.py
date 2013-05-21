@@ -10,6 +10,7 @@ from multiprocessing import Process,Queue
 import json
 import time
 import traceback
+import server_archive
 
 from timeutils import validdate
 
@@ -405,4 +406,4 @@ def form_view(request):
             'userTracking':picnicsession.haveUserTracking(),
             #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
-            'sitename':name,'setCount':setCount,'setGen':setGen}
+            'sitename':name,'setCount':setCount,'setGen':setGen,'make_archived_widget':server_archive.make_archived_widget}

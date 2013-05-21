@@ -3,6 +3,7 @@ import json
 from multiprocessing import Process,Queue
 from pyramid.httpexceptions import HTTPBadRequest
 import copy
+import server_archive
 
 def _back_locate_file(fn,q):
     try:
@@ -63,6 +64,7 @@ def imagecustom(request):
         ret[ret['jsonprefix'][f]] = content if len(ret['subpath'])==0 else content[ret['subpath'][f]]
         bases[ret['jsonprefix'][f]]= content if len(ret['subpath'])==0 else content[ret['subpath'][f]]
     ret['bases']=bases
+    ret['json_type_token']=request.params.getone('json_type_token')
     return ret #loadMeta(ret,'json','meta')
 
 def getarrval(a,s):
@@ -172,7 +174,9 @@ def generatejson(request):
             sidedo=json.load(open(safe_locate_file(fn),'r'))
     except:
         return HTTPBadRequest()
-
+    json_type_token=request.params.getone('json_type_token')
+    if json_type_token not in ['PROC','IMG']:
+        return sidedo
     #print request.params
     if 'jsonprefix' not in request.params:
         return sidedo
@@ -237,4 +241,6 @@ def generatejson(request):
         else:
             sidedo[subpath]=res[pref]
     request.response.content_disposition='attachment; filename="%s"' % (request.params.getone('file'))
+    if len(request.params.getone('description'))>0:
+        server_archive.store_archived_json(request,json_type_token,request.params.getone('description'),sidedo)
     return sidedo

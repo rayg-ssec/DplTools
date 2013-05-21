@@ -61,6 +61,9 @@ def main(global_config, **settings):
     config.add_route('imagecustom','/imagecustom')
     config.add_route('generatejson','/jsongen')
 
+    #server-side json archive cookie mods
+    config.add_route('archiveconf','/archived/{json_type_token}')
+
     import picnicsession
     import dispatch
     picnicsession.addDispatchers(dispatch.getDispatchers())

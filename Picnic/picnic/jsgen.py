@@ -48,7 +48,7 @@ function updateFromData(availability){
     var doall=false;
     var donone=false;
     var disabledSetting=false;
-    if (itemlist['custom_display']!=null && itemlist['custom_display'].checked)
+    if (itemlist['custom_display']!=null && itemlist['custom_display'].value!='default')
       donone=true;
     if (itemlist['allfields']!=null && itemlist['allfields'].checked){
       donone=true;
@@ -154,9 +154,9 @@ function sanityCheckSubmit() {
     document.getElementById("overpasscount").style.color='';
   }
   }catch(e){}
-  if(itemlist['custom_display']!=null && itemlist['custom_display'].checked && itemlist['display_defaults_content'].value=="")
+  if(itemlist['custom_display']!=null && itemlist['custom_display'].value=='custom' && itemlist['display_defaults_content'].value=="")
     invcount++;
-  if(itemlist['custom_processing']!=null && itemlist['custom_processing'].checked && itemlist['process_parameters_content'].value=="")
+  if(itemlist['custom_processing']!=null && itemlist['custom_processing'].value=='custom' && itemlist['process_parameters_content'].value=="")
     invcount++;
   if(itemlist['cdltemplatename'].value=='custom' && itemlist['cdltemplate_content'].value=="")
     invcount++;
@@ -489,18 +489,6 @@ function updateVisibilities() {
     if(part!=null)
     part.style.display="none";
     }
-  if(itemlist['custom_processing']!=null){
-    if (itemlist['custom_processing'].checked)
-      document.getElementById('custom_processing_field').style.display='';
-    else
-      document.getElementById('custom_processing_field').style.display='none';
-  }
-  if(itemlist['custom_display']!=null){
-    if(itemlist['custom_display'].checked)
-      document.getElementById('custom_display_field').style.display='';
-    else
-      document.getElementById('custom_display_field').style.display='none';
-  }
 }
 
 
@@ -788,9 +776,9 @@ function sanityCheckSubmit() {
        sbmt=tempobj;
   }
 
-  if(itemlist['custom_display']!=null && itemlist['custom_display'].checked && itemlist['display_defaults_content'].value=="")
+  if(itemlist['custom_display']!=null && itemlist['custom_display'].value=='custom' && itemlist['display_defaults_content'].value=="")
     invcount++;
-  if(itemlist['custom_processing']!=null && itemlist['custom_processing'].checked && itemlist['process_parameters_content'].value=="")
+  if(itemlist['custom_processing']!=null && itemlist['custom_processing'].value=='custom' && itemlist['process_parameters_content'].value=="")
     invcount++;
 
 
@@ -869,19 +857,7 @@ function toggleCheckbox(name){
 }
 
 function updateVisibilities() {
-  itemlist=document.forms['reqform'];
-  if(itemlist['custom_display']!=null){
-  if(itemlist['custom_display'].checked)
-    document.getElementById('custom_display_field').style.display='';
-  else
-    document.getElementById('custom_display_field').style.display='none';
-  }
-  if(itemlist['custom_processing']!=null){
-  if(itemlist['custom_processing'].checked)
-    document.getElementById('custom_processing_field').style.display='';
-  else
-    document.getElementById('custom_processing_field').style.display='none';
-  }
+  return;
 }
 
 function showCustomEmail(){

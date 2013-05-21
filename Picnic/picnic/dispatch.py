@@ -5,6 +5,7 @@ import json
 import os
 from pyramid.httpexceptions import HTTPBadRequest
 import traceback
+import server_archive
 
 #get parameters from session, call function to make DPL and make images
 def createimages(request,session,isBackground):
@@ -120,25 +121,34 @@ def parseImageParameters(request,session):
     session['dataset']=datasetname
     session['name']=name
 
-    if 'custom_processing' in request.params and request.params.getone('custom_processing'):
-        pd.request.params.getone('process_parameters_content')
-        print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
-        try:
-            d=json.loads(pd.file.read())
-            picnicsession.storejson(session,d,'process_parameters.json')
-        except:
-            traceback.format_exc()
-            return HTTPBadRequest()
+    if 'custom_processing' in request.params and request.params.getone('custom_processing')!='default':
+        cust=request.params.getone('custom_processing')
+        if cust=='custom':
+            try:
+                pd=request.params.getone('process_parameters_content')
+                pdc=pd.file.read()
+                d=json.loads(pdc)#.file.read())
+            except:
+                traceback.format_exc()
+                return HTTPBadRequest()
+        else:
+            d=server_archive.get_archived_json(request.params.getone('custom_processing_token'),cust)
+        #print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
+        picnicsession.storejson(session,d,'process_parameters.json')
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
-    if 'custom_display' in request.params and request.params.getone('custom_display'):
-        pd=request.params.getone('display_defaults_content')
-        print 'Storing custom image parameters to',session['sessionid'],'display_parameters.json'
-        try:
-            d=json.loads(pd.file.read())
-            picnicsession.storejson(session,d,'display_parameters.json')
-        except:
-            traceback.format_exc()
-            return HTTPBadRequest()
+    if 'custom_display' in request.params and request.params.getone('custom_display')!='default':
+        cust=request.params.getone('custom_display')
+        if cust=='custom':
+            pd=request.params.getone('display_defaults_content')
+            print 'Storing custom image parameters to',session['sessionid'],'display_parameters.json'
+            try:
+                d=json.loads(pd.file.read())
+            except:
+                traceback.format_exc()
+                return HTTPBadRequest()
+        else:
+            d=server_archive.get_archived_json(request.params.getone('display_defaults_token'),cust)
+        picnicsession.storejson(session,d,'display_parameters.json')
         session['figstocapture']=[None]
     elif 'display_defaults_file' in request.params:
         session['display_defaults_file']=request.params.getone('display_defaults_file')
@@ -163,7 +173,7 @@ def parseImageParameters(request,session):
 
 def parseImageParametersBackground(request,session):
     picnicsession.updateSessionComment(session,'setup')
-    if 'custom_display' in request.params and request.params.getone('custom_display'):
+    if 'custom_display' in request.params and request.params.getone('custom_display')!='default':
         import hsrl.utils.json_config as jc
         disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
     else:
@@ -245,7 +255,7 @@ def parseNetCDFParameters(request,session):
 
     figstocapture=[]
 
-    if 'custom_display' not in request.params or request.params.getone('custom_display'):
+    if 'custom_display' not in request.params or request.params.getone('custom_display')=='default':
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         session['display_defaults_file']='all_plots.json'
       
@@ -258,6 +268,8 @@ def parseNetCDFParameters(request,session):
                         figstocapture.append(figname)
             except:
                 pass
+    else:
+        figstocapture=[None]
     session['figstocapture']=figstocapture
     session['lib_filetype']=None
     picnicsession.storesession(session)
