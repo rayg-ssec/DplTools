@@ -406,4 +406,4 @@ def form_view(request):
             'userTracking':picnicsession.haveUserTracking(),
             #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
-            'sitename':name,'setCount':setCount,'setGen':setGen,'make_archived_widget':server_archive.make_archived_widget}
+            'sitename':name,'setCount':setCount,'setGen':setGen,'make_archived_widget':server_archive.make_archived_widget,'archived_widget_head':server_archive.archived_widget_head}

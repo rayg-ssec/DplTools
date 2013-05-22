@@ -205,7 +205,7 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 </tbody></table>
 </div>
 </div>
-Name:<INPUT TYPE="TEXT" NAME="file" VALUE="${file}"/><BR/>
+Download Name:<INPUT TYPE="TEXT" NAME="file" VALUE="${file}"/><BR/>
 Description (optional):<INPUT TYPE="TEXT" NAME="description" VALUE=""/> (If set, will also store this file on the server for later use)<BR/>
 <INPUT TYPE="SUBMIT" VALUE="Download JSON Parameter File"/>
 </FORM>

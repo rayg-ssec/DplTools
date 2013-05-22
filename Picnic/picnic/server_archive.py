@@ -206,22 +206,46 @@ def get_archived_file(json_type_token,hashval):
     except:
         return None
 
+def archived_widget_head(request):
+    return '<script type="text/javascript">\
+function doVisibleIf(aform,formfield,formvalue,spanname){\
+  var itemlist = document.forms[aform];\
+  var cb=itemlist[formfield];\
+  var spannode=document.getElementById(spanname);\
+  if(cb.value==formvalue)\
+    spannode.style.display="";\
+  else\
+    spannode.style.display="none";\
+}\
+function checkNewOrEdit(aform,formfield){\
+  var itemlist = document.forms[aform];\
+  var cb=itemlist[formfield];\
+  if(cb.value=="new" || cb.value=="edit")\
+    window.open(itemlist[formfield+"_"+cb.value+"url"].value,"_self",false);\
+}\
+</script>'
+
 
 def make_archived_widget(request,json_type_token,formname,onchange="",formfilename=None,formhost=None,formfileonchange="",formfilefield=None,formfilefielddesc="",customizeurl=None,defaultname="default"):
     ret=''
     if formfilename and formhost:
         onchange="doVisibleIf('%s','%s',%s,'%s');%s" % (formhost,formname,"'custom'",formfilefield if formfilefield else (formfilename+'_span'),onchange) 
+    onchange="checkNewOrEdit('%s','%s');%s" % (formhost,formname,onchange)
     ret+='<option value="default">%s</option>\n' % (defaultname)
     for h in get_archive_list(request,json_type_token):
         ret+='<option value="%s">%s</option>\n' % (h,get_file_description(json_type_token,h)['description'])
-    ret+='<option value="custom">custom...</option>\n'
+    ret+='<option value="custom">upload custom...</option>\n'
+    if customizeurl!=None:
+        ret+='<option value="new">create new...</option>\n'
+    ret+='<option value="edit">Edit this list...</option>\n'
     ret = ('<select NAME="%s" SIZE="1" onchange="%s" >\n' % (formname,onchange)) + ret + '</select>\n'
-    ret = ('<input type="hidden" name="%s_token" value="%s"/>\n' % (formname,json_type_token) ) +ret
+    ret += ('<input type="hidden" name="%s_token" value="%s"/>\n' % (formname,json_type_token) )
+    if customizeurl!=None:
+        ret += ('<input type="hidden" name="%s_newurl" value="%s"/>\n' % (formname,customizeurl) ) 
+    ret += ('<input type="hidden" name="%s_editurl" value="%s?destination=%s"/>\n' % (formname,request.route_path('archiveconf',json_type_token=json_type_token),request.current_route_path()) ) 
     if formfilename:
         ret+='<br/><span id=%s style="display: none">\n' % (formfilefield if formfilefield else (formfilename+'_span'))
         ret+='%s<input type="file" name="%s" onchange="%s"/>'% (formfilefielddesc,formfilename,formfileonchange)
-        if customizeurl!=None:
-            ret+='<br/> or <a href="%s">Download New</a>' % (customizeurl)
         ret+='</span>\n' 
     return ret
 
@@ -243,5 +267,5 @@ def archiveconf(request):
                 return HTTPTemporaryRedirect(location=request.params.getone('destination'))
     else:
         usearray=[x for x in get_archive_list(request,tok)]
-    return {'datetime':datetime,'timedelta':timedelta,'token':tok,
+    return {'datetime':datetime,'timedelta':timedelta,'token':tok,'destination':request.params.getone('destination') if 'destination' in request.params else None,
     'entries':get_complete_list(tok),'selected_entries':usearray,'get_file_description':get_file_description}

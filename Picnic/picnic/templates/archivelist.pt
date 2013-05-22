@@ -15,6 +15,7 @@ function toggleCheckbox(name){
 <body>
 <FORM ACTION="${req.current_route_path()}" METHOD="POST" enctype="multipart/form-data" id='archiveconf'>
 <input type="hidden" name="submitted" value="yep"/>
+<input tal:condition="destination != None" type="hidden" name="destination" tal:attributes="value destination"/>
 <table class="parameter"><tbody>
   <tr><td colspan="5"><big><B>Files Available:</B></big></td></tr>
   <tr tal:repeat="hashval entries">
