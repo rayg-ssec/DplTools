@@ -343,7 +343,7 @@ def form_view(request):
         endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
         starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
 
-    oldformparmsdict={methodtype:methodkey,
+    oldformparmsdict={methodtype:methodkey, 'forcematlab':'yes',
                       'byr':'%i' % starttime.year,
                       'bmo':'%i' % starttime.month,
                       'bdy':'%i' % starttime.day,
