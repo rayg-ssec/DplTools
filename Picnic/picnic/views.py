@@ -10,6 +10,8 @@ from multiprocessing import Process,Queue
 import json
 import time
 import traceback
+import logging
+log = logging.getLogger(__name__)
 
 from timeutils import validdate
 
@@ -153,9 +155,10 @@ def netcdfrequest(request):
     return HTTPTemporaryRedirect(location=sessiondict['finalpage'])
 
 def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
+    """ called from javascript """
     ret=[]
     try:
-      #print 'checking site ' , site , ' with time range ' , (starttime,endtime)
+      log.debug('dataAvailabilityBack: time range (%s to %s)' ,repr(starttime),repr(endtime) )
       if 'lidar' in datasets:
         times=[]
         fn=None
@@ -174,21 +177,21 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
         success=False
         if len(times)==0:
             success=False
-            #print 'no data'
+            print 'no data'
         elif len(times)>=2:
             success=True
-            #print 'more than 1'
+            print 'more than 1'
         elif t>=starttime and t<=endtime:
             success=True
-            #print 'time in range'
+            print 'time in range'
         elif starttime>datetime.utcnow():
             success=False
         elif 'data' in x and (starttime-t).total_seconds()<(60*60):
             success=True
-            #print 'data time may intersect'
+            print 'data time may intersect'
         elif 'data' not in x and (starttime-t).total_seconds()<(3*60*60):
             success=True
-            #print 'cal time may intersect'
+            print 'cal time may intersect'
 
         if success:
             ret.append("lidar")
@@ -226,12 +229,17 @@ def dataAvailability(request):
     starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')#some OSes strptime don't assue %Y consumes 4 characters
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
     Q=Queue()
-    p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
-    #print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
-    p.start()
-    retval=Q.get()
-    #print retval,datetime.utcnow()
-    p.join()
+    if 0:
+      p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
+      #print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
+      p.start()
+      retval=Q.get()
+      #print retval,datetime.utcnow()
+      p.join()
+    else:
+      dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime)
+      retval=Q.get()
+      
     #print datetime.utcnow()
 
         #print "Success = " , success
