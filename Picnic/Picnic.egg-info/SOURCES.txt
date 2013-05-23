@@ -15,8 +15,13 @@ Picnic.egg-info/top_level.txt
 picnic/HSRLImageArchiveLibrarian.py
 picnic/HSRLImageArchiveZookeeper.py
 picnic/__init__.py
+picnic/dispatch.py
+picnic/hsrl_archiveimages.py
 picnic/jsgen.py
+picnic/json_creation.py
+picnic/picnicsession.py
 picnic/tests.py
+picnic/timeutils.py
 picnic/views.py
 picnic/static/blank_thumb.jpg
 picnic/static/favicon.ico
@@ -30,6 +35,7 @@ picnic/static/pylons.css
 picnic/static/pyramid-small.png
 picnic/static/pyramid.png
 picnic/static/transparent.gif
+picnic/templates/datasettemplate.pt
 picnic/templates/datetemplate.pt
 picnic/templates/debug.pt
 picnic/templates/debugsession.pt
@@ -37,6 +43,7 @@ picnic/templates/imagecustom.pt
 picnic/templates/imagerequest.pt
 picnic/templates/imageresult.pt
 picnic/templates/monthtemplate.pt
+picnic/templates/multinetcdfresult.pt
 picnic/templates/netcdfrequest.pt
 picnic/templates/netcdfresult.pt
 picnic/templates/portaltemplate.pt

@@ -12,6 +12,8 @@ import time
 import traceback
 import logging
 log = logging.getLogger(__name__)
+import server_archive
+
 
 from timeutils import validdate
 
@@ -350,7 +352,7 @@ def form_view(request):
         endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
         starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
 
-    oldformparmsdict={methodtype:methodkey,
+    oldformparmsdict={methodtype:methodkey, 'forcematlab':'yes',
                       'byr':'%i' % starttime.year,
                       'bmo':'%i' % starttime.month,
                       'bdy':'%i' % starttime.day,
@@ -413,4 +415,4 @@ def form_view(request):
             'userTracking':picnicsession.haveUserTracking(),
             #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
-            'sitename':name,'setCount':setCount,'setGen':setGen}
+            'sitename':name,'setCount':setCount,'setGen':setGen,'make_archived_widget':server_archive.make_archived_widget,'archived_widget_head':server_archive.archived_widget_head}

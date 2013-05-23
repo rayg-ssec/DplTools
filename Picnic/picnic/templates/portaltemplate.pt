@@ -19,7 +19,7 @@
   Return to the <A HREF="http://lidar.ssec.wisc.edu/">University of Wisconsin Lidar Homepage</A>.<BR>
   <B>University of Wisconsin - Madison HSRL Data Archives</B>
   <UL>
-    <B><I>Active Sites:</I></B>
+    <B tal:condition="len([x for x in lib(index=accesstype,isactive=True)])>0"><I>Active Sites:</I></B>
     <LI tal:repeat="site lib(index=accesstype,isactive=True,reverseOrder=True)"><B>${site.Name}</B>
     <UL>
        <LI>Archive: <A HREF="${request.route_path('thumb',accesstype=accesstype,access=site.SiteID,thumbtype='all')}">Multi-View</A>
@@ -38,7 +38,7 @@
      </UL>
     </LI>
     <BR>
-    <B><I>Archived Sites:</I></B>
+    <B tal:condition="len([x for x in lib(index=accesstype,isactive=False)])>0"><I>Archived Sites:</I></B>
     <LI tal:repeat="site lib(index='site',isactive=False,reverseOrder=True)"><B>${site.Name}</B>
     <UL>
       <LI>Archive: <A HREF="${request.route_path('thumb',accesstype=accesstype,access=site.SiteID,thumbtype='all')}">Multi-View</A>

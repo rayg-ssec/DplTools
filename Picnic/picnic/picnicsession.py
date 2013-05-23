@@ -116,6 +116,10 @@ dispatchers={}
 
 def addDispatchers(d):
     dispatchers.update(d)
+    try:
+        os.mkdir(_sessionfolder(None))
+    except:
+        pass
 
 def taskdispatch(dispatcher,request,session,logstream=None):
     if logstream!=None:

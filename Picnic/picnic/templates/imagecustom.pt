@@ -15,12 +15,13 @@ function toggleCheckbox(name){
 <body>
 <FORM ACTION="${req.current_route_path()}" METHOD="POST" enctype="multipart/form-data" id='newfile'>
 <INPUT TYPE="HIDDEN" NAME="subpath" value="${','.join(subpath)}"/>
+<INPUT TYPE="HIDDEN" NAME="json_type_token" VALUE="${json_type_token}"/>
 Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <INPUT TYPE="SUBMIT" VALUE="Edit..."/>
 </FORM>
 <FORM ACTION="${req.route_path('generatejson')}" METHOD="POST" id='jsonform'>
 <INPUT TYPE="HIDDEN" NAME="jsonprefix" VALUE="${','.join(jsonprefix)}"/>
-<INPUT TYPE="HIDDEN" NAME="file" VALUE="${file}"/>
+<INPUT TYPE="HIDDEN" NAME="json_type_token" VALUE="${json_type_token}"/>
 <INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${','.join(subpath)}"/>
 <INPUT TYPE="HIDDEN" NAME="original_content" VALUE="${original_content}"/>
 <div tal:omit-tag="" tal:repeat="pidx range(0,len(subpath))">
@@ -204,7 +205,9 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 </tbody></table>
 </div>
 </div>
-<INPUT TYPE="SUBMIT" VALUE="Submit"/>
+Download Name:<INPUT TYPE="TEXT" NAME="file" VALUE="${file}"/><BR/>
+Description (optional):<INPUT TYPE="TEXT" NAME="description" VALUE=""/> (If set, will also store this file on the server for later use)<BR/>
+<INPUT TYPE="SUBMIT" VALUE="Download JSON Parameter File"/>
 </FORM>
 </body>
 </html>
