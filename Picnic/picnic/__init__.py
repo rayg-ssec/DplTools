@@ -1,13 +1,33 @@
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 from pyramid.config import Configurator
+import os
 import matplotlib
 matplotlib.use('Agg')
+
+def verifyEnvValue(envname,ininame,settings,defval=None):
+    if os.getenv(envname,None)!=None:
+        return
+    if ininame!=None and ininame in settings:
+        print 'setting from settings: %s=%s from %s' % (envname,settings[ininame],ininame)
+        os.putenv(envname,settings[ininame])
+        os.environ[envname]=settings[ininame]
+    elif defval!=None:
+        print "Configuration Warning: setting environment variable %s to %s (set using %s or ini file value %s" % (envname,defval,envname,ininame)
+        os.putenv(envname,defval)
+    assert os.getenv(envname,None)!=None,'Configuration Error: Define '+ininame+" in your Pyramid INI file, or set the environment variable "+envname
 
 def main(global_config, **settings):
     """ This function returns a Pyramid WSGI application.
     """
     my_session_factory = UnencryptedCookieSessionFactoryConfig('picnicsecret')
     config = Configurator(settings=settings, session_factory=my_session_factory)
+    verifyEnvValue("HSRL_DATA_ARCHIVE_CONFIG","hsrl.data_archive_config",settings,defval="/etc/dataarchive.plist")
+    verifyEnvValue("HSRL_CONFIG","hsrl.config",settings)
+    verifyEnvValue("FTPPATH",'picnic.ftp.basepath',settings)
+    verifyEnvValue("FTPURL",'picnic.ftp.baseurl',settings)
+    verifyEnvValue("SESSIONFOLDER",'picnic.sessionbasepath',settings,defval='./sessions')
+    verifyEnvValue("SERVERSIDE_ARCHIVEPATH",'picnic.serverside_archivepath',settings,defval='./serverarchive')
+    verifyEnvValue("PICNIC_USERCHECK",'picnic.usercheck_enable',settings,defval='false')
     config.add_static_view('static', 'static', cache_max_age=3600)
     #data availability
     config.add_route('dataAvailability', '/dataAvailability')

@@ -524,11 +524,14 @@ doHaveUserTracking=None
 def haveUserTracking():
     global doHaveUserTracking
     if doHaveUserTracking==None:
-        try:
-            import cgi_datauser
-            doHaveUserTracking=True
-        except:
-            doHaveUserTracking=False
+        if os.getenv("PICNIC_USERCHECK",None)!=None:
+            doHaveUserTracking=(os.getenv("PICNIC_USERCHECK")=='true')
+        else:
+            try:
+                import cgi_datauser
+                doHaveUserTracking=True
+            except:
+                doHaveUserTracking=False
     return doHaveUserTracking
 
 def makeUserCheckURL(request,destination,destparms=None):#only works with a simple destination

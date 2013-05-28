@@ -43,11 +43,20 @@ FIXME trimming whitespace borders from images currently uses ImageMagick's 'mogr
 
 
 
-External Files and Environment Variables needed (see examples in resources): 
-HSRL_DATA_ARCHIVE_CONFIG=/etc/dataarchive.plist to configure the data sites, storage locations, and available datasets. location can be overridden using environment HSRL_DATA_ARCHIVE_CONFIG
+External Files and Environment Variables (or ini parameters) needed (see examples in resources): 
+hsrl.data_archive_config/HSRL_DATA_ARCHIVE_CONFIG=/etc/dataarchive.plist 
+       to configure the data sites, storage locations, and available datasets. location can be overridden using environment HSRL_DATA_ARCHIVE_CONFIG
 PYTHONPATH should point to Picnic and an operational version of hsrl_python code
-HSRL_CONFIG for the hsrl_python code
-FTPPATH must point to a writable location on disk to store multiple output requests. actual content will be stored as $(FTPPATH)/username/sessionid/* and $(FTPPATH)/username/filename_with_sessionid.tar.bz2
-FTPURL must point to the same location as FTPPATH, but as a completely parallel URL for listing and retrieval of its content by remote
-SESSIONFOLDER location for each session's working directory to be stored.  default is './sessions'
-SERVERSIDE_ARCHIVEPATH location for server-side storage of user configurations (display and processing), selectable from a widget, and listed in a cookie. file are stored in this folder, capped at 64k in size, named by a token and a 12-character sha1 hash (example: PROC_0123456789ab), and also cataloged in a json file to retain order, and have a human-readable name. default is './serverarchive'. users can select which of these are presented to them in the web interface. hash collisions prevent a new file from being written or modified.
+HSRL_CONFIG for the hsrl_python code (can also be set in ini file using 'hsrl.config')
+
+These are set in the .ini file, or as environment variables. Environment variables override the ini configured value.
+picnic.ftp.basepath/FTPPATH 
+	must point to a writable location on disk to store multiple output requests. actual content will be stored as $(FTPPATH)/username/sessionid/* and $(FTPPATH)/username/filename_with_sessionid.tar.bz2
+picnic.ftp.baseurl/FTPURL
+	must point to the same location as FTPPATH, but as a completely parallel URL for listing and retrieval of its content by remote
+picnic.sessionbasepath/SESSIONFOLDER
+	location for each session's working directory to be stored.  default is './sessions'
+picnic.serverside_archivepath/SERVERSIDE_ARCHIVEPATH
+	location for server-side storage of user configurations (display and processing), selectable from a widget, and listed in a cookie. file are stored in this folder, capped at 64k in size, named by a token and a 12-character sha1 hash (example: PROC_0123456789ab), and also cataloged in a json file to retain order, and have a human-readable name. default is './serverarchive'. users can select which of these are presented to them in the web interface. hash collisions prevent a new file from being written or modified.
+picnic.usercheck_enable
+	this can remain false. This enables loading an external module for storing task information in an SQL database
