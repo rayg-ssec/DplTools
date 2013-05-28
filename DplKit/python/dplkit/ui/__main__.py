@@ -105,11 +105,9 @@ def gui_test_1():
     s.start()
     print "Exec'ing"
     app.exec_()
-    print "Done exec'ing, stopping stream..."
-    s.stop()
-    print "Waiting for stream..."
+    print "Wait for stream"
     s.wait()
-    print "Done waiting for stream thread"
+    print "Done"
     
 def main():
     from argparse import ArgumentParser

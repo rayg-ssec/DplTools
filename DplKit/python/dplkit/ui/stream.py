@@ -162,6 +162,9 @@ class Stream(QtCore.QObject):
         # Make it so the worker starts when the thread starts
         self.thread_handle.started.connect(self.worker.run)
 
+        # Make it so when all windows are closed we exit
+        QtGui.qApp.lastWindowClosed.connect(self.stop)
+
         # If the user is using the stream by itself (no GUI) then
         # they probably want the app to stop exec when the Stream finishes
         if self.exit_app_on_complete:
