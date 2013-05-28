@@ -38,7 +38,7 @@ def _get_archive_dictionary(request):
     #parse
     return json.loads(strval)
 
-def _set_archive_dictionary(request,d):
+def _set_archive_dictionary(response,d):
     #dump to string
     strval=json.dumps(d, separators=(',',':'))
     #compress
@@ -52,7 +52,7 @@ def _set_archive_dictionary(request,d):
     else:
         cval=asciicompr
     print 'Cookie has length %s (from %s)' % (len(cval),'ascii' if cval==strval else 'compressed')
-    request.response.set_cookie(archivecookie,cval,max_age=timedelta(weeks=12))
+    response.set_cookie(archivecookie,cval,max_age=timedelta(weeks=12))
 
 def _get_archive_catalog():#ro
     try:
@@ -90,33 +90,33 @@ def get_archive_list(request,json_type_token):#ro
             yield h
     catalog_lock().unlock()
 
-def append_to_archive_list(request,json_type_token,h):#w
+def append_to_archive_list(request,json_type_token,h,response=None):#w
     r=_get_archive_dictionary(request)
     if json_type_token not in r:
         r[json_type_token]=[]
     if h in r[json_type_token]:
         return False
     r[json_type_token].append(h)
-    _set_archive_dictionary(request,r)
+    _set_archive_dictionary(response if response else request.response,r)
     return True
 
-def remove_from_archive_list(request,json_type_token,h):#w
+def remove_from_archive_list(request,json_type_token,h,response=None):#w
     r=_get_archive_dictionary(request)
     if json_type_token in r and h in r[json_type_token]:
         r[json_type_token].remove(h)
-        _set_archive_dictionary(request,r)
+        _set_archive_dictionary(response if response else request.response,r)
         return True
     return False
 
-def replace_archive_list(request,json_type_token,ha):
+def replace_archive_list(request,json_type_token,ha,response=None):
     r=_get_archive_dictionary(request)
     r[json_type_token]=ha
-    _set_archive_dictionary(request,r)
+    _set_archive_dictionary(response if response else request.response,r)
 
 #fixme read/write lock for the catalog
-def store_archived_json(request,json_type_token,description,content):#w
+def store_archived_json(request,json_type_token,description,content,response=None):#w
     cs=json.dumps(content, separators=(',',':'))
-    store_archived_file(request,json_type_token,description,cs)
+    store_archived_file(request,json_type_token,description,cs,response=response if response else request.response)
 
 def hashval_for(content,length=12):
     h=hashlib.sha1()
@@ -129,7 +129,7 @@ def hashval_for(content,length=12):
 def hashval_verify(content,hashval):
     return hashval_for(content,len(hashval))==hashval
 
-def store_archived_file(request,json_type_token,description,cs):
+def store_archived_file(request,json_type_token,description,cs,response=None):
     if len(cs)>1024*64:
         return False
     catalog_lock().exclusiveLock()
@@ -143,7 +143,7 @@ def store_archived_file(request,json_type_token,description,cs):
         return False
     file(_path_for_file(json_type_token,hashval),'w').write(cs)
 
-    append_to_archive_list(request,json_type_token,hashval)
+    append_to_archive_list(request,json_type_token,hashval,response=response if response else request.response)
 
     da[json_type_token].append(hashval)
     da['descriptions'][hashval]=description
@@ -253,6 +253,7 @@ def make_archived_widget(request,json_type_token,formname,onchange="",formfilena
 def archiveconf(request):
     tok = request.matchdict['json_type_token']
     #check if this was submitted
+    response=request.response
     print request.params
     if 'remove' in request.params:
         remove_archived_file(tok,request.params.getone('remove'))
@@ -262,9 +263,11 @@ def archiveconf(request):
             if h in request.params and request.params.getone(h):
                 usearray.append(h)
         if 'remove' not in request.params:
-            replace_archive_list(request,tok,usearray)
             if 'destination' in request.params:
-                return HTTPTemporaryRedirect(location=request.params.getone('destination'))
+                response=HTTPTemporaryRedirect(location=request.params.getone('destination')) #slowredirect(location=request.params.getone('destination'))
+            replace_archive_list(request,tok,usearray,response=response)
+            if 'destination' in request.params:
+                return response
     else:
         usearray=[x for x in get_archive_list(request,tok)]
     return {'datetime':datetime,'timedelta':timedelta,'token':tok,'destination':request.params.getone('destination') if 'destination' in request.params else None,
