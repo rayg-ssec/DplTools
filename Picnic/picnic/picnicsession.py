@@ -10,6 +10,8 @@ import multiprocessing
 import copy
 import stat
 import traceback
+import logging
+log = logging.getLogger(__name__)
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
@@ -30,6 +32,7 @@ class PicnicTaskWrapper:
     def new_task(self,sessionid,*args, **kwargs):
         self.terminate()
         self.sessionid=sessionid
+        log.debug("starting args = (%s) kw_args = (%s)"% (args, kwargs))
         self.__task=multiprocessing.Process(*args, **kwargs)
 
     def is_alive(self):
@@ -202,11 +205,13 @@ def newSessionProcess(dispatch,request,session,*args,**kwargs):
     sessionid=session['sessionid']
     logfilepath=sessionfile(sessionid,'logfile',create=True)
     if sessionid in tasks and tasks[sessionid].is_alive():
-        print 'cancelling stale task for ',sessionid
+        log.debug( 'cancelling stale task for  %s' %sessionid)
         tasks[sessionid].terminate()
         tasks[sessionid].join()
+        del tasks[sessionid]
     else:
         tasks[sessionid]=PicnicTaskWrapper(sessionid=sessionid)
+        log.debug("newSessionProcess - created task %s for %s" % (repr(tasks[sessionid]), sessionid))
     session['rescode']=''
     folder=_sessionfolder(sessionid)
     for s in os.listdir(folder):
@@ -263,7 +268,7 @@ def newSessionProcess(dispatch,request,session,*args,**kwargs):
 
         b.addProcess(processDescription)
 
-    print 'starting task for ',sessionid, ' dispatch named ', dispatch
+    log.debug('starting task for %s dispatch named %s (mypid = %d)' %(sessionid, dispatch,os.getpid() ) )
     tasks[sessionid].start(updateseconds=120,*args,**kwargs)
     stdt.close()
     return HTTPTemporaryRedirect(location=makeUserCheckURL(request,request.route_path('progress_withid',session=sessionid)))
@@ -340,8 +345,8 @@ def progresspage(request):
     if sessionid in tasks:
         rescode=tasks[sessionid].exitcode()
     else:
-        rescode='unknown (old task)'
-    print 'finished task for ',sessionid, ' with result code ', rescode
+        rescode='Unknown (old task)'
+    log.debug('finished task for  %s with result code %s (mypid = %d)' % ( sessionid, rescode, os.getpid()) )
     return HTTPTemporaryRedirect(location=session['finalpage'])
 
 
@@ -434,9 +439,11 @@ def statuspage(request):
         found=False
         for sessid in sess:
             if sessid==terminate:
-                print 'will try to terminate ',sessid
+                log.debug('will try to terminate %s'% sessid)
                 if sessid in tasks and tasks[sessid].is_alive():
                     tasks[sessid].terminate()
+                    tasks[sessid].join()
+                    del tasks[sessid]
                     return HTTPTemporaryRedirect(location=request.current_route_path())
                 break
     runningtasks=0
