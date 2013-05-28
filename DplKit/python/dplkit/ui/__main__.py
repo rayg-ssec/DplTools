@@ -72,10 +72,10 @@ def gui_test_1():
         # Definitely not optimal solution
         # Mimics DPL stream
         x = numpy.linspace(0,2*numpy.pi,1024)
-        #for i in range(1,10):
-        for i in range(1,100):
-            f = { "sine_value" : numpy.sin(x + i/10.0) }
-            #f = { "sine_value" : numpy.sin(x + i/10.0)+(i*0.01) }
+        for i in range(1,1000):
+            #f = { "sine_value" : numpy.sin(x + i/10.0) }
+            # Slowly rising sine wave
+            f = { "sine_value" : numpy.sin(x + i/10.0)+(i*0.01) }
             yield f
 
     # Create the DPL Stream
@@ -93,15 +93,12 @@ def gui_test_1():
     ax.set_title("Sine Wave Example - gui_test_1")
     ax.set_xlabel("X Axis")
     ax.set_ylabel("Y Axis")
-    ax.set_ylim(-1, 1)
-    #ax.set_autoscale_on(True)
-    #ax.set_xmargin(0.2)
-    #ax.set_ymargin(0.5)
     ax.grid()
 
     # Create the controller that handles communication between stream and widget
     control   = GUIController(s, my_widget)
     control.bind_line_y_to_channel("sine_value", line)
+    control.bind_axis_autoscale_y(ax, interval=10, padding=0.5)
 
     my_widget.show()
     print "Starting Stream..."
@@ -124,6 +121,7 @@ def main():
             help="Specify a test function name to run")
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.DEBUG)
     if args.doc_test:
         import doctest
         doctest.testmod()
