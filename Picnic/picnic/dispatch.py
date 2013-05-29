@@ -6,9 +6,11 @@ import os
 from pyramid.httpexceptions import HTTPBadRequest
 import traceback
 import server_archive
-
+import logging
+log = logging.getLogger(__name__)
 #get parameters from session, call function to make DPL and make images
 def createimages(request,session,isBackground):
+    log.debug("createimages: %s %s %s" % (repr(request), repr(session), repr(isBackground)) )
     if isBackground in [True, None]:
         makeImagesFromDPL(session,makeDPLFromSession(session))
 
