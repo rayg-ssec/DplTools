@@ -147,7 +147,7 @@ def parseImageParameters(request,session):
                 traceback.format_exc()
                 return HTTPBadRequest()
         else:
-            d=server_archive.get_archived_json(request.params.getone('display_defaults_token'),cust)
+            d=server_archive.get_archived_json(request.params.getone('custom_display_token'),cust)
         picnicsession.storejson(session,d,'display_parameters.json')
         session['figstocapture']=[None]
     elif 'display_defaults_file' in request.params:
