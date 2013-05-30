@@ -289,6 +289,23 @@ def fromSession(session,xlate):
             ret[dest]=tmp
     return ret
 
+class getLastOf:
+    def __init__(self,field,parents):
+        self.field=field
+        self.parents=parents
+
+    def __call__(self,fr):
+        for p in self.parents:
+            if hasattr(fr,p):
+                #print 'GETLASTOF: has',p
+                pa=getattr(fr,p)
+                if hasattr(pa,self.field):
+                    #print 'GETLASTOF:',p,'has',self.field
+                    fa=getattr(pa,self.field)
+                    if hasattr(fa,'shape') and fa.shape[0]>0:
+                        #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
+                        return fa[-1]
+        return None
 
 def makeDPLFromSession(session,doSearch=True):
     copyToInit={
@@ -314,15 +331,18 @@ def makeDPLFromSession(session,doSearch=True):
     dplobj=dpl_hsrl(process_control=process_control,**fromSession(session,copyToInit))
     if not doSearch:
         return dplobj,fromSession(session,copyToSearch)
+    searchparms=fromSession(session,copyToSearch)
     try:
         import hsrl.utils.threaded_generator
-        dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**fromSession(session,copyToSearch))
+        dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
     except:
-        dplc=dplobj(**fromSession(session,copyToSearch))
+        dplc=dplobj(**searchparms)
     if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
         picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
-    return dplc    
+    return picnicsession.PicnicProgressNarrator(dplc,getLastOf('times',['rs_inv','rs_mean','rs_raw']),
+        searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
+    #return dplc    
 
 def makeMultiNetCDFFromDPL(session,DPL,DPLParms,templatefilename):
     picnicsession.updateSessionComment(session,'loading artist')

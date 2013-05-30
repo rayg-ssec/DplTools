@@ -15,6 +15,33 @@ log = logging.getLogger(__name__)
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
+class PicnicProgressNarrator:
+    def __init__(self,framestream,getLastValue,firstval,lastval,session):
+        self.framestream=framestream
+        if hasattr(framestream,'provides'):
+            self.provides=framestream.provides
+        self.getLastValue=getLastValue
+        self.firstval=firstval
+        self.lastval=lastval
+        self.session=session
+        updateSessionComment(self.session,0,'percentcomplete')
+
+    def __iter__(self):
+        for f in self.framestream:
+            try:
+                lv=self.getLastValue(f)
+                if isinstance(lv,datetime):
+                    percent=100.0*((lv-self.firstval).total_seconds()/(self.lastval-self.firstval).total_seconds())
+                else:
+                    percent=100.0*((lv-self.firstval)/(self.lastval-self.firstval))
+                updateSessionComment(self.session,percent,'percentcomplete')
+            except:
+                print "Picnic Progress Narrator couldn't update percentcomplete"
+                #raise
+            yield f
+
+
+
 class PicnicTaskWrapper:
     def __init__(self,sessionid):
         self.__task=None
@@ -190,14 +217,14 @@ def storejson(session,d,filename):
 def storesession(session):
     storejson(session,session,'session.json')
 
-def updateSessionComment(sessionid,value):
+def updateSessionComment(sessionid,value,k='comment'):
     if isinstance(sessionid,basestring):
-        print 'WARNING: Loading session, rather than using session directly'
+        print 'WARNING: Loading session, rather than using session directly. Practice is to use the same dictionary in the lone process'
         session = loadsession(sessionid)
     else:
         session = sessionid
-    session['comment']=value
-    print datetime.utcnow(),' Updating Session Comment :',value
+    session[k]=value
+    print datetime.utcnow(),' Updating Session',k,':',value
     storesession(session)
 
 def newSessionProcess(dispatch,request,session,*args,**kwargs):
@@ -221,6 +248,8 @@ def newSessionProcess(dispatch,request,session,*args,**kwargs):
     stdt=file(logfilepath,'w')
     tasks[sessionid].new_task(sessionid=sessionid,target=taskdispatch,args=(dispatch,request,session,stdt))
     session['comment']='inited'
+    session['percentcomplete']=0.0
+    session['task_started']=datetime.strftime(datetime.utcnow(),json_dateformat)
     session['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile')
     dispatchers[dispatch](request,session,False)
     storesession(session)
@@ -338,9 +367,11 @@ def progresspage(request):
         for sesid in tasks:
             if tasks[sesid].is_alive():
                 tasks[sesid].checkExpireTime(now=now)
+        for f in ['starttime','endtime','task_started']:
+            session[f]=datetime.strptime(session[f],json_dateformat)
 
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
-            'sessionid':sessionid,'destination':session['finalpage'],'session':session}
+            'sessionid':sessionid,'destination':session['finalpage'],'session':session,'datetime':datetime,'timedelta':timedelta}
     #load next page if complete
     if sessionid in tasks:
         rescode=tasks[sessionid].exitcode()
