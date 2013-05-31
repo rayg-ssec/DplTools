@@ -18,6 +18,8 @@ develop-eggs
 .installed.cfg
 lib
 lib64
+PKG-INFO 
+SOURCES.txt
 
 # Installer logs
 pip-log.txt

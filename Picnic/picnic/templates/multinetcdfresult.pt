@@ -1,0 +1,52 @@
+<html tal:define="hourformat '%H:%M:%S';dateformat '%B %e, %Y '+hourformat;">
+	<head>
+  <META HTTP-EQUIV="Refresh" CONTENT="10;url=${session.finalpage}" tal:condition="sessionActive">
+  <script type="text/javascript" tal:condition="request.client_addr=='127.0.0.1'">
+function autoIframe(frameId){
+  try{  
+    frame = document.getElementById(frameId);
+    innerDoc = (frame.contentDocument) ? frame.contentDocument : frame.contentWindow.document;
+
+    if (innerDoc == null){
+      // Google Chrome
+      frame.height = document.all[frameId].clientHeight + document.all[frameId].offsetHeight + document.all[frameId].offsetTop;
+    }
+    else{
+      frame.height = innerDoc.body.scrollHeight + 18;
+      frame.style.height = innerDoc.body.scrollHeight + 18;
+      }
+  }
+
+  catch(err){
+    alert('Err: ' + err.message);
+    window.status = err.message;
+  }
+}
+</script>
+		<title>${session.name} Multiple NetCDF Creation ${'' if ('starttime' not in session or 'endtime' not in session) else (session.starttime.strftime(dateformat) + ' - ' + session.endtime.strftime(hourformat if session.starttime.date()==(session.endtime-timedelta(seconds=1)).date() else dateformat))} , range ${'' if ('altmin' not in session or 'altmax' not in session) else '%.0f - %.0f km' % (session.altmin/1000,session.altmax/1000) } file mode: ${session.filemode}</title>
+	</head>
+	<body>
+<script language="JavaScript" tal:condition="sessionActive">
+<!-- Use the HTML comment to hide JavaScript from old browsers
+setTimeout("self.location.replace('${session.finalpage}')",5000)
+// End hiding JavaScript -->
+</script>
+		<center>
+			<div tal:omit-tag="" tal:condition="'ftpfile' in session">
+				Task Status: ${session.comment} (<font color="#cc0000" tal:omit-tag="not sessionActive">Task is ${'STILL active' if sessionActive else 'not running'}</font>)<BR/>
+				<div tal:omit-tag="" tal:condition="sessionActive">Status checked: ${datetime.utcnow()}<BR/></div>
+				You will be able to find the resulting files in a tarball to appear at the following URL:<BR/><a href="${session.ftpfile}">${session.ftpfile}</a><BR/><BR/>
+				The intermediate files, while much larger, will appear as created in<BR/><a href="${session.ftpfolder}">${session.ftpfolder}</a>.
+			</div>
+			<div tal:omit-tag="" tal:condition="'ftpfile' not in session">
+				<font color="#cc0000">Failed to start NetCDF file creation. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>.</div> Terminated at state "${session.comment}"</font>
+			</div>
+		</center>
+	<a href="${request.route_path('logbook',accesstype=session.method,access=session.methodkey)+'?rss=off&'+ session.starttime.strftime('byr=%Y&bmo=%m&bdy=%d&bhr=%H&bmn=%M') +'&' + session.endtime.strftime('eyr=%Y&emo=%m&edy=%d&ehr=%H&emn=%M')}">logbook entry</a><br />
+		<center>
+			<a tal:repeat="url plainurls" tal:attributes="href url.url" tal:content="url.name"/>
+		</center>
+	    <a tal:condition="'logfileurl' in session" tal:attributes="href session.logfileurl">&lambda;</a>
+<iframe tal:condition="request.client_addr=='127.0.0.1'" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
+	</body>
+</html>

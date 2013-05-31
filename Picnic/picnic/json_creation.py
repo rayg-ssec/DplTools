@@ -3,6 +3,7 @@ import json
 from multiprocessing import Process,Queue
 from pyramid.httpexceptions import HTTPBadRequest
 import copy
+import server_archive
 
 def _back_locate_file(fn,q):
     try:
@@ -36,7 +37,9 @@ def imagecustom(request):
     #print 'URLREQ: ',request.matched_route.name
     try:
         if 'source' in request.params and len(request.parms.getone('source'))>0:
-            content=json.loads(request.params.getone('source'))
+            pd=request.params.getone('source')
+            content=json.loads(pd.file.read())
+            fn=pd.filename
         else:
             fn='all_plots.json'
             if 'file' in request.params:
@@ -54,13 +57,14 @@ def imagecustom(request):
         else:
             prefixes.append('json%i' % f)
     ret['jsonprefix']=prefixes
-    #ret['file']=fn
+    ret['file']=fn
     ret['original_content']=json.dumps(content, separators=(',',':'))
     bases={}
     for f in range(0,len(ret['subpath'])):
         ret[ret['jsonprefix'][f]] = content if len(ret['subpath'])==0 else content[ret['subpath'][f]]
         bases[ret['jsonprefix'][f]]= content if len(ret['subpath'])==0 else content[ret['subpath'][f]]
     ret['bases']=bases
+    ret['json_type_token']=request.params.getone('json_type_token')
     return ret #loadMeta(ret,'json','meta')
 
 def getarrval(a,s):
@@ -170,7 +174,9 @@ def generatejson(request):
             sidedo=json.load(open(safe_locate_file(fn),'r'))
     except:
         return HTTPBadRequest()
-
+    json_type_token=request.params.getone('json_type_token')
+    if json_type_token not in ['PROC','IMG']:
+        return sidedo
     #print request.params
     if 'jsonprefix' not in request.params:
         return sidedo
@@ -234,4 +240,7 @@ def generatejson(request):
             sidedo=res[pref]
         else:
             sidedo[subpath]=res[pref]
+    request.response.content_disposition='attachment; filename="%s"' % (request.params.getone('file'))
+    if len(request.params.getone('description'))>0:
+        server_archive.store_archived_json(request,json_type_token,request.params.getone('description'),sidedo)
     return sidedo

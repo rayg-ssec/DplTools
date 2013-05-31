@@ -5,10 +5,13 @@
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
 <script language="javascript" src="${req.route_path('netcdfjavascript',accesstype=request.matchdict['accesstype'],access=request.matchdict['access'])}"></script>
 <style type="text/css">.checklink A:link {color: #000000; text-decoration: none} .checklink A:visited {text-decoration: none} .checklink A:active {text-decoration: none} .checklink A:hover {text-decoration: underline;}</style>
+${structure: archived_widget_head(req)}
 </head>
 <body>
 <FORM id="reqform" ACTION="${netcdfdestinationurl}" METHOD="POST" enctype="multipart/form-data">
-<INPUT TYPE="HIDDEN" NAME="site" VALUE="${site}"/>
+<INPUT tal:condition="method=='site'" TYPE="HIDDEN" NAME="site" value="${site}"/>
+<INPUT tal:condition="method=='dataset'" TYPE="HIDDEN" NAME="dataset" value="${dataset}"/>
+<INPUT tal:condition="method=='instrument'" TYPE="HIDDEN" NAME="instrument" value="${instrument}"/>
 <P/>
 <div align="center">
 <B>${sitename}</B><BR/>
@@ -98,17 +101,17 @@ Format:
 <A HREF="http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#filemode"  TARGET="lidarwebdoc">File Mode:</A> 
 </TD><TD align="left">
 <span id="filemoderecommend" style="display: none"><font color="#cc0000">Grid size is huge.<BR/>Recommend breaking into multiple smaller files.<BR/></font></span>
-<select name="filemode" size="1" disabled="true" disabled_onchange="updateFMVisibilities();checkOverpassCount();checkGridSize();sanityCheckSubmit();" >
+<select name="filemode" size="1" onchange="updateFMVisibilities();checkOverpassCount();checkGridSize();sanityCheckSubmit();" >
 <option value="single" selected="true">single</option>
-<option value="satellite">satellite</option>
-<option value="routine">routine</option>
+<option tal:condition="False" value="satellite">satellite</option>
+<option tal:condition="False" value="routine">routine</option>
 <option value="30minute">30minute</option>
 <option value="hour">hour</option>
 <option value="day">day</option>
 <option value="week">week</option>
 <option value="month">month</option>
 </select>
-</TD></TR><TR id="fm_multi" tal:condition="False"><TD align="right" style="background-color: transparent" >
+</TD></TR><TR id="fm_multi" ><TD align="right" style="background-color: transparent" >
 Username: 
 </TD><TD align="left">
 <INPUT TYPE="TEXT" NAME="username" value="" size="10" maxsize="16" onchange="sanityCheckSubmit();"/><BR/>(4 or more characters)
@@ -293,10 +296,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 
 <BR/><BR/>
 <DIV ALIGN="CENTER">
-	<INPUT type="checkbox" name="custom_processing" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="checklink"><a href="javascript: toggleCheckbox('custom_processing');updateVisibilities();checkDataAvailability();">Custom Processing Parameter File</a></span>
-	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/><br/>
-     	<a href="${req.route_path('imagecustom')}?file=process_control.json&subpath=process_defaults,corr_adjusts">Download New</a>
-	</span>
+	Processing Parameters: ${structure: make_archived_widget(req,'PROC','custom_processing',onchange='updateVisibilities();checkDataAvailability();',formfilename='process_parameters_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Parameters:',customizeurl=req.route_path('imagecustom')+'?file=process_control.json&json_type_token=PROC&subpath=process_defaults,corr_adjusts')}	
 </DIV>
 <BR/><BR/>
 <DIV ALIGN="CENTER">

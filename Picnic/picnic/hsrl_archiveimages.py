@@ -35,9 +35,9 @@ def image_resource(request):
             if methodtype not in imagepathcache:
                 imagepathcache[methodtype]={}
             try:
-                imagepathcache[methodtype][methodkey]=lib(**{methodtype[3:]:methodkey})['Path']
+                imagepathcache[methodtype][methodkey]=lib(**{methodtype:methodkey})['Path']
             except RuntimeError:
-                return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+                return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #  return HTTPNotFound("File doesn't exist")
 
             
@@ -93,9 +93,9 @@ def redirect_month(request):
         methodtype=request.matchdict['accesstype']
         methodkey=request.matchdict['access']
         try:
-            mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
+            mylib=HSRLImageArchiveLibrarian(**{methodtype:methodkey})
         except RuntimeError:
-            return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+            return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #            return HTTPTemporaryRedirect(location=request.route_path("home"))
         if 'thumbtype' in request.matchdict and request.matchdict['thumbtype']!='all':
             subtypekey=request.matchdict['thumbtype']
@@ -152,9 +152,9 @@ def redirect_day(request):
         methodkey=request.matchdict['access']
         nowtime=datetime.utcnow()
         try:
-            mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
+            mylib=HSRLImageArchiveLibrarian(**{methodtype:methodkey})
         except RuntimeError:
-            return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+            return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 
         if 'year' in request.matchdict:
             yearno=int(request.matchdict['year'])
@@ -182,6 +182,8 @@ def redirect_day(request):
         return HTTPTemporaryRedirect(location=request.route_path('home'))
 
 @view_config(route_name='home',renderer='templates/portaltemplate.pt')
+@view_config(route_name='site',renderer='templates/portaltemplate.pt')
+@view_config(route_name='dataset',renderer='templates/datasettemplate.pt')
 def dplportal_view(request):
     return { 
         'lib':lib,
@@ -193,9 +195,9 @@ def date_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
+        mylib=HSRLImageArchiveLibrarian(**{methodtype:methodkey})
     except RuntimeError:
-        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+        return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
     yearno=int(request.matchdict['year'])
     monthno=int(request.matchdict['month'])
@@ -232,9 +234,9 @@ def month_view(request):
     methodkey=request.matchdict['access']
     isMulti='thumbtype' not in request.matchdict or request.matchdict['thumbtype']=='all'
     try:
-        mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
+        mylib=HSRLImageArchiveLibrarian(**{methodtype:methodkey})
     except RuntimeError:
-        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+        return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
     yearno=int(request.matchdict['year'])
     monthno=int(request.matchdict['month'])
