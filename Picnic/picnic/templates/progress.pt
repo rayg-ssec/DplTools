@@ -51,7 +51,7 @@ setTimeout("self.location.replace('${progresspage}')",5000)
   <div tal:omit-tag="" tal:condition="session.percentcomplete>0">
   <div tal:omit-tag="" tal:content="'Started: %s UTC  Progress: %.0f%%' % (session.task_started,session.percentcomplete)"></div>
   <BR/>
-  <div tal:define="dtcomp timedelta(seconds=(datetime.utcnow()-session.task_started).total_seconds()*100.0/session.percentcomplete)" tal:content="'Estimated time of completion: %s UTC (in %s)' % (session.task_started+dtcomp,str((session.task_started+dtcomp)-datetime.utcnow()))"></div>
+  <div tal:define="dtcomp timedelta(seconds=(session.percentupdated-session.task_started).total_seconds()*100.0/session.percentcomplete)" tal:content="'Estimated time of completion: %s UTC (in %s)' % (session.task_started+dtcomp,str((session.task_started+dtcomp)-datetime.utcnow()))"></div>
   </div>
   <BR/>
   <FORM action="${destination}" METHOD="GET">

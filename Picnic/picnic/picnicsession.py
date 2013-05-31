@@ -24,7 +24,7 @@ class PicnicProgressNarrator:
         self.firstval=firstval
         self.lastval=lastval
         self.session=session
-        updateSessionComment(self.session,0,'percentcomplete')
+        updateSessionComment(self.session,content={'percentcomplete':0.0,'percentupdated':datetime.strftime(datetime.utcnow(),json_dateformat)})
 
     def __iter__(self):
         for f in self.framestream:
@@ -34,7 +34,7 @@ class PicnicProgressNarrator:
                     percent=100.0*((lv-self.firstval).total_seconds()/(self.lastval-self.firstval).total_seconds())
                 else:
                     percent=100.0*((lv-self.firstval)/(self.lastval-self.firstval))
-                updateSessionComment(self.session,percent,'percentcomplete')
+                updateSessionComment(self.session,content={'percentcomplete':percent,'percentupdated':datetime.strftime(datetime.utcnow(),json_dateformat)})
             except:
                 print "Picnic Progress Narrator couldn't update percentcomplete"
                 #raise
@@ -217,14 +217,18 @@ def storejson(session,d,filename):
 def storesession(session):
     storejson(session,session,'session.json')
 
-def updateSessionComment(sessionid,value,k='comment'):
+def updateSessionComment(sessionid,value=None,k='comment',content=None):
     if isinstance(sessionid,basestring):
         print 'WARNING: Loading session, rather than using session directly. Practice is to use the same dictionary in the lone process'
         session = loadsession(sessionid)
     else:
         session = sessionid
-    session[k]=value
-    print datetime.utcnow(),' Updating Session',k,':',value
+    if content!=None:
+        session.update(content)
+        print datetime.utcnow(),' Updating Session',content
+    else:
+        session[k]=value
+        print datetime.utcnow(),' Updating Session',k,':',value
     storesession(session)
 
 def newSessionProcess(dispatch,request,session,*args,**kwargs):
@@ -367,8 +371,9 @@ def progresspage(request):
         for sesid in tasks:
             if tasks[sesid].is_alive():
                 tasks[sesid].checkExpireTime(now=now)
-        for f in ['starttime','endtime','task_started']:
-            session[f]=datetime.strptime(session[f],json_dateformat)
+        for timefield in ['starttime','endtime','task_started','percentupdated']:
+            if timefield in session:
+                session[timefield]=datetime.strptime(session[timefield],json_dateformat)
 
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
             'sessionid':sessionid,'destination':session['finalpage'],'session':session,'datetime':datetime,'timedelta':timedelta}
