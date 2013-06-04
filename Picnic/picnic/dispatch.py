@@ -333,21 +333,31 @@ def fromSession(session,xlate):
     return ret
 
 class getLastOf:
-    def __init__(self,field,parents):
+    def __init__(self,field,parents=None):
         self.field=field
         self.parents=parents
 
     def __call__(self,fr):
-        for p in self.parents:
-            if hasattr(fr,p):
-                #print 'GETLASTOF: has',p
-                pa=getattr(fr,p)
-                if hasattr(pa,self.field):
-                    #print 'GETLASTOF:',p,'has',self.field
-                    fa=getattr(pa,self.field)
-                    if hasattr(fa,'shape') and fa.shape[0]>0:
-                        #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
-                        return fa[-1]
+        if self.parents==None:
+            if hasattr(fr,self.field):
+                #print 'GETLASTOF:',p,'has',self.field
+                fa=getattr(fr,self.field)
+                if not hasattr(fa,'shape'):
+                    return fa
+                if hasattr(fa,'shape') and fa.shape[0]>0:
+                    #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
+                    return fa[-1]
+        else:
+            for p in self.parents:
+                if hasattr(fr,p):
+                    #print 'GETLASTOF: has',p
+                    pa=getattr(fr,p)
+                    if hasattr(pa,self.field):
+                        #print 'GETLASTOF:',p,'has',self.field
+                        fa=getattr(pa,self.field)
+                        if hasattr(fa,'shape') and fa.shape[0]>0:
+                            #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
+                            return fa[-1]
         return None
 
 def makeDPLFromSession(session,doSearch=True):
@@ -365,6 +375,7 @@ def makeDPLFromSession(session,doSearch=True):
         'timeres':'timeres_timedelta',
         'altres':'altres_m',
     }
+    hasProgress=False
     from hsrl.dpl_experimental.dpl_hsrl import dpl_hsrl
     process_control=None
     if os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
@@ -380,23 +391,26 @@ def makeDPLFromSession(session,doSearch=True):
         dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
     except:
         dplc=dplobj(**searchparms)
-    if 'merge' in session['datastreams']:#add merge to rs_inv
+    if 'merge' in session['datastreams']:#add merge to rs_mmcr, refit
         import hsrl.dpl_experimental.hsrl_lidar_test as resampling
         from hsrl.dpl_netcdf.NetCDFZookeeper import GenericTemplateRemapNetCDFZookeeper 
-        from hsrl.dpl_netcdf.MMCRMergeLibrarian import MMCRMergeLibrarian
+        import hsrl.dpl_netcdf.MMCRMergeLibrarian as mmcr
         stitcher=resampling.TimeStitch()
-        restr=resampling.SubstructRestractor('rs_inv')
+        restr=resampling.SubstructRestractor('rs_mmcr')
 
         mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
-        mmcrlib=MMCRMergeLibrarian('/data/ahsrldata','eurmmcrmerge.C1.c1.',zoo=mmcrzoo)
-        mmcrnar=mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime'])
-        mmcrnar=resampling.TimeGinsu(resampling.SubstructExtractor(mmcrnar,None),'times',stitcher=stitcher)
+        mmcrlib=mmcr.MMCRMergeLibrarian(session['dataset'],['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'],zoo=mmcrzoo)
+        mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
+        mmcrnar=resampling.TimeGinsu(resampling.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher)
 
-        hsrlnar=resampling.TimeGinsu(resampling.SubstructExtractor(dplc,'rs_inv',restractor=restr),'times',isEnd=True,stitcher=stitcher)
+        hsrlnar=resampling.TimeGinsu(resampling.SubstructExtractor(dplc,'rs_inv',restractor=restr),'times',isEnd=True,stitchersync=stitcher)
 
         from dplkit.simple.blender import TimeInterpolatedMerge
 
-        merge=TimeInterpolatedMerge(hsrlnar,[mmcrnar],allow_nans=True)
+        merge=TimeInterpolatedMerge(hsrlnar,[mmcrnar],allow_nans=True,channels=['times','Reflectivity','MeanDopplerVelocity','Backscatter','SpectralWidth'])
+
+        #merge=picnicsession.PicnicProgressNarrator(dplc,getLastOf('start'), searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
+        #hasProgress=True
 
         stitcher.setFramestream(merge)
         restr.setFramestream(stitcher)
@@ -405,6 +419,8 @@ def makeDPLFromSession(session,doSearch=True):
     if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
         picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
+    if hasProgress:
+        return dplc
     return picnicsession.PicnicProgressNarrator(dplc,getLastOf('times',['rs_inv','rs_mean','rs_raw']),
         searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
     #return dplc    

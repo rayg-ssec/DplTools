@@ -71,27 +71,27 @@
             "disabled": 1,
             "sets": [
                 {"name": "Radar Quantities",
-                "included":[],
+                "included":["rs_mmcr.heights","rs_inv.times"],
                 "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#mmcr",
                 "options":[
                         { "name": "Reflectivity",
-                            "included": [],
+                            "included": ["rs_mmcr.Reflectivity"],
                             "enabled" : ["merge"],
                             "default" : 1,
                             "formname": "mmcr_ref"
                         }, {"name": "Backscatter Cross Section",
                             "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#mmcrbsxs",
-                            "included": [],
+                            "included": ["rs_mmcr.Backscatter"],
                             "enabled" : ["merge"],
                             "default" : 1,
                             "formname": "mmcr_bsxs"
                         }, {"name": "Spectral Width",
-                            "included": [],
+                            "included": ["rs_mmcr.SpectralWidth"],
                             "enabled": ["merge"],
                             "default" : 1,
                             "formname": "mmcr_spect"
                         }, {"name": "Doppler Velocity",
-                            "included": [],
+                            "included": ["rs_mmcr.MeanDopplerVelocity"],
                             "enabled": ["merge"],
                             "default" : 1,
                             "formname": "mmcr_vel"
@@ -216,12 +216,12 @@
                 "ref": {
                     "enabled": ["merge"],
                     "name": "All, Reflectivity(dBz)",
-                    "figs": []
+                    "figs": ["radar_reflectivity_image","radar_velocity_image","radar_spectralwidth_image"]
                     },
                 "bscat": {
-                    "enabled": ["merge"],
+                    "enabled": ["mergeDISABLED_DELETEME"],
                     "name": "All, Bscat(1/(m sr))",
-                    "figs": []
+                    "figs": ["radar_backscatter_image","radar_velocity_image","radar_spectralwidth_image"]
                     }
                 },
             "order": ["none", "ref", "bscat"],
@@ -276,7 +276,7 @@
                     "figs": []
                     },
                 "part": {
-                    "required": ["lidar", "merge"],
+                    "required": ["lidar", "merge","DISABLED_DELETEME"],
                     "name": "Part. Measurements",
                     "figs": []
                     }

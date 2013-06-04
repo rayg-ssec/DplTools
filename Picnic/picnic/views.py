@@ -210,7 +210,7 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
         t=None
 
         from hsrl.dpl_netcdf.MMCRMergeLibrarian import MMCRMergeLibrarian
-        datalib=MMCRMergeLibrarian('/data/ahsrldata','eurmmcrmerge.C1.c1.')
+        datalib=MMCRMergeLibrarian(modeval,['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'])
         srchres=datalib(start=starttime,end=endtime)
         for x in srchres:
             print x
