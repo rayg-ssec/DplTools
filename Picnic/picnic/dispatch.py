@@ -386,11 +386,11 @@ def makeDPLFromSession(session,doSearch=True):
     if not doSearch:
         return dplobj,fromSession(session,copyToSearch)
     searchparms=fromSession(session,copyToSearch)
-    try:
-        import hsrl.utils.threaded_generator
-        dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
-    except:
-        dplc=dplobj(**searchparms)
+    #try:
+    #    import hsrl.utils.threaded_generator
+    #    dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
+    #except:
+    dplc=dplobj(**searchparms)
     if 'merge' in session['datastreams']:#add merge to rs_mmcr, refit
         import hsrl.dpl_experimental.hsrl_lidar_test as resampling
         from hsrl.dpl_netcdf.NetCDFZookeeper import GenericTemplateRemapNetCDFZookeeper 
@@ -401,13 +401,13 @@ def makeDPLFromSession(session,doSearch=True):
         mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
         mmcrlib=mmcr.MMCRMergeLibrarian(session['dataset'],['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'],zoo=mmcrzoo)
         mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
-        mmcrnar=resampling.TimeGinsu(resampling.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher)
+        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(resampling.ResampleXd(resampling.TimeGinsu(resampling.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher),'heights',dplc.getAltitudeAxis()))
 
         hsrlnar=resampling.TimeGinsu(resampling.SubstructExtractor(dplc,'rs_inv',restractor=restr),'times',isEnd=True,stitchersync=stitcher)
 
         from dplkit.simple.blender import TimeInterpolatedMerge
 
-        merge=TimeInterpolatedMerge(hsrlnar,[mmcrnar],allow_nans=True,channels=['times','Reflectivity','MeanDopplerVelocity','Backscatter','SpectralWidth'])
+        merge=TimeInterpolatedMerge(hsrlnar,[mmcrnar],allow_nans=True,channels=['times','heights','Reflectivity','MeanDopplerVelocity','Backscatter','SpectralWidth'])
 
         #merge=picnicsession.PicnicProgressNarrator(dplc,getLastOf('start'), searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
         #hasProgress=True

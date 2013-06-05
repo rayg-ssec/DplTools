@@ -66,9 +66,9 @@
                     ]
                 }
             ]
-        }, {"name": "MMCR",
+        }, {"name": "MMCR (Testing)",
             "enabled": ["merge"],
-            "disabled": 1,
+            "disabled": 0,
             "sets": [
                 {"name": "Radar Quantities",
                 "included":["rs_mmcr.heights","rs_inv.times"],
@@ -204,10 +204,10 @@
                 },
             "order": ["none", "some", "few", "most", "all"],
             "formname": "lidarfig"
-        }, {"name": "MMCR",
+        }, {"name": "MMCR (Testing)",
             "default": "ref",
             "enabled": ["merge"],
-            "disabled": 1,
+            "disabled": 0,
             "sets": {
                 "none": {
                     "name": "None",
@@ -219,7 +219,7 @@
                     "figs": ["radar_reflectivity_image","radar_velocity_image","radar_spectralwidth_image"]
                     },
                 "bscat": {
-                    "enabled": ["mergeDISABLED_DELETEME"],
+                    "enabled": ["merge"],
                     "name": "All, Bscat(1/(m sr))",
                     "figs": ["radar_backscatter_image","radar_velocity_image","radar_spectralwidth_image"]
                     }
@@ -276,7 +276,7 @@
                     "figs": []
                     },
                 "part": {
-                    "required": ["lidar", "merge","DISABLED_DELETEME"],
+                    "required": ["lidar", "merge"],
                     "name": "Part. Measurements",
                     "figs": []
                     }
