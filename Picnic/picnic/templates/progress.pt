@@ -58,7 +58,7 @@ setTimeout("self.location.replace('${progresspage}')",5000)
   <FORM action="${destination}" METHOD="GET">
   <INPUT TYPE="HIDDEN" NAME="skip" VALUE="on">
   <INPUT TYPE="HIDDEN" NAME="clientid" VALUE="${sessionid}">
-  <INPUT TYPE=SUBMIT VALUE="Skip/Abort">
+  <INPUT TYPE="SUBMIT" VALUE="Skip/Abort">
   </FORM>
 </div></center>
 <iframe tal:condition="request.client_addr=='127.0.0.1'" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
