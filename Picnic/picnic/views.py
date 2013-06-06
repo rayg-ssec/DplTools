@@ -231,7 +231,7 @@ def dataAvailability(request):
     starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')#some OSes strptime don't assue %Y consumes 4 characters
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
     Q=Queue()
-    if 0:
+    if True:
       p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
       #print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
       p.start()
