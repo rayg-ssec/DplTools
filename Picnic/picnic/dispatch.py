@@ -152,24 +152,46 @@ def parseImageParameters(request,session):
             d=server_archive.get_archived_json(request.params.getone('custom_display_token'),cust)
         picnicsession.storejson(session,d,'display_parameters.json')
         session['figstocapture']=[None]
+        getdatasets=datasets
+        imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
+        session['figrequest']={}
+        for i in imagesetlist:
+            session['figrequest'][i['formname']]='custom'
     elif 'display_defaults_file' in request.params:
         session['display_defaults_file']=request.params.getone('display_defaults_file')
         if os.path.sep in session['display_defaults_file']:
             session['display_defaults_file']=picnicsession.sessionfile(session,session['display_defaults_file'])
         session['figstocapture']=[None]
+        getdatasets=datasets
+        imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
+        session['figrequest']={}
+        for i in imagesetlist:
+            session['figrequest'][i['formname']]='custom'
     else:
         session['display_defaults_file']='all_plots.json'
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
-        
+        getdatasets=[]
         figstocapture=[]
+        session['figrequest']={}
         for i in imagesetlist:
             #print i
             try:
                 setmode=request.params.getone(i['formname'])
+                session['figrequest'][i['formname']]=setmode
                 figstocapture.extend(i['sets'][setmode]['figs'])
+                if len(i['sets'][setmode]['figs'])>0:
+                    if 'enabled' in i['sets'][setmode]:
+                        for dat in i['sets'][setmode]['enabled']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                    if 'required' in i['sets'][setmode]:
+                        for dat in i['sets'][setmode]['required']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
             except:
                 pass
         session['figstocapture']=figstocapture
+    session['datastreams']=getdatasets
         #if None in session['figstocapture']:
     picnicsession.storesession(session)
 
@@ -236,6 +258,7 @@ def parseNetCDFParameters(request,session):
     fieldstocapture=[]
     if not 'allfields' in request.params or not request.params.getone('allfields'):
         fieldsetlist=jsgen.formsetsForInstruments(datasets,'netcdf')
+        getdatasets=[]
         for inst in fieldsetlist:#per instrument
             for subset in inst['sets']:
                 subsetincluded=False
@@ -247,10 +270,30 @@ def parseNetCDFParameters(request,session):
                     for fieldname in checkbox['included']:
                         if fieldname not in fieldstocapture:
                             fieldstocapture.append(fieldname)
-                if subsetincluded and 'included' in subset:
-                    for fieldname in subset['included']:
-                        if fieldname not in fieldstocapture:
-                            fieldstocapture.append(fieldname)
+                    if 'enabled' in checkbox:
+                        for dat in checkbox['enabled']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                    if 'required' in checkbox:
+                        for dat in checkbox['required']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                if subsetincluded:
+                    if 'included' in subset:
+                        for fieldname in subset['included']:
+                            if fieldname not in fieldstocapture:
+                                fieldstocapture.append(fieldname)
+                    if 'enabled' in subset:
+                        for dat in subset['enabled']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                    if 'required' in subset:
+                        for dat in subset['required']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+    else:
+        getdatasets=datasets
+    session['datastreams']=getdatasets
 
     print fieldstocapture
     session['selected_fields']=fieldstocapture
@@ -290,21 +333,31 @@ def fromSession(session,xlate):
     return ret
 
 class getLastOf:
-    def __init__(self,field,parents):
+    def __init__(self,field,parents=None):
         self.field=field
         self.parents=parents
 
     def __call__(self,fr):
-        for p in self.parents:
-            if hasattr(fr,p):
-                #print 'GETLASTOF: has',p
-                pa=getattr(fr,p)
-                if hasattr(pa,self.field):
-                    #print 'GETLASTOF:',p,'has',self.field
-                    fa=getattr(pa,self.field)
-                    if hasattr(fa,'shape') and fa.shape[0]>0:
-                        #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
-                        return fa[-1]
+        if self.parents==None:
+            if hasattr(fr,self.field):
+                #print 'GETLASTOF:',p,'has',self.field
+                fa=getattr(fr,self.field)
+                if not hasattr(fa,'shape'):
+                    return fa
+                if hasattr(fa,'shape') and fa.shape[0]>0:
+                    #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
+                    return fa[-1]
+        else:
+            for p in self.parents:
+                if hasattr(fr,p):
+                    #print 'GETLASTOF: has',p
+                    pa=getattr(fr,p)
+                    if hasattr(pa,self.field):
+                        #print 'GETLASTOF:',p,'has',self.field
+                        fa=getattr(pa,self.field)
+                        if hasattr(fa,'shape') and fa.shape[0]>0:
+                            #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
+                            return fa[-1]
         return None
 
 def makeDPLFromSession(session,doSearch=True):
@@ -322,6 +375,7 @@ def makeDPLFromSession(session,doSearch=True):
         'timeres':'timeres_timedelta',
         'altres':'altres_m',
     }
+    hasProgress=False
     from hsrl.dpl_experimental.dpl_hsrl import dpl_hsrl
     process_control=None
     if os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
@@ -332,14 +386,41 @@ def makeDPLFromSession(session,doSearch=True):
     if not doSearch:
         return dplobj,fromSession(session,copyToSearch)
     searchparms=fromSession(session,copyToSearch)
-    try:
-        import hsrl.utils.threaded_generator
-        dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
-    except:
-        dplc=dplobj(**searchparms)
+    #try:
+    #    import hsrl.utils.threaded_generator
+    #    dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
+    #except:
+    dplc=dplobj(**searchparms)
+    if 'merge' in session['datastreams']:#add merge to rs_mmcr, refit
+        import hsrl.dpl_experimental.hsrl_lidar_test as resampling
+        from hsrl.dpl_netcdf.NetCDFZookeeper import GenericTemplateRemapNetCDFZookeeper 
+        import hsrl.dpl_netcdf.MMCRMergeLibrarian as mmcr
+        stitcher=resampling.TimeStitch()
+        restr=resampling.SubstructRestractor('rs_mmcr')
+
+        mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
+        mmcrlib=mmcr.MMCRMergeLibrarian(session['dataset'],['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'],zoo=mmcrzoo)
+        mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
+        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(resampling.ResampleXd(resampling.TimeGinsu(resampling.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher),'heights',dplc.getAltitudeAxis()))
+
+        hsrlnar=resampling.TimeGinsu(resampling.SubstructExtractor(dplc,'rs_inv',restractor=restr),'times',isEnd=True,stitchersync=stitcher)
+
+        from dplkit.simple.blender import TimeInterpolatedMerge
+
+        merge=TimeInterpolatedMerge(hsrlnar,[mmcrnar],allow_nans=True,channels=['times','heights','Reflectivity','MeanDopplerVelocity','Backscatter','SpectralWidth'])
+
+        #merge=picnicsession.PicnicProgressNarrator(dplc,getLastOf('start'), searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
+        #hasProgress=True
+
+        stitcher.setFramestream(merge)
+        restr.setFramestream(stitcher)
+        dplc=restr
+ 
     if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
         picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
+    if hasProgress:
+        return dplc
     return picnicsession.PicnicProgressNarrator(dplc,getLastOf('times',['rs_inv','rs_mean','rs_raw']),
         searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
     #return dplc    
@@ -451,7 +532,7 @@ def makeImagesFromDPL(session,DPLgen):
 
         alreadycaptured=[]
         capturingfigs=session['figstocapture']
-        print capturingfigs
+        #print capturingfigs
         for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
             if x in alreadycaptured or (x!=None and x.startswith('#')):
                 continue

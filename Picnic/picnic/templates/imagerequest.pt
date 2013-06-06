@@ -64,15 +64,17 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 <TR><TD colspan="${len(imagesets)}" align="center"><B>Select desired figure layout</B>
 </TD></TR>
 <TR valign="top">
-<TD tal:repeat="imset imagesets">
-	<TABLE tal:condition="'disabled' not in imset or imset.disabled==0">
-		<TR><TD><a tal:attributes="href imset.link" tal:omit-tag="'link' not in imset">${imset.name}</a></TD></TR>
-		<TR tal:repeat="setname imset.order"><TD tal:condition="'disabled' not in imset.sets[setname] or imset.sets[setname].disabled==0">
-  			<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
-  			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
-		</TD></TR>
-	</TABLE>
-</TD>
+<div tal:repeat="imset imagesets" tal:omit-tag="">
+	<TD tal:condition="'disabled' not in imset or imset.disabled==0">
+		<TABLE>
+			<TR><TD><a tal:attributes="href imset.link" tal:omit-tag="'link' not in imset">${imset.name}</a></TD></TR>
+			<TR tal:repeat="setname imset.order"><TD tal:condition="'disabled' not in imset.sets[setname] or imset.sets[setname].disabled==0">
+  				<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
+	  			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
+			</TD></TR>
+		</TABLE>
+	</TD>
+</div>
 </TR>
 <TR><TD colspan="${len(imagesets)}" align="center">
 		Customize Image Set: ${structure: make_archived_widget(req,'IMG','custom_display',onchange='updateVisibilities();checkDataAvailability();',formfilename='display_defaults_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Display:',customizeurl=req.route_path('imagecustom')+'?subpath=display_defaults&json_type_token=IMG',defaultname="disabled")}	
