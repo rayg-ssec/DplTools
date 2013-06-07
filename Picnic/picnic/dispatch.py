@@ -181,9 +181,9 @@ def parseImageParameters(request,session):
             #print i
             try:
                 setmode=request.params.getone(i['formname'])
-                session['figrequest'][i['formname']]=setmode
+                session['figrequest'][i['formname']]=list(setmode)
                 figstocapture[i['setenum']]=i['sets'][setmode]['figs']
-                if len(i['sets'][setmode]['figs'])>0:
+                if len(i['sets'][setmode]['figs'])>0:#radio buttons
                     if 'enabled' in i['sets'][setmode]:
                         for dat in i['sets'][setmode]['enabled']:
                             if dat not in getdatasets:
@@ -192,6 +192,20 @@ def parseImageParameters(request,session):
                         for dat in i['sets'][setmode]['required']:
                             if dat not in getdatasets:
                                 getdatasets.append(dat)
+                if "options" in i and len(i["options"])>0:#checkboxes only currently, may extend to choicebox
+                    for opt in i["options"]:
+                        if opt["formname"] in request.params:
+                            if request.params.getone(opt['formname']):
+                                if 'enabled' in opt:
+                                    for dat in opt['enabled']:
+                                        if dat not in getdatasets:
+                                            getdatasets.append(dat)
+                                if 'required' in opt:
+                                    for dat in opt['required']:
+                                        if dat not in getdatasets:
+                                            getdatasets.append(dat)
+                                figstocapture[i['setenum']].extend(opt['included'])
+
             except:
                 pass
         session['figstocapture']=figstocapture
@@ -321,9 +335,15 @@ def parseNetCDFParameters(request,session):
             try:
                 defmode=i['default']
                 figstocapture[i['setenum']]=[]
-                for figname in i['sets'][defmode]['figs']:
-                    if 'image' in figname:
+                for figname in i['sets'][defmode]['figs']:#get default images of default set
+                    if 'image' in figname and figname not in figstocapture[i['setenum']]:
                         figstocapture[i['setenum']].append(figname)
+                if 'options' in i:#and default options
+                    for opt in i['options']:
+                        if opt['default']:#checkbox default is true
+                            for figname in i['included']:
+                                if 'image' in figname and figname not in figstocapture[i['setenum']]:
+                                    figstocapture[i['setenum']].append(figname)
             except:
                 pass
     else:

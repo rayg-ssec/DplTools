@@ -72,6 +72,12 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
   				<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
 	  			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
 			</TD></TR>
+			<div tal:condition="'options' in imset" tal:omit-tag="">
+				<TR tal:repeat="opt imset.options"><TD tal:condition="'disabled' not in opt or opt.disabled==0">
+  					<INPUT type="checkbox" tal:attributes="name opt.formname;checked opt.default!=0" />
+	  				<span class="radiolink"><a href="javascript: toggleCheckbox('${opt.formname}')">${opt.name}</a></span>
+				</TD></TR>
+			</div>
 		</TABLE>
 	</TD>
 </div>

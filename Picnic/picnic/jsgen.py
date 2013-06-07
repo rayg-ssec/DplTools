@@ -71,6 +71,14 @@ function updateFromData(availability){
                 shoulden='&&'.join(["hasString(av,'%s')"%s for s in aset['sets'][setname]['required']])
             ret+="    doDisable(itemlist,'%s:%i',((!(%s))&&!doall)||donone,disabledSetting);\n" % (aset['formname'],setid,shoulden)
             setid=setid+1
+          if 'options' in aset:
+            for cset in aset['options']:
+              shoulden='true'
+              if 'enabled' in cset:
+                  shoulden='||'.join(["hasString(av,'%s')"%s for s in cset['enabled']])
+              if 'required' in cset:
+                  shoulden='&&'.join(["hasString(av,'%s')"%s for s in cset['required']])
+              ret+="    doDisable(itemlist,'%s',((!(%s))&&!doall)||donone,disabledSetting);\n" % (cset['formname'],shoulden)
         else:
           for bset in aset['sets']:
             for cset in bset['options']:
@@ -669,7 +677,7 @@ function hasString(arr,str){
 
 var enState=new Object();
 
-function doDisable(objs,field,disable){
+function doDisable(objs,field,disable,checkval){
   if(field.length){//string
     fieldidx=field.split(':');
     if(fieldidx.length>1){
@@ -694,6 +702,25 @@ function doDisable(objs,field,disable){
           f[idx].checked=true;
       }
       return;
+    }else{
+      try{
+        obj=objs[field];
+        wasDis=obj.disabled;
+      }catch(e){return;}
+      if(disable==wasDis)
+        return;
+      if(disable){
+        obj.disabled=true;
+        if (obj.type.toLowerCase() == "checkbox"){
+          enState[field]=obj.checked;
+          obj.checked=checkval;
+        }
+      }else{
+        obj.disabled=false;
+        if (obj.type.toLowerCase() == "checkbox"){
+          obj.checked=enState[field];
+        }
+      }
     }
   }
 
