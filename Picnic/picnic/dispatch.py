@@ -31,7 +31,11 @@ def readnetcdf(request,session,isBackground):
 def createnetcdf(request,session,isBackground):
     if isBackground in [True, None]:
         makeNetCDFFromDPL(session,makeDPLFromSession(session),session['template'],session['filename'])
-        if len(session['figstocapture'])>0:
+        tmp=[]
+        if session['figstocapture']!=None:
+            for k,v in session['figstocapture'].items:
+                tmp.extend(v)
+        if len(tmp)>0:
             picnicsession.updateSessionComment(session,'done. capturing images')
             readnetcdf(request,session,isBackground)
         else:
@@ -151,7 +155,7 @@ def parseImageParameters(request,session):
         else:
             d=server_archive.get_archived_json(request.params.getone('custom_display_token'),cust)
         picnicsession.storejson(session,d,'display_parameters.json')
-        session['figstocapture']=[None]
+        session['figstocapture']=None
         getdatasets=datasets
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         session['figrequest']={}
@@ -161,7 +165,7 @@ def parseImageParameters(request,session):
         session['display_defaults_file']=request.params.getone('display_defaults_file')
         if os.path.sep in session['display_defaults_file']:
             session['display_defaults_file']=picnicsession.sessionfile(session,session['display_defaults_file'])
-        session['figstocapture']=[None]
+        session['figstocapture']=None
         getdatasets=datasets
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         session['figrequest']={}
@@ -171,14 +175,14 @@ def parseImageParameters(request,session):
         session['display_defaults_file']='all_plots.json'
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         getdatasets=[]
-        figstocapture=[]
+        figstocapture={}
         session['figrequest']={}
         for i in imagesetlist:
             #print i
             try:
                 setmode=request.params.getone(i['formname'])
                 session['figrequest'][i['formname']]=setmode
-                figstocapture.extend(i['sets'][setmode]['figs'])
+                figstocapture[i['setenum']]=i['sets'][setmode]['figs']
                 if len(i['sets'][setmode]['figs'])>0:
                     if 'enabled' in i['sets'][setmode]:
                         for dat in i['sets'][setmode]['enabled']:
@@ -206,18 +210,26 @@ def parseImageParametersBackground(request,session):
 
     #else:#fixme should this be enable_all()?
     #    (disp,conf)=du.get_display_defaults('web_plots.json')
-    if None not in session['figstocapture']: # None indicates all should be captured, so if its not, scan structure
+    allfigs=session['figstocapture']==None
+    if not allfigs:
+        for k,v in session['figstocapture'].items():
+            if None in v:
+                allfigs=True
+                break
+    if not allfigs: # None indicates all should be captured, so if its not, scan structure
         data_req='images'
         lib_filetype='data'
         for fi in disp.get_attrs(): # for each figure
             if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled
-                if fi in session['figstocapture'] or ('#'+fi) in session['figstocapture']: #if requested, enable it
-                    disp.set_value(fi,'enable',1)
-                    if not fi.endswith('_image'):
-                        data_req='images housekeeping'
-                        lib_filetype=None
-                else:
-                    disp.set_value(fi,'enable',0) #otherwise disable it
+                disp.set_value(fi,'enable',0)
+        for inst,figset in session['figstocapture'].items():
+            for fi in disp.get_attrs(): # for each figure
+                if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled        
+                    if fi in figset or ('#'+fi) in figset: #if requested, enable it
+                        disp.set_value(fi,'enable',1)
+                        if not fi.endswith('_image') and inst=='hsrl':
+                            data_req='images housekeeping'
+                            lib_filetype=None
     else:
         data_req= 'images housekeeping'
         lib_filetype=None
@@ -298,7 +310,7 @@ def parseNetCDFParameters(request,session):
     print fieldstocapture
     session['selected_fields']=fieldstocapture
 
-    figstocapture=[]
+    figstocapture={}
 
     if 'custom_display' not in request.params or request.params.getone('custom_display')=='default':
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
@@ -308,13 +320,14 @@ def parseNetCDFParameters(request,session):
             #print i
             try:
                 defmode=i['default']
+                figstocapture[i['setenum']]=[]
                 for figname in i['sets'][defmode]['figs']:
                     if 'image' in figname:
-                        figstocapture.append(figname)
+                        figstocapture[i['setenum']].append(figname)
             except:
                 pass
     else:
-        figstocapture=[None]
+        figstocapture=None
     session['figstocapture']=figstocapture
     session['lib_filetype']=None
     picnicsession.storesession(session)
@@ -398,8 +411,11 @@ def makeDPLFromSession(session,doSearch=True):
         stitcher=resampling.TimeStitch()
         restr=resampling.SubstructRestractor('rs_mmcr')
 
-        mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
-        mmcrlib=mmcr.MMCRMergeLibrarian(session['dataset'],['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'],zoo=mmcrzoo)
+        if session['dataset']=='ahsrl':
+            mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
+            mmcrlib=mmcr.MMCRMergeLibrarian(session['dataset'],['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'],zoo=mmcrzoo)
+        elif session['dataset']=='mf2hsrl':
+            pass #set up zoo and lib for mf2
         mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
         mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(resampling.ResampleXd(resampling.TimeGinsu(resampling.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher),'heights',dplc.getAltitudeAxis()))
 
@@ -518,22 +534,34 @@ def makeImagesFromDPL(session,DPLgen):
     #print session
 
     #folder=picnicsession.sessionfolder(sessionid)#safejoin('.','sessions',sessionid);
-    
+    artistlist={}
     if True:
         picnicsession.updateSessionComment(session,'creating artist')    
         artist=artists.dpl_images_artist(framestream=DPLgen,instrument=session['dataset'],
             max_alt=session['altmax'],
             processing_defaults=params,
             display_defaults=disp)
+        artistlist['hsrl']=artist
+        if 'merge' in session['datastreams']:
+            artist=artists.dpl_radar_images_artist(framestream=artist,display_defaults=disp)
+            artistlist['merge']=artist
         picnicsession.updateSessionComment(session,'processing')
-        figs=artist()
+        artist()
         picnicsession.updateSessionComment(session,'rendering figures')
         fignum=0
 
-        alreadycaptured=[]
-        capturingfigs=session['figstocapture']
+        capturingfigsgroups=session['figstocapture']
+        if capturingfigsgroups==None:
+            capturingfigsgroups={}
+            for k in artistlist.keys():
+                capturingfigsgroups[k]=[None]
         #print capturingfigs
-        for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
+        for inst,capturingfigs in capturingfigsgroups.items():
+          if not inst in artistlist:
+            continue
+          alreadycaptured=[]
+          figs=artistlist[inst].figs()
+          for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
             if x in alreadycaptured or (x!=None and x.startswith('#')):
                 continue
             alreadycaptured.append(x)
@@ -542,10 +570,10 @@ def makeImagesFromDPL(session,DPLgen):
                 tmp.sort()
                 capturingfigs.extend(tmp)
                 continue
-            figname=picnicsession.sessionfile(session,'figure%04i_%s.png' % (fignum,x))
+            figname=picnicsession.sessionfile(session,'figure%04i_%s_%s.png' % (fignum,inst,x))
             fignum = fignum + 1
         #      print 'updating  %d' % x.num
-            picnicsession.updateSessionComment(session,'capturing figure ' + x)
+            picnicsession.updateSessionComment(session,'capturing '+inst+' figure ' + x)
             if x not in figs:
                 f=file(figname,'w')
                 f.close()
