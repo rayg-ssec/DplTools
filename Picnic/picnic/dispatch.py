@@ -405,11 +405,13 @@ def makeDPLFromSession(session,doSearch=True):
     #except:
     dplc=dplobj(**searchparms)
     if 'merge' in session['datastreams']:#add merge to rs_mmcr, refit
-        import hsrl.dpl_experimental.hsrl_lidar_test as resampling
+        import hsrl.dpl_tools.time_frame as time_slicing
+        import hsrl.dpl_tools.resample_altitude as altitude_resampling
+        import hsrl.dpl_tools.substruct as frame_substruct
         from hsrl.dpl_netcdf.NetCDFZookeeper import GenericTemplateRemapNetCDFZookeeper 
         import hsrl.dpl_netcdf.MMCRMergeLibrarian as mmcr
-        stitcher=resampling.TimeStitch()
-        restr=resampling.SubstructRestractor('rs_mmcr')
+        stitcher=time_slicing.TimeStitch()
+        restr=frame_substruct.SubstructRestractor('rs_mmcr')
 
         if session['dataset']=='ahsrl':
             mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
@@ -417,9 +419,9 @@ def makeDPLFromSession(session,doSearch=True):
         elif session['dataset']=='mf2hsrl':
             pass #set up zoo and lib for mf2
         mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
-        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(resampling.ResampleXd(resampling.TimeGinsu(resampling.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher),'heights',dplc.getAltitudeAxis()))
+        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(altitude_resampling.ResampleXd(time_slicing.TimeGinsu(frame_substruct.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher),'heights',dplc.getAltitudeAxis()))
 
-        hsrlnar=resampling.TimeGinsu(resampling.SubstructExtractor(dplc,'rs_inv',restractor=restr),'times',isEnd=True,stitchersync=stitcher)
+        hsrlnar=time_slicing.TimeGinsu(frame_substruct.SubstructExtractor(dplc,'rs_inv',restractor=restr),'times',isEnd=True,stitchersync=stitcher)
 
         from dplkit.simple.blender import TimeInterpolatedMerge
 
