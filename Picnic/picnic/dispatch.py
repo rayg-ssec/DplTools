@@ -33,7 +33,7 @@ def createnetcdf(request,session,isBackground):
         makeNetCDFFromDPL(session,makeDPLFromSession(session),session['template'],session['filename'])
         tmp=[]
         if session['figstocapture']!=None:
-            for k,v in session['figstocapture'].items:
+            for k,v in session['figstocapture'].items():
                 tmp.extend(v)
         if len(tmp)>0:
             picnicsession.updateSessionComment(session,'done. capturing images')
