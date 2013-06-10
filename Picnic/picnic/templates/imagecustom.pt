@@ -29,7 +29,7 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <table class="parameter"><tbody>
   <tr><td colspan="5"><big><B>Parameters:</B></big></td></tr>
   <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
-    <div tal:condition="(not isinstance(json[figname],dict) or ('enable' not in json[figname] and asubpath=='display_defaults') or asubpath!='display_defaults') and not figname.startswith('#')" tal:omit-tag="">
+    <div tal:condition="(not isinstance(json[figname],dict) or (('enable' not in json[figname] or  figname=='mask_image') and asubpath=='display_defaults') or asubpath!='display_defaults') and not figname.startswith('#')" tal:omit-tag="">
       <tr tal:condition="not isinstance(json[figname],dict) and not isinstance(json[figname],list)">
         <td class="parameter_title">Parameter "${figname}":</td>
         <td>
@@ -78,13 +78,13 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <table class="figure" tal:condition="asubpath=='display_defaults'"><tbody>
   <tr><td><big><B>Figures:</B></big></td></tr>
   <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
-    <div tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and asubpath=='display_defaults'" tal:omit-tag="">
+    <div tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and asubpath=='display_defaults' and figname!='mask_image'" tal:omit-tag="">
       <tr>
         <td class="figure_title">
           <input type="checkbox" name="${ajsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${ajsonprefix}.${figname}.enable')">${figname}</a></span>
         </td>
       </tr>
-      <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname]" >
+      <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname] or 'x log' in json[figname]" >
         <td>
           <span tal:condition="'x min' in json[figname]">
             X Min:
@@ -93,6 +93,13 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
           <span tal:condition="'x max' in json[figname]">
             X Max:
             <input type="text" name="${ajsonprefix}.${figname}.x max" value="${json[figname]['x max']}"/>
+          </span>
+          <span tal:condition="'x log' in json[figname]">
+            X Scale:
+          <select name="${ajsonprefix}.${figname}.log_linear">
+            <option value="1" tal:attributes="selected json[figname]['x log']">Log</option>
+            <option value="0" tal:attributes="selected not json[figname]['x log']">Linear</option>
+          </select>
           </span>
         </td>
       </tr>

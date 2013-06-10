@@ -202,6 +202,47 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
         print traceback.format_exc()      
         print 'exception while looking for data availability'
         pass
+    try:
+      log.debug('dataAvailabilityBack: RADAR time range (%s to %s)' ,repr(starttime),repr(endtime) )
+      if 'merge' in datasets:
+        times=[]
+        fn=None
+        t=None
+
+        from hsrl.dpl_netcdf.MMCRMergeLibrarian import MMCRMergeLibrarian
+        datalib=MMCRMergeLibrarian(modeval,['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'])
+        srchres=datalib(start=starttime,end=endtime)
+        for x in srchres:
+            print x
+            times.append(srchres.parseTimeFromFile(x))
+            if len(times)==2:
+                break
+            fn=x
+            t=times[0]
+
+        success=False
+        if len(times)==0:
+            success=False
+            print 'no data'
+        elif len(times)>=2:
+            success=True
+            print 'more than 1'
+        elif t>=starttime and t<=endtime:
+            success=True
+            print 'time in range'
+        elif starttime>datetime.utcnow():
+            success=False
+        elif (starttime-t).total_seconds()<(24*60*60):
+            success=True
+            print 'times may intersect'
+
+        if success:
+            ret.append("merge")
+    except RuntimeError, e:
+        print e
+        print traceback.format_exc()      
+        print 'exception while looking for data availability'
+        pass
     Q.put(ret)
 
 @view_config(route_name='dataAvailability')
@@ -231,9 +272,9 @@ def dataAvailability(request):
     starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')#some OSes strptime don't assue %Y consumes 4 characters
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
     Q=Queue()
-    if 0:
+    if True:
       p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
-      #print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
+      print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
       p.start()
       retval=Q.get()
       #print retval,datetime.utcnow()

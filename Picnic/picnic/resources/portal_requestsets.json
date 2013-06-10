@@ -2,8 +2,10 @@
      "netcdf":[
         {   "name": "HSRL",
             "enabled": ["lidar"],
+            "groupenum": "hsrl",
             "sets": [
                 {   "name": "Derived Quantities", 
+                    "setenum": "hsrl",
                     "included": ["rs_inv.times","rs_mean.times","rs_mean.msl_altitudes"],
                     "options" : [
                         {   "name": "Particulate Backscatter Cross Section",
@@ -34,6 +36,7 @@
                         }
                     ]
                 }, {"name": "Raw Data",
+                    "setenum": "hsrlraw",
                     "included": ["rs_raw.times"],
                     "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#rawdata",
                     "options": [
@@ -66,32 +69,34 @@
                     ]
                 }
             ]
-        }, {"name": "MMCR",
+        }, {"name": "MMCR (Testing)",
             "enabled": ["merge"],
-            "disabled": 1,
+            "groupenum": "merge",
+            "disabled": 0,
             "sets": [
                 {"name": "Radar Quantities",
-                "included":[],
+                "included":["rs_mmcr.heights","rs_inv.times"],
+                "setenum": "merge",
                 "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#mmcr",
                 "options":[
                         { "name": "Reflectivity",
-                            "included": [],
+                            "included": ["rs_mmcr.Reflectivity"],
                             "enabled" : ["merge"],
                             "default" : 1,
                             "formname": "mmcr_ref"
                         }, {"name": "Backscatter Cross Section",
                             "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#mmcrbsxs",
-                            "included": [],
+                            "included": ["rs_mmcr.Backscatter"],
                             "enabled" : ["merge"],
                             "default" : 1,
                             "formname": "mmcr_bsxs"
                         }, {"name": "Spectral Width",
-                            "included": [],
+                            "included": ["rs_mmcr.SpectralWidth"],
                             "enabled": ["merge"],
                             "default" : 1,
                             "formname": "mmcr_spect"
                         }, {"name": "Doppler Velocity",
-                            "included": [],
+                            "included": ["rs_mmcr.MeanDopplerVelocity"],
                             "enabled": ["merge"],
                             "default" : 1,
                             "formname": "mmcr_vel"
@@ -102,8 +107,10 @@
         }, {"name": "AERI",
             "enabled": ["paeri0", "paeri1", "paeri2", "paeri1pca", "paeri2pca"],
             "disabled": 1,
+            "groupenum": "aeri",
             "sets": [
                 {"name": "Quantities",
+                "setenum": "merge",
                 "included":[],
                 "options":[
                         { "name": "Brightness Temperature",
@@ -128,9 +135,11 @@
         }, {"name": "Micro-wave Radiometer",
             "enabled": ["mwr"],
             "disabled": 1,
+            "groupenum": "mwr",
             "sets": [
                 {"name": "Quantities",
                 "included":[],
+                "setenum": "mwr",
                 "options":[
                         { "name": "Brightness Temperature",
                             "included": [],
@@ -148,10 +157,12 @@
             ]
         }, {"name": "HSRL/MMCR",
             "required": ["lidar","merge"],
+            "groupenum": "hsrl_merge",
             "disabled": 1,
             "sets": [
                 {"name": "Cooperative Quantities",
                 "included":[],
+                "setenum": "hsrl_merge",
                 "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr",
                 "options":[
                         { "name": "Effective Diameter Prime",
@@ -175,12 +186,13 @@
      "images":[
         {   "name": "HSRL",
             "default": "most",
+            "setenum": "hsrl",
             "enabled": ["lidar"],
             "sets": {
                 "most": {
                     "enabled": ["lidar"],
                     "name": "Bscat, depol, line plots",
-                    "figs": ["backscat_image",  "linear_depol_image","sounding","backscat_profile","sc_ratio_profile","extinction_profile","od_profile","depol_profile","#mask_image"]
+                    "figs": ["backscat_image",  "linear_depol_image","sounding","backscat_profile","sc_ratio_profile","extinction_profile","od_profile","depol_profile"]
                     },
                 "none": {
                     "name": "None",
@@ -189,25 +201,34 @@
                 "some": {
                     "enabled": ["lidar"],
                     "name": "Att. bscat, bscat, depol",
-                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image","#mask_image"]
+                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image"]
                     },
                 "all": {
                     "enabled": ["lidar"],
                     "name": "All figures",
-                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image", "sounding","backscat_profile","sc_ratio_profile","extinction_profile","od_profile","depol_profile","#mask_image", null]
+                    "figs": ["atten_backscat_image", "backscat_image", "linear_depol_image", "sounding","backscat_profile","sc_ratio_profile","extinction_profile","od_profile","depol_profile", null]
                     },
                 "few": {
                     "enabled": ["lidar"],
                     "name": "Bscat, depol",
-                    "figs": ["backscat_image", "linear_depol_image","#mask_image"]
+                    "figs": ["backscat_image", "linear_depol_image"]
                     }
                 },
+            "options":[
+                        { "name": "Enable Masking",
+                            "included": ["#mask_image"],
+                            "enabled" : ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_masking"
+                        }
+                    ],
             "order": ["none", "some", "few", "most", "all"],
             "formname": "lidarfig"
-        }, {"name": "MMCR",
+        }, {"name": "MMCR (Testing)",
             "default": "ref",
+            "setenum": "merge",
             "enabled": ["merge"],
-            "disabled": 1,
+            "disabled": 0,
             "sets": {
                 "none": {
                     "name": "None",
@@ -216,18 +237,19 @@
                 "ref": {
                     "enabled": ["merge"],
                     "name": "All, Reflectivity(dBz)",
-                    "figs": []
+                    "figs": ["radar_reflectivity_image","radar_velocity_image","radar_spectralwidth_image"]
                     },
                 "bscat": {
                     "enabled": ["merge"],
                     "name": "All, Bscat(1/(m sr))",
-                    "figs": []
+                    "figs": ["radar_backscatter_image","radar_velocity_image","radar_spectralwidth_image"]
                     }
                 },
             "order": ["none", "ref", "bscat"],
             "formname": "radarfig"
         }, {"name": "AERI",
             "default": "bright",
+            "setenum": "aeri",
             "enabled": ["paeri0", "paeri1", "paeri2", "paeri1pca", "paeri2pca"],
             "disabled": 1,
             "sets": {
@@ -250,6 +272,7 @@
             "formname": "aerifig"
         }, {"name": "MWR",
             "default": "all",
+            "setenum": "mwr",
             "enabled": ["mwr"],
             "disabled": 1,
             "sets": {
@@ -267,6 +290,7 @@
             "formname": "mwrfig"
         }, {"name": "Cooperative Quantities",
             "default": "part",
+            "setenum": "hsrl_merge",
             "required": ["lidar", "merge"],
             "disabled": 1,
             "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#hsrlmmcr",
