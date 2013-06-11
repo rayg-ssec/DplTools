@@ -21,24 +21,19 @@ import numpy as np
 LOG = logging.getLogger(__name__)
 
 
-start = { 'longname' : "datetime.datetime object expressing the start time of a frame",
-          'shortname' : 'start',
-          'type' : datetime.datetime,
-          'units' : 'time'
-          }
+start = {'longname': "datetime.datetime object, or ndarray of datetime objects, expressing the start time of an observation",
+         'shortname': 'start',
+         'type': datetime.datetime,
+         'units': 'time'
+         }
 
 # We prefer start + width, since most instruments will have a constant span, and that's one less thing to compute.
-width = { 'longname' : "datetime.timedelta object representing the width of a frame, such that start <= T < (start + width); typically frames have either width or end but not both",
-          'shortname' : 'width',
-          'type': datetime.timedelta,
-          'units' : 'time'
-          }
-
-end = { 'longname' : "datetime.datetime object representing the end of a frame, such that start <= T < end; typically frames should either have width or end but not both",
-          'shortname' : 'end',
-          'type': datetime.datetime,
-          'units': 'time'
-          }
+# Note the different in begin ~ end (inclusive) versus start ~ stop (exclusive)
+width = {'longname': "datetime.timedelta object or ndarray of objects, representing the width of an observation, such that start <= T < (start + width); typically frames have either width or end but not both",
+         'shortname' : 'width',
+         'type': datetime.timedelta,
+         'units' : 'time'
+         }
 
 is_rolling = {'longname' : 'whether or not this frame represents a rolling view of the input; if not present assume False',
               'shortname': 'is_rolling',
@@ -46,17 +41,11 @@ is_rolling = {'longname' : 'whether or not this frame represents a rolling view 
               'units': 'boolean'
               }
 
-seconds_offset = {'longname': 'seconds offset from frame start, for compound frames',
-                  'shortname': 'seconds_offset',
-                  'type': np.float64,
-                  'units': 'seconds'
-                  }
-
-intended_class = {'longname': 'complete package.subpackage.class name intended to handle this frame for initialization, or None',
-                  'shortname': 'intended_class',
-                  'type': str,
-                  'units': None
-                  }
+intended_class_name = {'longname': 'complete package.subpackage.class name intended to handle this frame for initialization, or None',
+                       'shortname': 'intended_class_name',
+                       'type': str,
+                       'units': None
+                       }
 
 def test():
     """ """
