@@ -16,6 +16,7 @@ http://cf-pcmdi.llnl.gov/documents/cf-standard-names/
 import os, sys
 import logging
 import datetime
+import numpy as np
 
 LOG = logging.getLogger(__name__)
 
@@ -36,19 +37,26 @@ width = { 'longname' : "datetime.timedelta object representing the width of a fr
 end = { 'longname' : "datetime.datetime object representing the end of a frame, such that start <= T < end; typically frames should either have width or end but not both",
           'shortname' : 'end',
           'type': datetime.datetime,
-          'units' : 'time'
+          'units': 'time'
           }
 
-is_rolling = { 'longname' : 'whether or not this frame represents a rolling view of the input; if not present assume False',
-            'shortname': 'is_rolling',
-            'type': bool,
-            'units': 'boolean'
-            }
+is_rolling = {'longname' : 'whether or not this frame represents a rolling view of the input; if not present assume False',
+              'shortname': 'is_rolling',
+              'type': bool,
+              'units': 'boolean'
+              }
 
+seconds_offset = {'longname': 'seconds offset from frame start, for compound frames',
+                  'shortname': 'seconds_offset',
+                  'type': np.float64,
+                  'units': 'seconds'
+                  }
 
-
-
-
+intended_class = {'longname': 'complete package.subpackage.class name intended to handle this frame for initialization, or None',
+                  'shortname': 'intended_class',
+                  'type': str,
+                  'units': None
+                  }
 
 def test():
     """ """

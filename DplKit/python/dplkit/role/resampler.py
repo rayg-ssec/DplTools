@@ -17,22 +17,17 @@ Class/Function however should not be documented here.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
 
+@has_provides
+@has_requires
 class aResampler(object):
     """
     """
     __metaclass__ = ABCMeta
-
-    provides = None     # similar to .meta, a mapping of what channels are provided, use @property to provide an active form
-    requires = None
-
-    @property
-    def meta(self):
-        return self.provides
-    # FUTURE: decide on standardization of meta vs provides+requires attributes
 
     def __init__(self, clock, *args, **kwargs):
         """

@@ -34,15 +34,17 @@ K_TIME_SPAN = ts = time_span = {
     'examples': ('2006-09-20T13:15:44.155, 2006-09-20T13:45:46.214', )
 }
 
+# ref http://toblerity.github.com/shapely/manual.html#shapely.geometry.box
 K_BOUNDING_BOX = bb = bounding_box = {
-    'longname': 'latitude-longitude bounding box for data, normalized to -180..180E or 0..360 if spanning antimeridian',
-    'convention': 'WKT',
-    'examples': ('POLYGON ((-77.2 38.8, -77 38.8, -77 39, -77.2 39.9, -77.2 38.8))', )
+    'longname': 'WGS84 latitude-longitude 5-point bounding box polygon for data, normalized to -180..180E (or 0..360 if spanning antemeridian)',
+    'convention': 'elon_w, elon_e, nlat_s, nlat_n',
+    'examples': ('-77.2, -77, 38.8, 39', )
 }
 
+# ref http://toblerity.github.com/shapely/manual.html#polygons
 K_PERIMETER_POLYGON = pp = perimeter_polygon = {
-    'longname': 'latitude-longitude data perimeter, normalized to -180..180E or 0..360E if spanning antimeridian',
-    'convention': 'WKT',
+    'longname': 'WGS84 latitude-longitude data perimeter polygon, normalized to -180..180E or 0..360E if spanning antemeridian, interior left of path (CCW)',
+    'convention': 'mime64_WKB',
     'examples': ('POLYGON ((-77.2 38.8, -77 38.8, -77 39, -77.2 39.9, -77.2 38.8))', )
 }
 

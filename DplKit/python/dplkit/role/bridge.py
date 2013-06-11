@@ -17,10 +17,13 @@ or between machines or processes.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
 
+@has_provides
+@has_requires
 class aBridge(object):
     """
     abstract bridge base. 
@@ -28,8 +31,6 @@ class aBridge(object):
 
     """
     __metaclass__ = ABCMeta
-    provides = None   # mapping of inforamtion about the framestream channels that will be available
-    requires = None   # FUTURE
 
     @abstractmethod
     def read(self, *args, **kwargs):
@@ -48,13 +49,6 @@ class aIncomingBridge(aBridge):
 
     """
     __metaclass__ = ABCMeta
-    provides = None   # mapping of inforamtion about the framestream channels that will be available
-    requires = None   # FUTURE
-
-    @property
-    def meta(self):
-        return self.provides
-    # FUTURE: decide on standardization of meta vs provides+requires attributes
 
     def __init__(self, source, *args, **kwargs):
         """given media information and constraint arguments, initialize the narrator
