@@ -52,8 +52,6 @@ class aNarrator(object):
         return self.read(*args, **kwargs)
 
 
-
-
 def validate(narrator):
     """
     run a narrator created elsewhere through a basic conformance test
@@ -62,7 +60,6 @@ def validate(narrator):
         raise AssertionError('isinstance test failed, you may need to use aNarrator.register(yourclass)')
     if not hasattr(narrator, 'provides'):
         raise AssertionError('no .provides dictionary attribute revealing available frame fields')
-    
 
 
 def test(*args):

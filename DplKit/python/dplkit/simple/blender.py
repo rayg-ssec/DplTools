@@ -60,15 +60,13 @@ INTERP_VERBOTEN_CHANNELS = set(['start', 'width'])
 
 class TimeInterpolatedMerge(aBlender):
     """
+    Requires that input framestreams are all elementary, i.e. single-timestep-per-frame.
     Using the time frame information from the primary stream, 
     time-interpolate channels from the other streams into a composite stream.
 
     This will yield all frames from the primary.
     In the case that one or more of the secondaries cannot provide data, their channels are None.
     """
-    provides = None 
-    requires = None
-
     _schedule = None  # schedule of what data comes from where, [(channel, source), ...]
     _iters = None   # dictionary of { source: function-fetching-next-frame }
     _tsips = None   # interpolator dictionary { channel: TimeSeriesPolyInter}

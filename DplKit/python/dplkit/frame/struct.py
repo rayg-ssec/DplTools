@@ -53,9 +53,7 @@ class struct(object):
         if 'meta' in self._data_ and 'meta' not in kwargs:
             self.meta = self._data_['meta']
 
-    # FIXME: properly support hasattr()
-
-    def __getattr__(self, name):        
+    def __getattr__(self, name):
         if name not in self._data_:
             LOG.debug('invalid name requested from dict2workspace object, must be in %s' % repr(tuple(self._data_.keys())))
             raise NameError('%s not in frame' % name)

@@ -75,9 +75,8 @@ class aIncomingBridge(aBridge):
 
 class aOutgoingBridge(aBridge):
     """
-    abstract bridge base. 
-    Outgoing bridges act like artists; incoming bridges act like narrators.
-
+    abstract bridge base.
+    Implement process() and iterate ._source for input data
     """
     __metaclass__ = ABCMeta
     def __init__(self, source, *args, **kwargs):
@@ -85,13 +84,28 @@ class aOutgoingBridge(aBridge):
         """
         super(aOutgoingBridge, self).__init__()
         self._source = source
+        self.provides = source.provides
 
     def read(self, *args, **kwargs):
         raise NotImplementedError('unsupported read operation for outgoing-only bridge')
 
     @abstractmethod
+    def connect(self, *args, **kwargs):
+        raise NotImplementedError('unsupported connect operation for outgoing-only bridge')
+
+    @abstractmethod
+    def send(self, frame):
+        raise NotImplementedError('unsupported send operation for outgoing-only bridge')
+
     def process(self, *args, **kwargs):
-        pass
+        self.connect()
+        for frame in self._source:
+            self.send(frame)
+        self.close()
+
+    @abstractmethod
+    def close(self):
+        raise NotImplementedError('unsupported close operation for outgoing-only bridge')
 
     def __iter__(self):
         return self.process()
