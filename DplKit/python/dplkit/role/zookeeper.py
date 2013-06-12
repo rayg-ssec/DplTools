@@ -22,6 +22,7 @@ The zookeeper is created one-per-collection.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 

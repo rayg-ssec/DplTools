@@ -7,9 +7,12 @@ dplkit.role.narrator
 A Narrator is initialized with a sequence of equivalent media URIs,
 and when called, generates a series of data frames.
 
-The narrator is created one-per-media-uri, 
-optionally one-per-media-uri-sequence iff it makes the 
+The narrator is created one-per-media-uri,
+optionally one-per-media-uri-sequence iff it makes the
 most sense to implicitly catenate media file contents.
+
+
+
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
 :license: GPLv3, see LICENSE for more details
@@ -52,7 +55,7 @@ def test(*args):
     for frame in tcn:
         pprint(frame)
     pprint(list(tcn.meta.keys()))
-    
+
 
 
 if __name__=='__main__':

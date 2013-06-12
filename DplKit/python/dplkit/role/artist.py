@@ -41,10 +41,7 @@ class aArtist(object):
 
     def __call__(self, *args, **kwargs):
         "the default action of an artist is to render"
-        return self.process(*args, **kwargs)
-
-
-
+        return self.render(*args, **kwargs)
 
 
 

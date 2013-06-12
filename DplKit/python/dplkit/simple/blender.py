@@ -60,15 +60,13 @@ INTERP_VERBOTEN_CHANNELS = set(['start', 'width'])
 
 class TimeInterpolatedMerge(aBlender):
     """
+    Requires that input framestreams are all elementary, i.e. single-timestep-per-frame.
     Using the time frame information from the primary stream, 
     time-interpolate channels from the other streams into a composite stream.
 
     This will yield all frames from the primary.
     In the case that one or more of the secondaries cannot provide data, their channels are None.
     """
-    provides = None 
-    requires = None
-
     _schedule = None  # schedule of what data comes from where, [(channel, source), ...]
     _iters = None   # dictionary of { source: function-fetching-next-frame }
     _tsips = None   # interpolator dictionary { channel: TimeSeriesPolyInter}
@@ -117,7 +115,7 @@ class TimeInterpolatedMerge(aBlender):
                 return TimeInterpolatedMerge._generate_meta_from_sequence(channels.items(), channels_ignore,  *sources)
             elif hasattr(channels, '__contains__'): 
                 return TimeInterpolatedMerge._generate_meta_from_set(channels, channels_ignore, *sources)
-            elif iterable(channels):
+            elif hasattr(channels, '__iter__'):
                 return TimeInterpolatedMerge._generate_meta_from_sequence(channels, channels_ignore, *sources)                
             else:
                 raise ValueError('channels must be a mappable or set')
@@ -176,7 +174,7 @@ class TimeInterpolatedMerge(aBlender):
                 # we should let the interpolator for the source's channels generate nans for everything from here on out
                 LOG.warning('source %s is out of data, future version should handle this by providing NaNs for this source' % source)
                 raise
-                LOG.debug(repr(data))
+                # LOG.debug(repr(data))
             data = as_struct(data)
         start, t, width = center_time(data)
         LOG.debug('using frame center time of %s' % (t))
@@ -221,7 +219,7 @@ class TimeInterpolatedMerge(aBlender):
     def _integrity_check(self):
         # integrity check schedule
         for (chn,source) in self._schedule:
-            print "checking %s" % chn
+            print("checking %s" % chn)
             assert(chn in source.meta)
 
 
@@ -294,7 +292,7 @@ class testOne(unittest.TestCase):
     def testPlots(self):
         import matplotlib.pyplot as plt
         frames = list(self.it)
-        print len(frames)
+        print(len(frames))
         # assert(512==list(frames))
         from pprint import pprint
         pprint(list(self.it._consumed.items()))
@@ -315,7 +313,7 @@ class testOne(unittest.TestCase):
         plt.draw()
         fn = '/tmp/resampler.png'
         fig.savefig(fn, dpi=200)
-        print "wrote " + fn
+        print("wrote " + fn)
         return None
 
 
