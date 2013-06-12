@@ -29,12 +29,7 @@ class aFilter(object):
     Filters modify one or more input frame-streams to produce one or more output data-streams.
     """
     __metaclass__ = ABCMeta
-    provides = None  # mapping of information about channels this filter provides, similar to .meta on frames
-    requires = None  # mapping of information about what it needs from upstream
-
-    @property
-    def meta(self):
-        return self.provides
+    source = None
 
     def __init__(self, source, **kwargs):
         """
@@ -43,8 +38,8 @@ class aFilter(object):
 
         Typically a filter is not re-used for multiple frame sequences.
         """
-        super(aFilter, self).__init__()
-        pass
+        # super(self.__class__, self).__init__()
+        self.source = source
 
     @abstractmethod
     def process(self, *args, **kwargs):

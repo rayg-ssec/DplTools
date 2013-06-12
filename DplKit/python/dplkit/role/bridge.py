@@ -53,7 +53,7 @@ class aIncomingBridge(aBridge):
     def __init__(self, source, *args, **kwargs):
         """given media information and constraint arguments, initialize the narrator
         """
-        super(aIncomingBridge, self).__init__()
+        super(self.__class__, self).__init__()
 
     @abstractmethod
     def read(self, *args, **kwargs):
@@ -82,7 +82,7 @@ class aOutgoingBridge(aBridge):
     def __init__(self, source, *args, **kwargs):
         """given media information and constraint arguments, initialize the narrator
         """
-        super(aOutgoingBridge, self).__init__()
+        super(self.__class__, self).__init__()
         self._source = source
         self.provides = source.provides
 

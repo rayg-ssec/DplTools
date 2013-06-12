@@ -19,34 +19,40 @@ VariableFrameRate: datetime generator which uses a key from an incoming framestr
 :license: GPLv3, see LICENSE for more details
 """
 
-from ..role.filter import aFilter
-
-import os, sys
 import logging
-from datetime import datetime
-from collections import namedtuple
+from datetime import datetime, timedelta
+from dplkit.role.filter import aFilter
+from dplkit.role.narrator import aNarrator
+import dplkit.frame.keys as dplkeys
 
 LOG = logging.getLogger(__name__)
 
 
-timeframe = namedtuple('period', 'start width')
+class FixedFrameRate(aNarrator):
+    provides = {'start': dplkeys.start, 'width': dplkeys.width}
 
-
-class FixedFrameRate(object):
-    def __init__(self, start, interval, end=None, width = None, **kwargs):
+    def __init__(self, start, interval, stop=None, width = None, **kwargs):
+        """
+        generate timeframes at a regular framerate
+        :param start: datetime object
+        :param interval: timedelta, time distance between frames
+        :param end: datetime, stop iteration after this time
+        :param width: timedelta, optional, width of a timeframe (defaults to interval size)
+        """
+        super(self.__class__, self).__init__(None)
         self._start = start
-        self._end = end
+        self._stop = stop
         self._width = interval if width is None else width
         self._interval = interval
         assert(isinstance(start, datetime))
         assert(isinstance(interval, timedelta))
-        assert(end is None or isinstance(end, datetime))
+        assert(stop is None or isinstance(stop, datetime))
         assert(width is None or isinstance(width, timedelta))
 
-    def __iter__(self):
+    def read(self, *args, **kwargs):
         now = self._start
-        while (self._end is None) or (now < self._end):
-            yield timeframe(now, self._width)
+        while (self._stop is None) or (now < self._stop):
+            yield {'start': now, 'width': self._width}
             now += self._interval
 
 
@@ -81,9 +87,7 @@ class VariableFrameRate(aFilter):
             w = self._get_width(frame)
             assert(isinstance(t, datetime))
             assert(isinstance(w, timedelta))
-            yield timeframe(t, w)
-
-
+            yield {'start': t, 'width': w}
 
 
 def test():

@@ -33,7 +33,7 @@ class aBlender(object):
     def __init__(self, *args, **kwargs):
         """
         """
-        super(aBlender, self).__init__()
+        super(self.__class__, self).__init__()
         pass
 
     @abstractmethod

@@ -33,7 +33,7 @@ class aResampler(object):
         """
         Given clock information or clock source, configure a resampler.
         """
-        super(aResampler, self).__init__()
+        super(self.__class__, self).__init__()
         self._clock = clock
 
     @abstractmethod

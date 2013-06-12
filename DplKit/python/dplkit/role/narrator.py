@@ -32,7 +32,7 @@ class aNarrator(object):
     def __init__(self, url, *args, **kwargs):
         """given media information and constraint arguments, initialize the narrator
         """
-        super(aNarrator, self).__init__()
+        super(self.__class__, self).__init__()
         self._url = url
 
     @abstractmethod

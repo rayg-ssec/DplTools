@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-package.module
-~~~~~~~~~~~~~~
-
-
+dplkit.role.librarian
+~~~~~~~~~~~~~~~~~~~~~
 
 librarian(search-criteria) -> [asset-uri, asset-uri...]
-
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
 :license: GPLv3, see LICENSE for more details
@@ -38,7 +35,7 @@ class aLibrarian(object):
     def __init__(self, *args, **kwargs):
         """
         """
-        super(aLibrarian, self).__init__()
+        super(self.__class__, self).__init__()
 
     @abstractmethod
     def search(self, *where_exprs, **key_values):
