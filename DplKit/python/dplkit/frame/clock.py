@@ -29,6 +29,9 @@ LOG = logging.getLogger(__name__)
 
 
 class FixedFrameRate(aNarrator):
+    """
+    A FixedFrameRate is a source of simple frames having only start and width.
+    """
     provides = {'start': dplkeys.start, 'width': dplkeys.width}
 
     def __init__(self, start, interval, stop=None, width = None, **kwargs):
@@ -64,7 +67,7 @@ class VariableFrameRate(aFilter):
             - attribute name string for datetime / timedelta
             - constant value (not recommended for time)
         """
-        super(aFilter, self).__init__()
+        super(self.__class__, self).__init__(source)
         self._source = source
         self._time = time
         self._width = width
