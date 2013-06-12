@@ -19,19 +19,16 @@ from functools import wraps
 LOG = logging.getLogger(__name__)
 
 
+def meta(self):
+    return self.provides
+
 def has_provides(cls):
-    class new_cls(cls):
-        __doc__ = getattr(cls, '__doc__', "")
-        provides = None
-        @property
-        def meta(self):
-            return self.provides
-    return new_cls
+    cls.provides = None
+    cls.meta = property(meta)
+    return cls
 
 
 def has_requires(cls):
-    class new_cls(cls):
-        __doc__ = getattr(cls, '__doc__', "")
-        requires = None
-    return new_cls
+    cls.requires = None
+    return cls
 
