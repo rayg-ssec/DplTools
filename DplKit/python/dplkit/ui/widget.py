@@ -182,7 +182,8 @@ class MplWidget(FigureCanvasQTAgg):
         #self._drawn_artists = []
         # XXX: We assume we're only doing lines, this could be an over-simplification
         # Incomprehensible list comprehensions
-        self._drawn_artists = [ line_obj for ax in self.figure.axes for line_obj in ax.lines ]
+        self._drawn_artists = [ line_obj for ax in self.figure.axes for line_obj in ax.lines ] + \
+                [ image_obj for ax in self.figure.axes for image_obj in ax.images ]
 
         # Must setup the artists with their renderers, initial draw before we
         # copy anything
