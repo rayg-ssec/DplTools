@@ -39,14 +39,15 @@ class ExplodeCompoundFrameFilter(aFilter):
     def process(self, *args, **kwargs):
         """the default action of the filter is to process one framestream into another"""
         for frame in self.source:
-            zult = {}
             whens = frame['start']
             n_simple_frames = len(whens)
+            LOG.debug('exploding compound frame into %d simple frames' % n_simple_frames)
             for dex in range(n_simple_frames):
+                zult = {}
                 for channel_name in self.provides.keys():
                     src = frame[channel_name]
                     zult[channel_name] = src[dex]
-                yield frame
+                yield zult
 
 
 class AccumlateSimpleFramesFilter(aFilter):
@@ -76,24 +77,29 @@ class AccumlateSimpleFramesFilter(aFilter):
             for key in self.provides.keys():
                 zult[key].append(simple_frame[key])
 
-        def _next():
-            nxt = next(gen)
-            start = nxt['start']
-            stop = start + nxt['width']
-            return nxt, start, stop
-
         frame = next(gen)
         for timeframe in self.time_source:
             zult = defaultdict(list)
+            # timeframes are simple, or they should be
             tf_start = timeframe['start']
             tf_stop = timeframe['start'] + timeframe['width']
-            while frame['start'] < tf_start:
-                LOG.debug('discarding simple frame at time %s' % frame['start'])
-                frame = next(gen)
-            while frame['start'] < tf_stop:
-                _append(zult, frame)
-                frame = next(gen)
-            yield dict((k, np.array(v)) for (k,v) in zult.items())
+            n = 0
+            try:
+                while frame['start'] < tf_start:
+                    LOG.debug('discarding simple frame at time %s' % frame['start'])
+                    frame = next(gen)
+                while frame['start'] < tf_stop:
+                    _append(zult, frame)
+                    n += 1
+                    frame = next(gen)
+            except StopIteration as all_done:
+                if n:
+                    LOG.debug('yielding final compound frame with %d simple frames concatenated' % n)
+                    yield dict((k, np.array(v)) for (k, v) in zult.items())
+                raise
+            if n:
+                LOG.debug('yielding compound frame with %d simple frames concatenated' % n)
+                yield dict((k, np.array(v)) for (k,v) in zult.items())
 
 
 class testOne(unittest.TestCase):
@@ -115,7 +121,7 @@ class testOne(unittest.TestCase):
 
     def testOne(self):
         for _,frame in zip(range(64),self.c):
-            print frame['start']
+            LOG.debug(str(frame['start']))
 
 
 if __name__=='__main__':
