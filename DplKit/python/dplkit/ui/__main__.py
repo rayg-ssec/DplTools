@@ -109,6 +109,59 @@ def gui_test_1():
     s.wait()
     print "Done"
     
+def gui_test_2():
+    """Simple test that creates an AxesImage via imshow and updates it
+    over time.
+    """
+    import numpy
+    from pprint import pprint
+
+    app = QtGui.QApplication([" "])
+
+    base_array = numpy.linspace(0, 100, 200)
+    image_array = base_array.reshape(1, base_array.shape[0])
+    for i in range(100):
+        image_array = numpy.append(image_array, (base_array+i).reshape(1, base_array.shape[0]), axis=0)
+    def test_iterator(image_array=image_array):
+        # Definitely not optimal solution
+        # Mimics DPL stream
+        for i in range(1,1000):
+            f = { "image_data" : image_array }
+            yield f
+            # Move the oldest record to the front of the image
+            image_array = numpy.append( image_array[:,1:], image_array[:,0].reshape((image_array.shape[0],1)), axis=1 )
+
+    # Create the DPL Stream
+    s         = Stream(test_iterator(), delay=0.5)
+    # For debug purposes:
+    #s.frame_ready.connect(print_slot)
+
+    # Set up the widget (we could do this in a subclass if this is to be repeated
+    #my_widget = MplWidget(blit=False)
+    my_widget = MplWidget(blit=True, figure_kwargs=dict(figsize=(4,4)))
+    #my_widget = MplWidget(blit=False, figure_kwargs=dict(figsize=(4,4)))
+    fig       = my_widget.figure
+    ax        = fig.add_subplot(111)
+    image     = ax.imshow( image_array, vmin=0, vmax=200 )
+    ax.set_title("Image Example - gui_test_2")
+    ax.set_xlabel("X Axis")
+    ax.set_ylabel("Y Axis")
+    ax.grid()
+    fig.colorbar(image, ax=ax)
+
+    # Create the controller that handles communication between stream and widget
+    control   = GUIController(s, my_widget)
+    control.bind_image_to_channel("image_data", image)
+
+    my_widget.show()
+    print "Starting Stream..."
+    s.start()
+    print "Exec'ing"
+    app.exec_()
+    print "Wait for stream"
+    s.wait()
+    print "Done"
+
 def main():
     from argparse import ArgumentParser
     description = """Test DPL UI tools"""

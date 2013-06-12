@@ -56,6 +56,9 @@ class GUIController(QtCore.QObject):
     def apply_line_y(self, line_object, data_array):
         line_object.set_ydata(data_array)
 
+    def apply_image_data(self, image_object, data_array):
+        image_object.set_data(data_array)
+
     def apply_autolimit(self, ax, tight, scalex, scaley):
         ax.relim()
         ax.autoscale_view(tight=tight, scalex=scalex, scaley=scaley)
@@ -69,6 +72,11 @@ class GUIController(QtCore.QObject):
         if line_object is None:
             raise ValueError("`line_object` is a required argument")
         self.bindings.append( ((stream_channel_name,), partial(self.apply_line_y, line_object)) )
+
+    def bind_image_to_channel(self, stream_channel_name, image_object=None):
+        if image_object is None:
+            raise ValueError("`image_object` is a required argument")
+        self.bindings.append( ((stream_channel_name,), partial(self.apply_image_data, image_object)) )
 
     def bind_axis_autoscale_x(self, axis, interval=1, padding=0.0):
         count = interval
