@@ -181,7 +181,7 @@ def parseImageParameters(request,session):
             #print i
             try:
                 setmode=request.params.getone(i['formname'])
-                session['figrequest'][i['formname']]=list(setmode)
+                session['figrequest'][i['formname']]=setmode
                 figstocapture[i['setenum']]=i['sets'][setmode]['figs']
                 if len(i['sets'][setmode]['figs'])>0:#radio buttons
                     if 'enabled' in i['sets'][setmode]:
