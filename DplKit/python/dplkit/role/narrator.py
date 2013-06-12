@@ -28,12 +28,13 @@ class aNarrator(object):
     URI. It also provides a meta mapping as an attribute.
     """
     __metaclass__ = ABCMeta
+    url = None
 
-    def __init__(self, url, *args, **kwargs):
+    def __init__(self, url=None, *args, **kwargs):
         """given media information and constraint arguments, initialize the narrator
         """
-        super(self.__class__, self).__init__()
-        self._url = url
+        # super(self.__class__, self).__init__()
+        self.url = url
 
     @abstractmethod
     def read(self, *args, **kwargs):

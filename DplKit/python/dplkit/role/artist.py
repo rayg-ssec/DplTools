@@ -28,7 +28,7 @@ class aArtist(object):
     def __init__(self, source, **kwargs):
         """
         """
-        super(self.__class__, self).__init__()
+        # super(self.__class__, self).__init__()
         pass
 
     @abstractmethod

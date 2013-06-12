@@ -37,8 +37,9 @@ class aZookeeper(object):
     def __init__(self, *args, **kwargs):
         """
         """
-        super(self.__class__, self).__init__()
+        # super(self.__class__, self).__init__()
         #self.uri = uri
+        pass
 
     @abstractmethod
     def obtain(self, uri, *args, **kwargs):

@@ -28,13 +28,14 @@ class aResampler(object):
     """
     """
     __metaclass__ = ABCMeta
+    clock = None
 
     def __init__(self, clock, *args, **kwargs):
         """
         Given clock information or clock source, configure a resampler.
         """
-        super(self.__class__, self).__init__()
-        self._clock = clock
+        # super(self.__class__, self).__init__()
+        self.clock = clock
 
     @abstractmethod
     def resample(self, *args, **kwargs):
