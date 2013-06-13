@@ -18,16 +18,18 @@ most sense to implicitly catenate media file contents.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
-from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
-@has_provides
 class aNarrator(object):
     """``Narrator(url, **constraints)`` generates a framestream from a media
     URI. It also provides a meta mapping as an attribute.
     """
     __metaclass__ = ABCMeta
+    provides = None
+    @property
+    def meta(self):
+        return self.provides
     url = None
 
     def __init__(self, url=None, *args, **kwargs):

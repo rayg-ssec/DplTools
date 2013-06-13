@@ -13,17 +13,16 @@ Artist takes in a frame stream, and writes out images or other visual representa
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
-from dplkit.role.decorator import has_requires
 
 LOG = logging.getLogger(__name__)
 
 
-@has_requires
 class aArtist(object):
     """
     Artists convert frame streams into viewable images. Their primary action is render().
     """
     __metaclass__ = ABCMeta
+    requires = None
 
     def __init__(self, source, **kwargs):
         """

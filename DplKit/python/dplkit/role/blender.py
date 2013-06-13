@@ -17,18 +17,20 @@ Class/Function however should not be documented here.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
-from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
 
-@has_provides
-@has_requires
 class aBlender(object):
     """
     A blender combines one or more frame streams into a single outgoing stream. Its primary activity is combine()
     """
     __metaclass__ = ABCMeta
+    provides = None
+    requires = None
+    @property
+    def meta(self):
+        return self.provides
 
     def __init__(self, *args, **kwargs):
         """

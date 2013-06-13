@@ -17,17 +17,20 @@ Class/Function however should not be documented here.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
-from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
 
-@has_provides
-@has_requires
 class aResampler(object):
     """
     """
     __metaclass__ = ABCMeta
+    provides = None
+    requires = None
+    @property
+    def meta(self):
+        return self.provides
+
     clock = None
 
     def __init__(self, clock, *args, **kwargs):

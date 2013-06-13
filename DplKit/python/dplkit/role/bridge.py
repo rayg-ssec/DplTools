@@ -17,13 +17,10 @@ or between machines or processes.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
-from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
 
-@has_provides
-@has_requires
 class aBridge(object):
     """
     abstract bridge base. 
@@ -31,6 +28,11 @@ class aBridge(object):
 
     """
     __metaclass__ = ABCMeta
+    provides = None
+    requires = None
+    @property
+    def meta(self):
+        return self.provides
 
     @abstractmethod
     def read(self, *args, **kwargs):

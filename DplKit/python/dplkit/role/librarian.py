@@ -14,7 +14,6 @@ import os, sys
 import logging
 from exceptions import Exception
 from abc import ABCMeta, abstractmethod
-from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
@@ -25,12 +24,15 @@ class AmbiguousQueryError(Exception):
     pass
 
 
-@has_provides
-@has_requires
 class aLibrarian(object):
     """A Librarian returns sets of media asset URIs when given search expressions.
     """
     __metaclass__ = ABCMeta
+    provides = None
+    requires = None
+    @property
+    def meta(self):
+        return self.provides
 
     def __init__(self, *args, **kwargs):
         """
