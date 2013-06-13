@@ -187,12 +187,17 @@ def _sessionfolder(sessionid):
         return os.getenv('SESSIONFOLDER',safejoin('.','sessions'))
     return safejoin(_sessionfolder(None),sessionid);
 
-def loadjson(session,filename):
+def loadjson(session,filename,**kwargs):
     if isinstance(session,basestring):
         sessionid=session
     else:
         sessionid=session['sessionid']
-    return json.load(file(sessionfile(sessionid,filename)))
+    try:
+        return json.load(file(sessionfile(sessionid,filename)))
+    except IOError:
+        if 'failvalue' in kwargs:
+            return kwargs['failvalue']
+        raise
 
 def loadsession(sessionid):
     retry=5;
