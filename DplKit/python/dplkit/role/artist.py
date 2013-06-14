@@ -22,12 +22,12 @@ class aArtist(object):
     Artists convert frame streams into viewable images. Their primary action is render().
     """
     __metaclass__ = ABCMeta
-    requires = None  # mapping of information about what it needs from upstream
+    requires = None
 
     def __init__(self, source, **kwargs):
         """
         """
-        super(aArtist, self).__init__()
+        # super(self.__class__, self).__init__()
         pass
 
     @abstractmethod

@@ -19,16 +19,3 @@ from functools import wraps
 LOG = logging.getLogger(__name__)
 
 
-def meta(self):
-    return self.provides
-
-def has_provides(cls):
-    cls.provides = None
-    cls.meta = property(meta)
-    return cls
-
-
-def has_requires(cls):
-    cls.requires = None
-    return cls
-
