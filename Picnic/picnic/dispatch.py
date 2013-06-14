@@ -423,15 +423,15 @@ def makeDPLFromSession(session,doSearch=True):
     #    import hsrl.utils.threaded_generator
     #    dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
     #except:
-    dplc=dplobj(**searchparms)
+    hsrlnar=dplobj(**searchparms)
+    dplc=hsrlnar
     if 'merge' in session['datastreams']:#add merge to rs_mmcr, refit
         import hsrl.dpl_tools.time_frame as time_slicing
         import hsrl.dpl_tools.resample_altitude as altitude_resampling
         import hsrl.dpl_tools.substruct as frame_substruct
         from hsrl.dpl_netcdf.NetCDFZookeeper import GenericTemplateRemapNetCDFZookeeper 
         import hsrl.dpl_netcdf.MMCRMergeLibrarian as mmcr
-        stitcher=time_slicing.TimeStitch()
-        restr=frame_substruct.SubstructRestractor('rs_mmcr')
+        import hsrl.utils.hsrl_array_utils as hau
 
         if session['dataset']=='ahsrl':
             mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
@@ -439,23 +439,32 @@ def makeDPLFromSession(session,doSearch=True):
         elif session['dataset']=='mf2hsrl':
             pass #set up zoo and lib for mf2
         mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
-        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(altitude_resampling.ResampleXd(time_slicing.TimeGinsu(frame_substruct.SubstructExtractor(mmcrnar,None),'times',stitcherbase=stitcher),'heights',dplc.getAltitudeAxis()))
+        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(altitude_resampling.ResampleXd(time_slicing.TimeGinsu(mmcrnar,'times'),'heights',dplc.getAltitudeAxis()))
 
-        hsrlnar=time_slicing.TimeGinsu(frame_substruct.SubstructExtractor(dplc,'rs_inv',restractor=restr),'times',isEnd=True,stitchersync=stitcher)
+        hsrlnarsplitter=frame_substruct.SubstructBrancher(hsrlnar)
+        hsrlinvnar=time_slicing.TimeGinsu(hsrlnarsplitter.narrateSubstruct('rs_inv'),'times')#,isEnd=True)
 
         from dplkit.simple.blender import TimeInterpolatedMerge
 
-        merge=TimeInterpolatedMerge(hsrlnar,[mmcrnar],allow_nans=True,channels=['times','heights','Reflectivity','MeanDopplerVelocity','Backscatter','SpectralWidth'])
-
-        #merge=picnicsession.PicnicProgressNarrator(dplc,getLastOf('start'), searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
+        merge=TimeInterpolatedMerge(hsrlinvnar,[mmcrnar],allow_nans=True,channels=['heights','Reflectivity','MeanDopplerVelocity','Backscatter','SpectralWidth'])
+        merge=frame_substruct.Retyper(merge,hau.Time_Z_Group,{'timevarname':'times','altname':'heights'})
+ 
+        dplc=frame_substruct.SubstructMerger('rs_inv',{
+            'rs_mean':hsrlnarsplitter.narrateSubstruct('rs_mean'),
+            'rs_raw':hsrlnarsplitter.narrateSubstruct('rs_raw'),
+            'rs_inv':hsrlnarsplitter.narrateSubstruct('rs_inv'),
+            'rs_mmcr':merge,
+            'rs_init':hsrlnarsplitter.narrateSubstruct('rs_init'),
+            'rs_static':hsrlnarsplitter.narrateSubstruct('rs_static'),
+            'profiles':hsrlnarsplitter.narrateSubstruct('profiles',sparse=True),
+            'rs_Cxx':hsrlnarsplitter.narrateSubstruct('rs_Cxx',sparse=True)
+            }
+        ,hau.Time_Z_Group)
+       #merge=picnicsession.PicnicProgressNarrator(dplc,getLastOf('start'), searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
         #hasProgress=True
 
-        stitcher.setFramestream(merge)
-        restr.setFramestream(stitcher)
-        dplc=restr
- 
     if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
-        picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
+        picnicsession.storejson(session,hsrlnar.get_process_control().json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
     if hasProgress:
         return dplc
