@@ -17,22 +17,18 @@ or between machines or processes.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from dplkit.role.filter import aFilter
 
 LOG = logging.getLogger(__name__)
 
 
-class aBridge(object):
+class aBridge(aFilter):
     """
     abstract bridge base. 
     Outgoing bridges act like artists; incoming bridges act like narrators.
 
     """
     __metaclass__ = ABCMeta
-    provides = None
-    requires = None
-    @property
-    def meta(self):
-        return self.provides
 
     @abstractmethod
     def read(self, *args, **kwargs):
@@ -62,15 +58,6 @@ class aIncomingBridge(aBridge):
         pass
 
     def process(self, *args, **kwargs):
-        raise NotImplementedError('unsupported process operation for incoming-only bridge')
-
-    def __iter__(self):
-        return self.read()
-
-    def __call__(self, *args, **kwargs):
-        """
-        The default action of a narrator is to read from the provided media.
-        """
         return self.read(*args, **kwargs)
 
 
@@ -99,23 +86,15 @@ class aOutgoingBridge(aBridge):
     def send(self, frame):
         raise NotImplementedError('unsupported send operation for outgoing-only bridge')
 
+    @abstractmethod
+    def close(self):
+        raise NotImplementedError('unsupported close operation for outgoing-only bridge')
+
     def process(self, *args, **kwargs):
         self.connect()
         for frame in self._source:
             self.send(frame)
         self.close()
-
-    @abstractmethod
-    def close(self):
-        raise NotImplementedError('unsupported close operation for outgoing-only bridge')
-
-    def __iter__(self):
-        return self.process()
-
-    def __call__(self, *args, **kwargs):
-        return self.process(*args, **kwargs)
-
-
 
 
 

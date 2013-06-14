@@ -28,17 +28,11 @@ class aLibrarian(object):
     """A Librarian returns sets of media asset URIs when given search expressions.
     """
     __metaclass__ = ABCMeta
-    provides = None
-    requires = None
-    @property
-    def meta(self):
-        return self.provides
 
     def __init__(self, *args, **kwargs):
         """
         """
-        # super(self.__class__, self).__init__()
-        pass
+        super(self.__class__, self).__init__()
 
     @abstractmethod
     def search(self, *where_exprs, **key_values):

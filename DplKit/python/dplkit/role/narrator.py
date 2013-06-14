@@ -21,16 +21,17 @@ from abc import ABCMeta, abstractmethod
 
 LOG = logging.getLogger(__name__)
 
+
 class aNarrator(object):
     """``Narrator(url, **constraints)`` generates a framestream from a media
     URI. It also provides a meta mapping as an attribute.
     """
     __metaclass__ = ABCMeta
+    url = None
     provides = None
     @property
     def meta(self):
         return self.provides
-    url = None
 
     def __init__(self, url=None, *args, **kwargs):
         """given media information and constraint arguments, initialize the narrator

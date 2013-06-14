@@ -17,26 +17,16 @@ Class/Function however should not be documented here.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from dplkit.role.filter import aFilter
 
 LOG = logging.getLogger(__name__)
 
 
-class aBlender(object):
+class aBlender(aFilter):
     """
     A blender combines one or more frame streams into a single outgoing stream. Its primary activity is combine()
     """
     __metaclass__ = ABCMeta
-    provides = None
-    requires = None
-    @property
-    def meta(self):
-        return self.provides
-
-    def __init__(self, *args, **kwargs):
-        """
-        """
-        # super(self.__class__, self).__init__()
-        pass
 
     @abstractmethod
     def combine(self, *args, **kwargs):
@@ -44,11 +34,7 @@ class aBlender(object):
         """        
         pass
 
-    def __iter__(self):
-        return self.combine()
-
-    def __call__(self, *args, **kwargs):
-        "the default action of an artist is to combine"
+    def process(self, *args, **kwargs):
         return self.combine(*args, **kwargs)
 
 
@@ -64,9 +50,7 @@ class Merge(aBlender):
             f = struct(framegroup[0])
             for q in framegroup[1:]:
                 vars(f).update(vars(q))
-            yield f
-
-
+            yield f.as_dict()
 
 
 
