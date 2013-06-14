@@ -128,7 +128,9 @@ def reimagerequest(request):
         session['sessionid']=sessionid
         session['finalpage']=request.route_path('imageresult',session=sessionid);
         for f in ('display_parameters.json','process_parameters.json'):
-            picnicsession.storejson(sessionid,picnicsession.loadjson(oldsessionid,f),f)
+            j=picnicsession.loadjson(oldsessionid,f,failvalue=None)
+            if j!=None:
+                picnicsession.storejson(sessionid,j,f)
     return picnicsession.newSessionProcess("createimages",request,session)
    
 
@@ -170,7 +172,7 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
         datalib=HSRLLibrarian(**{mode:modeval})
         srchres=datalib(start=starttime,end=endtime)
         for x in srchres:
-            times.append(srchres.parseTimeFromFile(x))
+            times.append(x['start'])
             if len(times)==2:
                 break
             fn=x
@@ -188,12 +190,15 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
             print 'time in range'
         elif starttime>datetime.utcnow():
             success=False
-        elif 'data' in x and (starttime-t).total_seconds()<(60*60):
+        elif (fn['start']+fn['width'])>starttime and fn['start']<endtime:
             success=True
-            print 'data time may intersect'
-        elif 'data' not in x and (starttime-t).total_seconds()<(3*60*60):
-            success=True
-            print 'cal time may intersect'
+            print 'end times work'
+        #elif 'data' in x and (starttime-t).total_seconds()<(60*60):
+        #    success=True
+        #    print 'data time may intersect'
+        #elif 'data' not in x and (starttime-t).total_seconds()<(3*60*60):
+        #    success=True
+        #    print 'cal time may intersect'
 
         if success:
             ret.append("lidar")
@@ -213,8 +218,7 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
         datalib=MMCRMergeLibrarian(modeval,['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'])
         srchres=datalib(start=starttime,end=endtime)
         for x in srchres:
-            print x
-            times.append(srchres.parseTimeFromFile(x))
+            times.append(x['start'])
             if len(times)==2:
                 break
             fn=x
@@ -232,9 +236,12 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
             print 'time in range'
         elif starttime>datetime.utcnow():
             success=False
-        elif (starttime-t).total_seconds()<(24*60*60):
+        elif (fn['start']+fn['width'])>starttime and fn['start']<endtime:
             success=True
-            print 'times may intersect'
+            print 'end times work'
+#        elif (starttime-t).total_seconds()<(24*60*60):
+#            success=True
+#            print 'times may intersect'
 
         if success:
             ret.append("merge")
