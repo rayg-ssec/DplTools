@@ -32,7 +32,7 @@ class aLibrarian(object):
     def __init__(self, *args, **kwargs):
         """
         """
-        super(self.__class__, self).__init__()
+        #super(self.__class__, self).__init__()
 
     @abstractmethod
     def search(self, *where_exprs, **key_values):
