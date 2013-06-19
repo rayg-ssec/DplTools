@@ -22,62 +22,37 @@ def meta(self):
     return self.provides
 
 class thing(object):
-    def __init__(self,initval=None):
-        self.value=initval
+    def __init__(self,fieldname,initval=None):
+        self.initvalue=initval
+        self.fieldname=fieldname
 
     def __get__(self, obj, type=None):
-        return self.value
+        if not hasattr(obj,self.fieldname):
+            return self.initval.copy()
+        return getattr(obj,self.fieldname)
 
     def __set__(self, obj, value):
-        self.value=value
+        setattr(obj,self.fieldname,value)
 
     def __delete__(self, obj):
-        del self.value
-        self.value=None
+        delattr(obj,self.fieldname)
 
 
-
-def has_providesPROP(cls):
+def has_provides(cls):
     cls.meta = property(meta)
     if not hasattr(cls,'provides'):
-        cls.provides = thing()
+        cls.provides = thing('__p_provides')
     else:
         raise 'already have provides!'
     return cls
 
 
-def has_requiresPROP(cls):
+def has_requires(cls):
     if not hasattr(cls,'requires'):
-        cls.requires = thing()
+        cls.requires = thing('__p_requires')
     else:
         raise 'already has requires!'
     return cls
-
-def has_providesINST(cls):
-    oldinit=cls.__init__
-    def newinit(self,*args,**kwargs):
-        oldinit(self,*args,**kwargs)
-        if not hasattr(self,'provides') and not hasattr(cls,'provides'):#must check instance and class(property) to not overwrite it
-            try:
-                self.provides=None
-            except AttributeError:
-                pass
-    cls.__init__=newinit
-    cls.meta = property(meta)
-    return cls
-
-
-def has_requiresINST(cls):
-    oldinit=cls.__init__
-    def newinit(self,*args,**kwargs):
-        oldinit(self,*args,**kwargs)
-        if not hasattr(self,'requires') and not hasattr(cls,'requires'):
-            self.requires=None
-    cls.__init__=newinit
-    return cls
-
-has_requires=has_requiresINST
-has_provides=has_providesINST
 
 import threading
 
