@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-package.module
-~~~~~~~~~~~~~~
-
-
-A description which can be long and explain the complete
-functionality of this module even with indented code examples.
-Class/Function however should not be documented here.
+dplkit.role.filter
+~~~~~~~~~~~~~~~~~~
 
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
@@ -17,21 +12,19 @@ Class/Function however should not be documented here.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from dplkit.role.decorator import exposes_attrs_of_field, has_requires, has_provides
 
 LOG = logging.getLogger(__name__)
 
-
+@exposes_attrs_of_field('source')
+@has_requires
+@has_provides
 class aFilter(object):
     """
     Filters modify one or more input frame-streams to produce one or more output data-streams.
     """
     __metaclass__ = ABCMeta
-    provides = None  # mapping of information about channels this filter provides, similar to .meta on frames
-    requires = None  # mapping of information about what it needs from upstream
-
-    @property
-    def meta(self):
-        return self.provides
+    source = None
 
     def __init__(self, source, **kwargs):
         """
@@ -40,8 +33,7 @@ class aFilter(object):
 
         Typically a filter is not re-used for multiple frame sequences.
         """
-        super(aFilter, self).__init__()
-        pass
+        self.source = source
 
     @abstractmethod
     def process(self, *args, **kwargs):

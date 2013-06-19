@@ -21,25 +21,19 @@ from abc import ABCMeta, abstractmethod
 LOG = logging.getLogger(__name__)
 
 
-class aResampler(object):
+class aResampler(aFilter):
     """
     """
     __metaclass__ = ABCMeta
 
-    provides = None     # similar to .meta, a mapping of what channels are provided, use @property to provide an active form
-    requires = None
+    clock = None
 
-    @property
-    def meta(self):
-        return self.provides
-    # FUTURE: decide on standardization of meta vs provides+requires attributes
-
-    def __init__(self, clock, *args, **kwargs):
+    def __init__(self, clock, source, *args, **kwargs):
         """
         Given clock information or clock source, configure a resampler.
         """
-        super(aResampler, self).__init__()
-        self._clock = clock
+        super(self.__class__, self).__init__(source)
+        self.clock = clock
 
     @abstractmethod
     def resample(self, *args, **kwargs):
@@ -48,14 +42,9 @@ class aResampler(object):
         """
         pass
 
-    def __iter__(self):
-        return self.project()
+    def process(self, *args, **kwargs):
+        return self.resample(*args, **kwargs)
 
-    def __call__(self, *args, **kwargs):
-        """
-        """
-        return self.project(*args, **kwargs)
-        
 
 
 

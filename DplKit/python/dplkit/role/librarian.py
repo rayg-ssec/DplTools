@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-package.module
-~~~~~~~~~~~~~~
-
-
+dplkit.role.librarian
+~~~~~~~~~~~~~~~~~~~~~
 
 librarian(search-criteria) -> [asset-uri, asset-uri...]
-
 
 :copyright: 2012 by University of Wisconsin Regents, see AUTHORS for more details
 :license: GPLv3, see LICENSE for more details
@@ -17,6 +14,7 @@ import os, sys
 import logging
 from exceptions import Exception
 from abc import ABCMeta, abstractmethod
+from dplkit.role.decorator import has_requires,has_provides
 
 LOG = logging.getLogger(__name__)
 
@@ -26,23 +24,17 @@ class AmbiguousQueryError(Exception):
     """
     pass
 
-
+@has_requires
+@has_provides
 class aLibrarian(object):
     """A Librarian returns sets of media asset URIs when given search expressions.
     """
     __metaclass__ = ABCMeta
 
-    provides = None  # mapping-of-mappings showing available search keys for the collection, and their metadata
-    requires = None  # FUTURE: mapping describing preconditions for a successful search. 
-
-    @property
-    def meta(self):
-        return self.provides
-
     def __init__(self, *args, **kwargs):
         """
         """
-        super(aLibrarian, self).__init__()
+        #super(self.__class__, self).__init__()
 
     @abstractmethod
     def search(self, *where_exprs, **key_values):

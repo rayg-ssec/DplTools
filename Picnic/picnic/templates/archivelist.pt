@@ -1,0 +1,34 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" xmlns:tal="http://xml.zope.org/namespaces/tal">
+<head>
+<Title></Title>
+<link rel="stylesheet" href="${request.static_path('picnic:static/imagecustom.css')}" type="text/css" media="screen" charset="utf-8" />
+<style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
+ <script type="text/javascript">
+function toggleCheckbox(name){
+  var itemlist = document.forms['archiveconf'];
+  var cb=itemlist[name];
+  cb.checked=!cb.checked;
+}
+</script>
+</head>
+<body>
+<FORM ACTION="${req.current_route_path()}" METHOD="POST" enctype="multipart/form-data" id='archiveconf'>
+<input type="hidden" name="submitted" value="yep"/>
+<input tal:condition="destination != None" type="hidden" name="destination" tal:attributes="value destination"/>
+<table class="parameter"><tbody>
+  <tr><td colspan="5"><big><B>Files Available:</B></big></td></tr>
+  <tr tal:repeat="hashval entries">
+    <td>
+      <input type="checkbox" tal:attributes="name hashval;checked hashval in selected_entries" />
+      <span class="radiolink"><a href="javascript:toggleCheckbox('${hashval}')">${get_file_description(token,hashval).description}</a></span>
+    </td>
+    <td>
+      <a href="${req.current_route_path()}?remove=${hashval}">delete</a>
+    </td>
+   </tr>
+</tbody></table>
+<INPUT TYPE="SUBMIT" VALUE="Apply"/>
+</FORM>
+</body>
+</html>

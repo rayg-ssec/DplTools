@@ -17,28 +17,16 @@ Class/Function however should not be documented here.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from dplkit.role.filter import aFilter
+
 
 LOG = logging.getLogger(__name__)
 
 
-class aRemapper(object):
+class aRemapper(aFilter):
     """
     """
     __metaclass__ = ABCMeta
-
-    provides = None     # similar to .meta, a mapping of what channels are provided, use @property to provide an active form
-    requires = None
-
-    @property
-    def meta(self):
-        return self.provides
-    # FUTURE: decide on standardization of meta vs provides+requires attributes
-
-    def __init__(self, *args, **kwargs):
-        """
-        """
-        super(aRemapper, self).__init__()
-        self._url = url
 
     @abstractmethod
     def reproject(self, *args, **kwargs):
@@ -47,14 +35,9 @@ class aRemapper(object):
         """
         pass
 
-    def __iter__(self):
-        return self.reproject()
-
-    def __call__(self, *args, **kwargs):
-        """
-        """
+    def process(self, *args, **kwargs):
         return self.reproject(*args, **kwargs)
-        
+
 
 
 

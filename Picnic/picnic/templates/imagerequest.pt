@@ -5,10 +5,13 @@
 <script language="javascript" src="http://lidar.ssec.wisc.edu/syst/ahsrl/scripts/quicklook.js"></script>
 <script language="javascript" src="${req.route_path('imagejavascript',accesstype=request.matchdict['accesstype'],access=request.matchdict['access'])}"></script>
 <style type="text/css">.radiolink A:link {color: #000000; text-decoration: none} .radiolink A:visited {text-decoration: none} .radiolink A:active {text-decoration: none} .radiolink A:hover {text-decoration: underline;}</style>
+${structure: archived_widget_head(req)}
 </head>
 <body>
 <FORM ACTION="${imagedestinationurl}" id="reqform" METHOD="POST" enctype="multipart/form-data">
-<INPUT TYPE="HIDDEN" NAME="site" value="${site}"/>
+<INPUT tal:condition="method=='site'" TYPE="HIDDEN" NAME="site" value="${site}"/>
+<INPUT tal:condition="method=='dataset'" TYPE="HIDDEN" NAME="dataset" value="${dataset}"/>
+<INPUT tal:condition="method=='instrument'" TYPE="HIDDEN" NAME="instrument" value="${instrument}"/>
 <P>
 <div align="center">
 <B>${sitename}<BR/><BR/>
@@ -61,23 +64,31 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 <TR><TD colspan="${len(imagesets)}" align="center"><B>Select desired figure layout</B>
 </TD></TR>
 <TR valign="top">
-<TD tal:repeat="imset imagesets">
-	<TABLE tal:condition="'disabled' not in imset or imset.disabled==0">
-		<TR><TD><a tal:attributes="href imset.link" tal:omit-tag="'link' not in imset">${imset.name}</a></TD></TR>
-		<TR tal:repeat="setname imset.order"><TD tal:condition="'disabled' not in imset.sets[setname] or imset.sets[setname].disabled==0">
-  			<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
-  			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
-		</TD></TR>
-	</TABLE>
-</TD>
+<div tal:repeat="imset imagesets" tal:omit-tag="">
+	<TD tal:condition="'disabled' not in imset or imset.disabled==0">
+		<TABLE>
+			<TR><TD><a tal:attributes="href imset.link" tal:omit-tag="'link' not in imset">${imset.name}</a></TD></TR>
+			<TR tal:repeat="setname imset.order"><TD tal:condition="'disabled' not in imset.sets[setname] or imset.sets[setname].disabled==0">
+  				<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
+	  			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
+			</TD></TR>
+			<div tal:condition="'options' in imset" tal:omit-tag="">
+				<TR tal:repeat="opt imset.options"><TD tal:condition="'disabled' not in opt or opt.disabled==0">
+  					<INPUT type="checkbox" tal:attributes="name opt.formname;checked opt.default!=0" />
+	  				<span class="radiolink"><a href="javascript: toggleCheckbox('${opt.formname}')">${opt.name}</a></span>
+				</TD></TR>
+			</div>
+		</TABLE>
+	</TD>
+</div>
 </TR>
-<TR><TD colspan="${len(imagesets)}" align="center"><INPUT type="checkbox" name="custom_display" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="radiolink"><a href="javascript: toggleCheckbox('custom_display');updateVisibilities();checkDataAvailability();">Custom Image Parameter File</a></span><span id='custom_display_field' style='display: none'><INPUT TYPE="FILE" name="display_defaults_content" onchange="checkDataAvailability()" size="40"/><br/><a href="${req.route_path('imagecustom')}?subpath=display_defaults">Create New and Download</a></span></TD></TR>
+<TR><TD colspan="${len(imagesets)}" align="center">
+		Customize Image Set: ${structure: make_archived_widget(req,'IMG','custom_display',onchange='updateVisibilities();checkDataAvailability();',formfilename='display_defaults_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Display:',customizeurl=req.route_path('imagecustom')+'?subpath=display_defaults&json_type_token=IMG',defaultname="disabled")}	
+</TD></TR>
 </TABLE>
 <BR/>
 <DIV ALIGN="CENTER">
-	<INPUT type="checkbox" name="custom_processing" value="false" onchange="updateVisibilities();checkDataAvailability();"><span class="radiolink"><a href="javascript: toggleCheckbox('custom_processing');updateVisibilities();checkDataAvailability();">Custom Processing Parameter File</a></span>
-	<span id='custom_processing_field' style='display: none'><INPUT TYPE="FILE" name="process_parameters_content" onchange="checkDataAvailability()" size="40"/><br/><a href="${req.route_path('imagecustom')}?file=process_control.json&subpath=process_defaults,corr_adjusts">Download New</a></span>
-	
+	Processing Parameters: ${structure: make_archived_widget(req,'PROC','custom_processing',onchange='updateVisibilities();checkDataAvailability();',formfilename='process_parameters_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Parameters:',customizeurl=req.route_path('imagecustom')+'?file=process_control.json&json_type_token=PROC&subpath=process_defaults,corr_adjusts')}	
 </DIV>
 <div align="center">
 <span tal:omit-tag="True" tal:condition="userTracking">

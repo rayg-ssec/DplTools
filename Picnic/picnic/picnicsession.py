@@ -10,8 +10,39 @@ import multiprocessing
 import copy
 import stat
 import traceback
+import logging
+import dplkit.role.decorator
+log = logging.getLogger(__name__)
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
+
+@dplkit.role.decorator.exposes_attrs_of_field('framestream')
+class PicnicProgressNarrator(object):
+    def __init__(self,framestream,getLastValue,firstval,lastval,session):
+        self.framestream=framestream
+        #if hasattr(framestream,'provides'):
+        self.provides=framestream.provides
+        self.getLastValue=getLastValue
+        self.firstval=firstval
+        self.lastval=lastval
+        self.session=session
+        updateSessionComment(self.session,content={'percentcomplete':0.0,'percentupdated':datetime.strftime(datetime.utcnow(),json_dateformat)})
+
+    def __iter__(self):
+        for f in self.framestream:
+            try:
+                lv=self.getLastValue(f)
+                if isinstance(lv,datetime):
+                    percent=100.0*((lv-self.firstval).total_seconds()/(self.lastval-self.firstval).total_seconds())
+                else:
+                    percent=100.0*((lv-self.firstval)/(self.lastval-self.firstval))
+                updateSessionComment(self.session,content={'percentcomplete':percent,'percentupdated':datetime.strftime(datetime.utcnow(),json_dateformat)})
+            except:
+                print "Picnic Progress Narrator couldn't update percentcomplete"
+                #raise
+            yield f
+
+
 
 class PicnicTaskWrapper:
     def __init__(self,sessionid):
@@ -30,6 +61,7 @@ class PicnicTaskWrapper:
     def new_task(self,sessionid,*args, **kwargs):
         self.terminate()
         self.sessionid=sessionid
+        log.debug("starting args = (%s) kw_args = (%s)"% (args, kwargs))
         self.__task=multiprocessing.Process(*args, **kwargs)
 
     def is_alive(self):
@@ -99,6 +131,12 @@ def safejoin(*args):
     return ret
 
 
+def sessionActive(sessionid):
+    if not isinstance(sessionid,basestring):
+        sessionid = sessionid['sessionid']
+    return sessionid in tasks and tasks[sessionid].is_alive()
+
+
 # requests take 4 stages:
 # - fork/dispatch: sets up session, logfile, forks, and calls specific function
 # - parse parameters
@@ -110,6 +148,10 @@ dispatchers={}
 
 def addDispatchers(d):
     dispatchers.update(d)
+    try:
+        os.mkdir(_sessionfolder(None))
+    except:
+        pass
 
 def taskdispatch(dispatcher,request,session,logstream=None):
     if logstream!=None:
@@ -136,23 +178,28 @@ def sessionfile(sessionid,filename,create=False):
     if not isinstance(sessionid,basestring):
         sessionid = sessionid['sessionid']
     fold=_sessionfolder(sessionid)
-    if filename==None:
-        return fold
     if create and not os.access(fold,os.R_OK):
         os.mkdir(fold)
+    if filename==None:
+        return fold
     return safejoin(fold,filename)
 
 def _sessionfolder(sessionid):
     if sessionid==None:
-        return safejoin('.','sessions')
-    return safejoin('.','sessions',sessionid);
+        return os.getenv('SESSIONFOLDER',safejoin('.','sessions'))
+    return safejoin(_sessionfolder(None),sessionid);
 
-def loadjson(session,filename):
+def loadjson(session,filename,**kwargs):
     if isinstance(session,basestring):
         sessionid=session
     else:
         sessionid=session['sessionid']
-    return json.load(file(sessionfile(sessionid,filename)))
+    try:
+        return json.load(file(sessionfile(sessionid,filename)))
+    except IOError:
+        if 'failvalue' in kwargs:
+            return kwargs['failvalue']
+        raise
 
 def loadsession(sessionid):
     retry=5;
@@ -177,26 +224,32 @@ def storejson(session,d,filename):
 def storesession(session):
     storejson(session,session,'session.json')
 
-def updateSessionComment(sessionid,value):
+def updateSessionComment(sessionid,value=None,k='comment',content=None):
     if isinstance(sessionid,basestring):
-        print 'WARNING: Loading session, rather than using session directly'
+        print 'WARNING: Loading session, rather than using session directly. Practice is to use the same dictionary in the lone process'
         session = loadsession(sessionid)
     else:
         session = sessionid
-    session['comment']=value
-    print datetime.utcnow(),' Updating Session Comment :',value
+    if content!=None:
+        session.update(content)
+        print datetime.utcnow(),' Updating Session',content
+    else:
+        session[k]=value
+        print datetime.utcnow(),' Updating Session',k,':',value
     storesession(session)
 
-def newSessionProcess(dispatch,request,session):
+def newSessionProcess(dispatch,request,session,*args,**kwargs):
     storesession(session)
     sessionid=session['sessionid']
     logfilepath=sessionfile(sessionid,'logfile',create=True)
     if sessionid in tasks and tasks[sessionid].is_alive():
-        print 'cancelling stale task for ',sessionid
+        log.debug( 'cancelling stale task for  %s' %sessionid)
         tasks[sessionid].terminate()
         tasks[sessionid].join()
+        del tasks[sessionid]
     else:
         tasks[sessionid]=PicnicTaskWrapper(sessionid=sessionid)
+        log.debug("newSessionProcess - created task %s for %s" % (repr(tasks[sessionid]), sessionid))
     session['rescode']=''
     folder=_sessionfolder(sessionid)
     for s in os.listdir(folder):
@@ -206,6 +259,8 @@ def newSessionProcess(dispatch,request,session):
     stdt=file(logfilepath,'w')
     tasks[sessionid].new_task(sessionid=sessionid,target=taskdispatch,args=(dispatch,request,session,stdt))
     session['comment']='inited'
+    session['percentcomplete']=0.0
+    session['task_started']=datetime.strftime(datetime.utcnow(),json_dateformat)
     session['logfileurl']= request.route_path('session_resource',session=sessionid,filename='logfile')
     dispatchers[dispatch](request,session,False)
     storesession(session)
@@ -253,8 +308,8 @@ def newSessionProcess(dispatch,request,session):
 
         b.addProcess(processDescription)
 
-    print 'starting task for ',sessionid, ' dispatch named ', dispatch
-    tasks[sessionid].start(updateseconds=120)
+    log.debug('starting task for %s dispatch named %s (mypid = %d)' %(sessionid, dispatch,os.getpid() ) )
+    tasks[sessionid].start(updateseconds=120,*args,**kwargs)
     stdt.close()
     return HTTPTemporaryRedirect(location=makeUserCheckURL(request,request.route_path('progress_withid',session=sessionid)))
 
@@ -323,15 +378,18 @@ def progresspage(request):
         for sesid in tasks:
             if tasks[sesid].is_alive():
                 tasks[sesid].checkExpireTime(now=now)
+        for timefield in ['starttime','endtime','task_started','percentupdated']:
+            if timefield in session:
+                session[timefield]=datetime.strptime(session[timefield],json_dateformat)
 
         return {'pagename':session['name'],'progresspage':request.route_path('progress_withid',session=sessionid),
-            'sessionid':sessionid,'destination':session['finalpage'],'session':session}
+            'sessionid':sessionid,'destination':session['finalpage'],'session':session,'datetime':datetime,'timedelta':timedelta}
     #load next page if complete
     if sessionid in tasks:
         rescode=tasks[sessionid].exitcode()
     else:
-        rescode='unknown (old task)'
-    print 'finished task for ',sessionid, ' with result code ', rescode
+        rescode='Unknown (old task)'
+    log.debug('finished task for  %s with result code %s (mypid = %d)' % ( sessionid, rescode, os.getpid()) )
     return HTTPTemporaryRedirect(location=session['finalpage'])
 
 
@@ -424,9 +482,11 @@ def statuspage(request):
         found=False
         for sessid in sess:
             if sessid==terminate:
-                print 'will try to terminate ',sessid
+                log.debug('will try to terminate %s'% sessid)
                 if sessid in tasks and tasks[sessid].is_alive():
                     tasks[sessid].terminate()
+                    tasks[sessid].join()
+                    del tasks[sessid]
                     return HTTPTemporaryRedirect(location=request.current_route_path())
                 break
     runningtasks=0
@@ -514,11 +574,14 @@ doHaveUserTracking=None
 def haveUserTracking():
     global doHaveUserTracking
     if doHaveUserTracking==None:
-        try:
-            import cgi_datauser
-            doHaveUserTracking=True
-        except:
-            doHaveUserTracking=False
+        if os.getenv("PICNIC_USERCHECK",None)!=None:
+            doHaveUserTracking=(os.getenv("PICNIC_USERCHECK")=='true')
+        else:
+            try:
+                import cgi_datauser
+                doHaveUserTracking=True
+            except:
+                doHaveUserTracking=False
     return doHaveUserTracking
 
 def makeUserCheckURL(request,destination,destparms=None):#only works with a simple destination
@@ -535,25 +598,27 @@ def makeUserCheckURL(request,destination,destparms=None):#only works with a simp
         returl+='&' + '&'.join([(f+'='+parms[f]) for f in parms])
     return returl
 
+def getFirst(req,val,deflt=None):
+    for r in (req.POST,req.GET):
+        if val in r:
+            v=r.getone(val)
+            if len(v)>0:
+                return v
+    return deflt
+
 @view_config(route_name='userCheck',renderer='templates/userCheck.pt')
 def userCheck(request):
     #print 'URLREQ: ',request.matched_route.name
+    req=request
     try:
         import cgi_datauser
     except:
-        if 'URL' in request.POST:
-            params=request.POST
-        else:
-            params=request.GET
         print "Couldn't load cgi_datauser from hsrl git codebase. user tracking disabled"
-        parms=''
         jumpurl=''
-        if "PARAMS" in params:
-            parms='?'+params.getone('PARAMS')
+        parms='?'+getFirst(req,'PARAMS','')
         if len(parms)<=1:
             parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-        if "URL" in params:
-            jumpurl=params.getone('URL')
+        jumpurl=getFirst(req,'URL','')
         if len(jumpurl)<=0:
             jumpurl='/'
             parms=''
@@ -564,26 +629,23 @@ def userCheck(request):
     doForm=True
     fromSQL=False
     indebug=False #True
-    if 'keyfield' in request.POST:
-        params=request.POST
-    else:
-        params=request.GET
-    if (keyfield in params and len(params.getone(keyfield))>0) or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
+    if len(getFirst(req,keyfield,''))>0 or datacookiename in request.cookies or indebug:#fixme maybe not read cookie here, just grab from form
         doForm=False
-        if keyfield in params and len(params.getone(keyfield))>0:
-            if not isValidEmailAddress(params.getone(keyfield)):
+        if len(getFirst(req,keyfield,''))>0:
+            keyv=getFirst(req,keyfield)
+            if not isValidEmailAddress(keyv):
                 doForm=True
             else:
-                info[keyfield]=params.getone(keyfield)
+                info[keyfield]=keyv
                 hasreq=True;
                 for f in reqfields:
-                    if f in params and len(params.getone(f))>0:
-                        info[f]=params.getone(f)
+                    if len(getFirst(req,f,''))>0:
+                        info[f]=getFirst(req,f)
                     else:
                         hasreq=False
                 for f in optionalfields:
-                    if f in params and len(params.getone(f))>0:
-                        info[f]=params.getone(f)
+                    if len(getFirst(req,f,''))>0:
+                        info[f]=getFirst(req,f)
                 if not hasreq:#work by lookup
                     ti=dbc.getUserByEMail(info[keyfield])
                     if ti:
@@ -606,19 +668,21 @@ def userCheck(request):
                 doForm=True
                 break
     if not doForm:
+        #print 'Not doing form'
         if not fromSQL:
+            #print 'Not from SQL'
             uid=dbc.addClient(info)
         else:
+            #print 'From SQL'
             uid=info['uid']
         if uid!=None:
+            #print 'have UID'
             parms=''
             jumpurl=''
-            if "PARAMS" in params:
-                parms='?'+params.getone('PARAMS')
+            parms='?'+getFirst(req,"PARAMS",'')
             if len(parms)<=1:
                 parms='?'+request.query_string#os.environ.get("QUERY_STRING","");
-            if "URL" in params:
-                jumpurl=params.getone('URL')
+            jumpurl=getFirst(req,"URL","")
             if len(jumpurl)<=0:
                 jumpurl='/'
                 parms=''
@@ -640,19 +704,19 @@ def userCheck(request):
                """  % dest
             resp = Response(body=bod,content_type="text/html")
             resp.set_cookie(datacookiename,uid,max_age=timedelta(weeks=12))
+            #print 'done. returning forward to',dest
             return resp
+    #print 'Doing form'
     #form
     #info=dbc.getUserByEMail("null")
     #print "Content-Type: text/html"
     #if len(cookies)>0:
     #    print cookies
     #print
-    if "URL" in params:
-        info["URL"]=params.getone('URL')
-    else:
-        info["URL"]=""
-    info["PARAMS"]=request.query_string#os.environ.get("QUERY_STRING","")
+    info["URL"]=getFirst(req,"URL","")
+    info['PARAMS']=getFirst(req,'PARAMS',request.query_string)
     info["MYURL"]=request.path#os.environ.get("SCRIPT_NAME","")
+    #print 'form ops are',info
 
     fields=("email","name","org");
     fielddesc={"email":"E-Mail Address",

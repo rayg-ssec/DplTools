@@ -15,12 +15,13 @@ function toggleCheckbox(name){
 <body>
 <FORM ACTION="${req.current_route_path()}" METHOD="POST" enctype="multipart/form-data" id='newfile'>
 <INPUT TYPE="HIDDEN" NAME="subpath" value="${','.join(subpath)}"/>
+<INPUT TYPE="HIDDEN" NAME="json_type_token" VALUE="${json_type_token}"/>
 Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <INPUT TYPE="SUBMIT" VALUE="Edit..."/>
 </FORM>
 <FORM ACTION="${req.route_path('generatejson')}" METHOD="POST" id='jsonform'>
 <INPUT TYPE="HIDDEN" NAME="jsonprefix" VALUE="${','.join(jsonprefix)}"/>
-<INPUT TYPE="HIDDEN" NAME="file" VALUE="${file}"/>
+<INPUT TYPE="HIDDEN" NAME="json_type_token" VALUE="${json_type_token}"/>
 <INPUT TYPE="HIDDEN" NAME="subpath" VALUE="${','.join(subpath)}"/>
 <INPUT TYPE="HIDDEN" NAME="original_content" VALUE="${original_content}"/>
 <div tal:omit-tag="" tal:repeat="pidx range(0,len(subpath))">
@@ -28,7 +29,7 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <table class="parameter"><tbody>
   <tr><td colspan="5"><big><B>Parameters:</B></big></td></tr>
   <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
-    <div tal:condition="(not isinstance(json[figname],dict) or ('enable' not in json[figname] and asubpath=='display_defaults') or asubpath!='display_defaults') and not figname.startswith('#')" tal:omit-tag="">
+    <div tal:condition="(not isinstance(json[figname],dict) or (('enable' not in json[figname] or  figname=='mask_image') and asubpath=='display_defaults') or asubpath!='display_defaults') and not figname.startswith('#')" tal:omit-tag="">
       <tr tal:condition="not isinstance(json[figname],dict) and not isinstance(json[figname],list)">
         <td class="parameter_title">Parameter "${figname}":</td>
         <td>
@@ -77,13 +78,13 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
 <table class="figure" tal:condition="asubpath=='display_defaults'"><tbody>
   <tr><td><big><B>Figures:</B></big></td></tr>
   <div tal:repeat="figname sort(json.keys())" tal:omit-tag="">
-    <div tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and asubpath=='display_defaults'" tal:omit-tag="">
+    <div tal:condition="isinstance(json[figname],dict) and 'enable' in json[figname] and asubpath=='display_defaults' and figname!='mask_image'" tal:omit-tag="">
       <tr>
         <td class="figure_title">
           <input type="checkbox" name="${ajsonprefix}.${figname}.enable" checked="${json[figname].enable!=0}"/><span class="radiolink"><a href="javascript: toggleCheckbox('${ajsonprefix}.${figname}.enable')">${figname}</a></span>
         </td>
       </tr>
-      <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname]" >
+      <tr tal:condition="'x max' in json[figname] or 'x min' in json[figname] or 'x log' in json[figname]" >
         <td>
           <span tal:condition="'x min' in json[figname]">
             X Min:
@@ -92,6 +93,13 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
           <span tal:condition="'x max' in json[figname]">
             X Max:
             <input type="text" name="${ajsonprefix}.${figname}.x max" value="${json[figname]['x max']}"/>
+          </span>
+          <span tal:condition="'x log' in json[figname]">
+            X Scale:
+          <select name="${ajsonprefix}.${figname}.log_linear">
+            <option value="1" tal:attributes="selected json[figname]['x log']">Log</option>
+            <option value="0" tal:attributes="selected not json[figname]['x log']">Linear</option>
+          </select>
           </span>
         </td>
       </tr>
@@ -188,12 +196,25 @@ Update my own file:<INPUT TYPE="FILE" name="source" size="40"/>
           </span>
         </td>
       </tr>
+       <tr tal:condition="isinstance(json[figname],dict)">
+        <td tal:condition="'doc' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].doc}</pre>
+        </td>
+        <td tal:condition="'docs' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].docs}</pre>
+        </td>
+        <td tal:condition="'documentation' in json[figname]" colspan="10">
+          <pre>Documentation: ${json[figname].documentation}</pre>
+        </td>
+      </tr>
     </div>
   </div>
 </tbody></table>
 </div>
 </div>
-<INPUT TYPE="SUBMIT" VALUE="Submit"/>
+Download Name:<INPUT TYPE="TEXT" NAME="file" VALUE="${file}"/><BR/>
+Description (optional):<INPUT TYPE="TEXT" NAME="description" VALUE=""/> (If set, will also store this file on the server for later use)<BR/>
+<INPUT TYPE="SUBMIT" VALUE="Download JSON Parameter File"/>
 </FORM>
 </body>
 </html>

@@ -8,6 +8,12 @@ import picnicsession
 import jsgen
 from multiprocessing import Process,Queue
 import json
+import time
+import traceback
+import logging
+log = logging.getLogger(__name__)
+import server_archive
+
 
 from timeutils import validdate
 
@@ -76,6 +82,24 @@ def netcdfresult(request):
     return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')), 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session,
         'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber}
 
+@view_config(route_name='multinetcdfresult',renderer='templates/multinetcdfresult.pt')
+def multinetcdfresult(request):
+    #print 'URLREQ: ',request.matched_route.name
+    sessionid=request.matchdict['session']#request.session.get_csrf_token();#params.getone('csrf_token')
+    #folder=picnicsession.sessionfolder(sessionid);
+    #sessiontask=tasks[sessionid]
+    #session=sessiontask['session']
+    #scan session folder for images
+    session=picnicsession.loadsession(sessionid)
+
+    if 'starttime' in session:
+        session['starttime']=datetime.strptime(session['starttime'],picnicsession.json_dateformat)
+    if 'endtime' in session:
+        session['endtime']=datetime.strptime(session['endtime'],picnicsession.json_dateformat)
+
+    return { 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session,
+        'datetime':datetime, 'timedelta':timedelta, 'printNumber':picnicsession.printNumber, 'sessionActive':picnicsession.sessionActive(session)}
+
 
 
 @view_config(route_name='imagereq')
@@ -104,7 +128,9 @@ def reimagerequest(request):
         session['sessionid']=sessionid
         session['finalpage']=request.route_path('imageresult',session=sessionid);
         for f in ('display_parameters.json','process_parameters.json'):
-            picnicsession.storejson(sessionid,picnicsession.loadjson(oldsessionid,f),f)
+            j=picnicsession.loadjson(oldsessionid,f,failvalue=None)
+            if j!=None:
+                picnicsession.storejson(sessionid,j,f)
     return picnicsession.newSessionProcess("createimages",request,session)
    
 
@@ -124,13 +150,19 @@ def netcdfrequest(request):
     sessionid=session.new_csrf_token()
     sessiondict={}
     sessiondict['sessionid']=sessionid
-    sessiondict['finalpage']=request.route_path('netcdfresult',session=sessionid);
-    return picnicsession.newSessionProcess("newnetcdf",request,sessiondict)
+    if request.params.getone('filemode')=='single':
+        sessiondict['finalpage']=request.route_path('netcdfresult',session=sessionid);
+        return picnicsession.newSessionProcess("newnetcdf",request,sessiondict)
+    sessiondict['finalpage']=request.route_path('multinetcdfresult',session=sessionid);
+    picnicsession.newSessionProcess("newmultinetcdf",request,sessiondict,force_time=datetime.utcnow()+timedelta(days=1))
+    time.sleep(1)
+    return HTTPTemporaryRedirect(location=sessiondict['finalpage'])
 
 def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
+    """ called from javascript """
     ret=[]
     try:
-      #print 'checking site ' , site , ' with time range ' , (starttime,endtime)
+      log.debug('dataAvailabilityBack: time range (%s to %s)' ,repr(starttime),repr(endtime) )
       if 'lidar' in datasets:
         times=[]
         fn=None
@@ -140,7 +172,7 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
         datalib=HSRLLibrarian(**{mode:modeval})
         srchres=datalib(start=starttime,end=endtime)
         for x in srchres:
-            times.append(srchres.parseTimeFromFile(x))
+            times.append(x['start'])
             if len(times)==2:
                 break
             fn=x
@@ -149,25 +181,74 @@ def dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime):
         success=False
         if len(times)==0:
             success=False
-            #print 'no data'
+            print 'no data'
         elif len(times)>=2:
             success=True
-            #print 'more than 1'
+            print 'more than 1'
         elif t>=starttime and t<=endtime:
             success=True
-            #print 'time in range'
+            print 'time in range'
         elif starttime>datetime.utcnow():
             success=False
-        elif 'data' in x and (starttime-t).total_seconds()<(60*60):
+        elif (fn['start']+fn['width'])>starttime and fn['start']<endtime:
             success=True
-            #print 'data time may intersect'
-        elif 'data' not in x and (starttime-t).total_seconds()<(3*60*60):
-            success=True
-            #print 'cal time may intersect'
+            print 'end times work'
+        #elif 'data' in x and (starttime-t).total_seconds()<(60*60):
+        #    success=True
+        #    print 'data time may intersect'
+        #elif 'data' not in x and (starttime-t).total_seconds()<(3*60*60):
+        #    success=True
+        #    print 'cal time may intersect'
 
         if success:
             ret.append("lidar")
-    except:
+    except RuntimeError, e:
+        print e
+        print traceback.format_exc()      
+        print 'exception while looking for data availability'
+        pass
+    try:
+      log.debug('dataAvailabilityBack: RADAR time range (%s to %s)' ,repr(starttime),repr(endtime) )
+      if 'merge' in datasets:
+        times=[]
+        fn=None
+        t=None
+
+        from hsrl.dpl_netcdf.MMCRMergeLibrarian import MMCRMergeLibrarian
+        datalib=MMCRMergeLibrarian(modeval,['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'])
+        srchres=datalib(start=starttime,end=endtime)
+        for x in srchres:
+            times.append(x['start'])
+            if len(times)==2:
+                break
+            fn=x
+            t=times[0]
+
+        success=False
+        if len(times)==0:
+            success=False
+            print 'no data'
+        elif len(times)>=2:
+            success=True
+            print 'more than 1'
+        elif t>=starttime and t<=endtime:
+            success=True
+            print 'time in range'
+        elif starttime>datetime.utcnow():
+            success=False
+        elif (fn['start']+fn['width'])>starttime and fn['start']<endtime:
+            success=True
+            print 'end times work'
+#        elif (starttime-t).total_seconds()<(24*60*60):
+#            success=True
+#            print 'times may intersect'
+
+        if success:
+            ret.append("merge")
+    except RuntimeError, e:
+        print e
+        print traceback.format_exc()      
+        print 'exception while looking for data availability'
         pass
     Q.put(ret)
 
@@ -197,14 +278,18 @@ def dataAvailability(request):
             return HTTPNotFound("unknown data storage search method 2")
     starttime=datetime.strptime(starttime[:4] + '.' + starttime[4:],'%Y.%m%dT%H%M')#some OSes strptime don't assue %Y consumes 4 characters
     endtime=datetime.strptime(endtime[:4] + '.' + endtime[4:],'%Y.%m%dT%H%M')
-    
     Q=Queue()
-    p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
-    #print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
-    p.start()
-    retval=Q.get()
-    #print retval,datetime.utcnow()
-    p.join()
+    if True:
+      p=Process(target=dataAvailabilityBack,args=(Q,datasets,mode,modeval,starttime,endtime))
+      print 'Checking availability for ',datasets,starttime,endtime,datetime.utcnow()
+      p.start()
+      retval=Q.get()
+      #print retval,datetime.utcnow()
+      p.join()
+    else:
+      dataAvailabilityBack(Q,datasets,mode,modeval,starttime,endtime)
+      retval=Q.get()
+      
     #print datetime.utcnow()
 
         #print "Success = " , success
@@ -222,9 +307,9 @@ def logbook(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        datasetid=lib('dataset',lib(**{methodtype[3:]:methodkey})['Instruments'][0])['DatasetID']
+        datasetid=lib('dataset',lib(**{methodtype:methodkey})['Instruments'][0])['DatasetID']
     except RuntimeError:
-        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+        return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
     parms={'dataset':'%i' % datasetid}
     for f in ['byr','bmo','bdy','bhr','bmn','eyr','emo','edy','ehr','emn','rss']:
@@ -280,9 +365,9 @@ def form_view(request):
     methodtype=request.matchdict['accesstype']
     methodkey=request.matchdict['access']
     try:
-        mylib=HSRLImageArchiveLibrarian(**{methodtype[3:]:methodkey})
+        mylib=HSRLImageArchiveLibrarian(**{methodtype:methodkey})
     except RuntimeError:
-        return HTTPNotFound(methodtype[3:] + "-" + methodkey + " is invalid")
+        return HTTPNotFound(methodtype + "-" + methodkey + " is invalid")
 #        return HTTPTemporaryRedirect(location=request.route_path("home"))
     st=mylib()
     instruments=st['Instruments']
@@ -315,7 +400,7 @@ def form_view(request):
         endtime=validdate(lasttime.year,lasttime.month,lasttime.day,lasttime.hour,lasttime.minute-(lasttime.minute%5))
         starttime=validdate(endtime.year,endtime.month,endtime.day,endtime.hour-2,endtime.minute)
 
-    oldformparmsdict={methodtype[3:]:methodkey,
+    oldformparmsdict={methodtype:methodkey, 'forcematlab':'yes',
                       'byr':'%i' % starttime.year,
                       'bmo':'%i' % starttime.month,
                       'bdy':'%i' % starttime.day,
@@ -334,7 +419,7 @@ def form_view(request):
         oldurl="http://lidar.ssec.wisc.edu/cgi-bin/processeddata/retrievedata.cgi?%s" % (oldformparams)
     if request.matched_route.name=='imagegen':
         oldurl="http://lidar.ssec.wisc.edu/cgi-bin/ahsrldisplay/requestfigs.cgi?%s" % (oldformparams)
-    if False:#instcount>3:#more than just HSRL. python doesn't support it yet
+    if False:#instcount>3 :#more than just HSRL. python doesn't support it yet
         return HTTPTemporaryRedirect(location=oldurl)
 
 
@@ -363,7 +448,7 @@ def form_view(request):
             'timeres':timeres,'altres':altres,
             'imagesets':jsgen.formsetsForInstruments(datasets,'images'),
             'netcdfsets':jsgen.formsetsForInstruments(datasets,'netcdf'),
-            'datasets':datasets,methodtype[3:]:methodkey,
+            'datasets':datasets,'method':methodtype,methodtype:methodkey,
             'oldurl':oldurl,
             'netcdfdestinationurl':request.route_url('netcdfreq',_host=hosttouse,_port=porttouse),
             'imagedestinationurl':request.route_url('imagereq',_host=hosttouse,_port=porttouse),
@@ -378,4 +463,4 @@ def form_view(request):
             'userTracking':picnicsession.haveUserTracking(),
             #'usercheckurl':request.route_path('userCheck'),#'http://lidar.ssec.wisc.edu/cgi-bin/util/userCheck.cgi',
             'dataAvailabilityURL':request.route_path('dataAvailability'),
-            'sitename':name,'setCount':setCount,'setGen':setGen}
+            'sitename':name,'setCount':setCount,'setGen':setGen,'make_archived_widget':server_archive.make_archived_widget,'archived_widget_head':server_archive.archived_widget_head}

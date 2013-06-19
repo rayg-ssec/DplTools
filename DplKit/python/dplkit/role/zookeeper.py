@@ -22,11 +22,13 @@ The zookeeper is created one-per-collection.
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
+from .decorator import has_provides, has_requires
 
 LOG = logging.getLogger(__name__)
 
 
-
+@has_requires
+@has_provides
 class aZookeeper(object):
     """``Zookeeper(uri, **constraints)`` returns an URL when given sets of
     logical URIs.
@@ -36,8 +38,9 @@ class aZookeeper(object):
     def __init__(self, *args, **kwargs):
         """
         """
-        super(aZookeeper, self).__init__()
+        # super(self.__class__, self).__init__()
         #self.uri = uri
+        pass
 
     @abstractmethod
     def obtain(self, uri, *args, **kwargs):

@@ -1,10 +1,16 @@
 import picnicsession
 from datetime import datetime,timedelta
 import jsgen
+import json
 import os
-
+from pyramid.httpexceptions import HTTPBadRequest
+import traceback
+import server_archive
+import logging
+log = logging.getLogger(__name__)
 #get parameters from session, call function to make DPL and make images
 def createimages(request,session,isBackground):
+    log.debug("createimages: %s %s %s" % (repr(request), repr(session), repr(isBackground)) )
     if isBackground in [True, None]:
         makeImagesFromDPL(session,makeDPLFromSession(session))
 
@@ -25,7 +31,11 @@ def readnetcdf(request,session,isBackground):
 def createnetcdf(request,session,isBackground):
     if isBackground in [True, None]:
         makeNetCDFFromDPL(session,makeDPLFromSession(session),session['template'],session['filename'])
-        if len(session['figstocapture'])>0:
+        tmp=[]
+        if session['figstocapture']!=None:
+            for k,v in session['figstocapture'].items():
+                tmp.extend(v)
+        if len(tmp)>0:
             picnicsession.updateSessionComment(session,'done. capturing images')
             readnetcdf(request,session,isBackground)
         else:
@@ -40,6 +50,22 @@ def newnetcdf(request,session,isBackground):
     if isBackground in [True,None]:
         parseImageParametersBackground(request,session)
         createnetcdf(request,session,isBackground)
+
+#get parameters from session, call function to make DPL and make a netcdf
+def createmultinetcdf(request,session,isBackground):
+    if isBackground in [True, None]:
+        dpl,dplp=makeDPLFromSession(session,doSearch=False)
+        makeMultiNetCDFFromDPL(session,dpl,dplp,session['template'])
+        picnicsession.updateSessionComment(session,'done.')
+
+   
+#parse parameters, put in session
+def newmultinetcdf(request,session,isBackground):
+    if isBackground in [False, None]:
+        parseImageParameters(request,session)
+        parseNetCDFParameters(request,session)
+    if isBackground in [True,None]:
+        createmultinetcdf(request,session,isBackground)
     
 def getDispatchers():
     return {
@@ -47,7 +73,9 @@ def getDispatchers():
         'createimages':createimages,
         'readnetcdf':readnetcdf,
         'createnetcdf':createnetcdf,
-        'newnetcdf':newnetcdf
+        'newnetcdf':newnetcdf,
+        'createmultinetcdf':createmultinetcdf,
+        'newmultinetcdf':newmultinetcdf
     }
 
 from HSRLImageArchiveLibrarian import HSRLImageArchiveLibrarian
@@ -55,10 +83,19 @@ lib=HSRLImageArchiveLibrarian(indexdefault='site')
 
 def parseImageParameters(request,session):
 
-    method='site'
-    session['method']=method
-    session[method]=int(request.params.getone(method));
-    session['methodkey']=int(request.params.getone(method));
+    methods=['site','dataset','instrument']
+    for m in methods:
+        if m not in request.params:
+            continue
+        method=m
+        session['method']=method
+        try:
+            session[method]=int(request.params.getone(method));
+            session['methodkey']=int(request.params.getone(method));
+        except:
+            session[method]=request.params.getone(method);
+            session['methodkey']=request.params.getone(method);
+        break
     starttime=datetime(int(request.params.getone('byr')),
                        int(request.params.getone('bmo')),
                        int(request.params.getone('bdy')),
@@ -90,46 +127,95 @@ def parseImageParameters(request,session):
     session['dataset']=datasetname
     session['name']=name
 
-    if 'custom_processing' in request.params and request.params.getone('custom_processing'):
-        print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
-        try:
-            d=json.loads(request.params.getone('process_parameters_content').file.read())
-            picnicsession.storejson(session,d,'process_parameters.json')
-        except:
-            return HTTPBadRequest()
+    if 'custom_processing' in request.params and request.params.getone('custom_processing')!='default':
+        cust=request.params.getone('custom_processing')
+        if cust=='custom':
+            try:
+                pd=request.params.getone('process_parameters_content')
+                pdc=pd.file.read()
+                d=json.loads(pdc)#.file.read())
+            except:
+                traceback.format_exc()
+                return HTTPBadRequest()
+        else:
+            d=server_archive.get_archived_json(request.params.getone('custom_processing_token'),cust)
+        #print 'Storing custom process parameters ',request.params.getone('process_parameters_content')
+        picnicsession.storejson(session,d,'process_parameters.json')
     #return HTTPTemporaryRedirect(location=request.route_path('progress_withid',session=sessionid))
-    if 'custom_display' in request.params and request.params.getone('custom_display'):
-        print 'Storing custom image parameters ',request.params.getone('display_defaults_content')
-        try:
-            d=json.loads(request.params.getone('display_defaults_content').file.read())
-            picnicsession.storejson(session,d,'display_parameters.json')
-        except:
-            return HTTPBadRequest()
-        session['figstocapture']=[None]
+    if 'custom_display' in request.params and request.params.getone('custom_display')!='default':
+        cust=request.params.getone('custom_display')
+        if cust=='custom':
+            pd=request.params.getone('display_defaults_content')
+            print 'Storing custom image parameters to',session['sessionid'],'display_parameters.json'
+            try:
+                d=json.loads(pd.file.read())
+            except:
+                traceback.format_exc()
+                return HTTPBadRequest()
+        else:
+            d=server_archive.get_archived_json(request.params.getone('custom_display_token'),cust)
+        picnicsession.storejson(session,d,'display_parameters.json')
+        session['figstocapture']=None
+        getdatasets=datasets
+        imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
+        session['figrequest']={}
+        for i in imagesetlist:
+            session['figrequest'][i['formname']]='custom'
     elif 'display_defaults_file' in request.params:
         session['display_defaults_file']=request.params.getone('display_defaults_file')
         if os.path.sep in session['display_defaults_file']:
             session['display_defaults_file']=picnicsession.sessionfile(session,session['display_defaults_file'])
-        session['figstocapture']=[None]
+        session['figstocapture']=None
+        getdatasets=datasets
+        imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
+        session['figrequest']={}
+        for i in imagesetlist:
+            session['figrequest'][i['formname']]='custom'
     else:
         session['display_defaults_file']='all_plots.json'
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
-        
-        figstocapture=[]
+        getdatasets=[]
+        figstocapture={}
+        session['figrequest']={}
         for i in imagesetlist:
             #print i
             try:
                 setmode=request.params.getone(i['formname'])
-                figstocapture.extend(i['sets'][setmode]['figs'])
+                session['figrequest'][i['formname']]=setmode
+                figstocapture[i['setenum']]=i['sets'][setmode]['figs']
+                if len(i['sets'][setmode]['figs'])>0:#radio buttons
+                    if 'enabled' in i['sets'][setmode]:
+                        for dat in i['sets'][setmode]['enabled']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                    if 'required' in i['sets'][setmode]:
+                        for dat in i['sets'][setmode]['required']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                if "options" in i and len(i["options"])>0:#checkboxes only currently, may extend to choicebox
+                    for opt in i["options"]:
+                        if opt["formname"] in request.params:
+                            if request.params.getone(opt['formname']):
+                                if 'enabled' in opt:
+                                    for dat in opt['enabled']:
+                                        if dat not in getdatasets:
+                                            getdatasets.append(dat)
+                                if 'required' in opt:
+                                    for dat in opt['required']:
+                                        if dat not in getdatasets:
+                                            getdatasets.append(dat)
+                                figstocapture[i['setenum']].extend(opt['included'])
+
             except:
                 pass
         session['figstocapture']=figstocapture
+    session['datastreams']=getdatasets
         #if None in session['figstocapture']:
     picnicsession.storesession(session)
 
 def parseImageParametersBackground(request,session):
     picnicsession.updateSessionComment(session,'setup')
-    if 'custom_display' in request.params and request.params.getone('custom_display'):
+    if 'custom_display' in request.params and request.params.getone('custom_display')!='default':
         import hsrl.utils.json_config as jc
         disp=jc.json_config(picnicsession.loadjson(session,'display_parameters.json'))#session['display_defaults'])
     else:
@@ -138,18 +224,26 @@ def parseImageParametersBackground(request,session):
 
     #else:#fixme should this be enable_all()?
     #    (disp,conf)=du.get_display_defaults('web_plots.json')
-    if None not in session['figstocapture']: # None indicates all should be captured, so if its not, scan structure
+    allfigs=session['figstocapture']==None
+    if not allfigs:
+        for k,v in session['figstocapture'].items():
+            if None in v:
+                allfigs=True
+                break
+    if not allfigs: # None indicates all should be captured, so if its not, scan structure
         data_req='images'
         lib_filetype='data'
         for fi in disp.get_attrs(): # for each figure
             if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled
-                if fi in session['figstocapture']: #if requested, enable it
-                    disp.set_value(fi,'enable',1)
-                    if not fi.endswith('_image'):
-                        data_req='images housekeeping'
-                        lib_filetype=None
-                else:
-                    disp.set_value(fi,'enable',0) #otherwise disable it
+                disp.set_value(fi,'enable',0)
+        for inst,figset in session['figstocapture'].items():
+            for fi in disp.get_attrs(): # for each figure
+                if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled        
+                    if fi in figset or ('#'+fi) in figset: #if requested, enable it
+                        disp.set_value(fi,'enable',1)
+                        if not fi.endswith('_image') and inst=='hsrl':
+                            data_req='images housekeeping'
+                            lib_filetype=None
     else:
         data_req= 'images housekeeping'
         lib_filetype=None
@@ -174,7 +268,11 @@ def parseNetCDFParameters(request,session):
         session['template']=fn
     stf=datetime.strptime(session['starttime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
     etf=datetime.strptime(session['endtime'],picnicsession.json_dateformat).strftime('_%Y%m%dT%H%M')
-    session['filename']=session['dataset'] + stf + etf + ('_%gs_%gm.nc' % (session['timeres'],session['altres']))
+    session['filesuffix']=('_%gs_%gm' % (session['timeres'],session['altres']))
+    session['filemode']=request.params.getone('filemode')
+    session['fileprefix']=session['dataset']+ '_' + session['filemode']
+    session['filename']=session['dataset'] + stf + etf + session['filesuffix'] + '.nc'
+    session['username']=request.params.getone('username')
 
     datinfo=lib(**{session['method']:session[session['method']]})
     instruments=datinfo['Instruments']
@@ -186,6 +284,7 @@ def parseNetCDFParameters(request,session):
     fieldstocapture=[]
     if not 'allfields' in request.params or not request.params.getone('allfields'):
         fieldsetlist=jsgen.formsetsForInstruments(datasets,'netcdf')
+        getdatasets=[]
         for inst in fieldsetlist:#per instrument
             for subset in inst['sets']:
                 subsetincluded=False
@@ -197,17 +296,37 @@ def parseNetCDFParameters(request,session):
                     for fieldname in checkbox['included']:
                         if fieldname not in fieldstocapture:
                             fieldstocapture.append(fieldname)
-                if subsetincluded and 'included' in subset:
-                    for fieldname in subset['included']:
-                        if fieldname not in fieldstocapture:
-                            fieldstocapture.append(fieldname)
+                    if 'enabled' in checkbox:
+                        for dat in checkbox['enabled']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                    if 'required' in checkbox:
+                        for dat in checkbox['required']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                if subsetincluded:
+                    if 'included' in subset:
+                        for fieldname in subset['included']:
+                            if fieldname not in fieldstocapture:
+                                fieldstocapture.append(fieldname)
+                    if 'enabled' in subset:
+                        for dat in subset['enabled']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+                    if 'required' in subset:
+                        for dat in subset['required']:
+                            if dat not in getdatasets:
+                                getdatasets.append(dat)
+    else:
+        getdatasets=datasets
+    session['datastreams']=getdatasets
 
     print fieldstocapture
     session['selected_fields']=fieldstocapture
 
-    figstocapture=[]
+    figstocapture={}
 
-    if 'custom_display' not in request.params or request.params.getone('custom_display'):
+    if 'custom_display' not in request.params or request.params.getone('custom_display')=='default':
         imagesetlist=jsgen.formsetsForInstruments(datasets,'images')
         session['display_defaults_file']='all_plots.json'
       
@@ -215,11 +334,20 @@ def parseNetCDFParameters(request,session):
             #print i
             try:
                 defmode=i['default']
-                for figname in i['sets'][defmode]['figs']:
-                    if 'image' in figname:
-                        figstocapture.append(figname)
+                figstocapture[i['setenum']]=[]
+                for figname in i['sets'][defmode]['figs']:#get default images of default set
+                    if 'image' in figname and figname not in figstocapture[i['setenum']]:
+                        figstocapture[i['setenum']].append(figname)
+                if 'options' in i:#and default options
+                    for opt in i['options']:
+                        if opt['default']:#checkbox default is true
+                            for figname in i['included']:
+                                if 'image' in figname and figname not in figstocapture[i['setenum']]:
+                                    figstocapture[i['setenum']].append(figname)
             except:
                 pass
+    else:
+        figstocapture=None
     session['figstocapture']=figstocapture
     session['lib_filetype']=None
     picnicsession.storesession(session)
@@ -237,8 +365,35 @@ def fromSession(session,xlate):
             ret[dest]=tmp
     return ret
 
+class getLastOf:
+    def __init__(self,field,parents=None):
+        self.field=field
+        self.parents=parents
 
-def makeDPLFromSession(session):
+    def __call__(self,fr):
+        if self.parents==None:
+            if hasattr(fr,self.field):
+                #print 'GETLASTOF:',p,'has',self.field
+                fa=getattr(fr,self.field)
+                if not hasattr(fa,'shape'):
+                    return fa
+                if hasattr(fa,'shape') and fa.shape[0]>0:
+                    #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
+                    return fa[-1]
+        else:
+            for p in self.parents:
+                if hasattr(fr,p):
+                    #print 'GETLASTOF: has',p
+                    pa=getattr(fr,p)
+                    if hasattr(pa,self.field):
+                        #print 'GETLASTOF:',p,'has',self.field
+                        fa=getattr(pa,self.field)
+                        if hasattr(fa,'shape') and fa.shape[0]>0:
+                            #print 'GETLASTOF:',p,self.field,'has shape. value is',fa[-1]
+                            return fa[-1]
+        return None
+
+def makeDPLFromSession(session,doSearch=True):
     copyToInit={
         'dataset':'instrument',
         'maxtimeslice':'maxtimeslice_timedelta',
@@ -253,6 +408,7 @@ def makeDPLFromSession(session):
         'timeres':'timeres_timedelta',
         'altres':'altres_m',
     }
+    hasProgress=False
     from hsrl.dpl_experimental.dpl_hsrl import dpl_hsrl
     process_control=None
     if os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
@@ -260,15 +416,114 @@ def makeDPLFromSession(session):
         import hsrl.utils.json_config as jc
         process_control=jc.json_config(process_control,default_key='process_defaults')
     dplobj=dpl_hsrl(process_control=process_control,**fromSession(session,copyToInit))
-    try:
-        import hsrl.utils.threaded_generator
-        dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**fromSession(session,copyToSearch))
-    except:
-        dplc=dplobj(**fromSession(session,copyToSearch))
+    if not doSearch:
+        return dplobj,fromSession(session,copyToSearch)
+    searchparms=fromSession(session,copyToSearch)
+    #try:
+    #    import hsrl.utils.threaded_generator
+    #    dplc=hsrl.utils.threaded_generator.threaded_generator(dplobj,**searchparms)
+    #except:
+    hsrlnar=dplobj(**searchparms)
+    dplc=hsrlnar
+    if 'merge' in session['datastreams']:#add merge to rs_mmcr, refit
+        import hsrl.dpl_tools.time_frame as time_slicing
+        import hsrl.dpl_tools.resample_altitude as altitude_resampling
+        import hsrl.dpl_tools.substruct as frame_substruct
+        from hsrl.dpl_netcdf.NetCDFZookeeper import GenericTemplateRemapNetCDFZookeeper 
+        import hsrl.dpl_netcdf.MMCRMergeLibrarian as mmcr
+        import hsrl.utils.hsrl_array_utils as hau
+
+        if session['dataset']=='ahsrl':
+            mmcrzoo=GenericTemplateRemapNetCDFZookeeper('eurmmcrmerge')
+            mmcrlib=mmcr.MMCRMergeLibrarian(session['dataset'],['eurmmcrmerge.C1.c1.','nsaarscl1clothC1.c1.'],zoo=mmcrzoo)
+        elif session['dataset']=='mf2hsrl':
+            pass #set up zoo and lib for mf2
+        mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
+        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(altitude_resampling.ResampleXd(time_slicing.TimeGinsu(mmcrnar,'times'),'heights',dplc.getAltitudeAxis()))
+
+        hsrlnarsplitter=frame_substruct.SubstructBrancher(hsrlnar)
+        hsrlinvnar=time_slicing.TimeGinsu(hsrlnarsplitter.narrateSubstruct('rs_inv'),'times')#,isEnd=True)
+
+        from dplkit.simple.blender import TimeInterpolatedMerge
+
+        merge=TimeInterpolatedMerge(hsrlinvnar,[mmcrnar],allow_nans=True,channels=['heights','Reflectivity','MeanDopplerVelocity','Backscatter','SpectralWidth'])
+        merge=frame_substruct.Retyper(merge,hau.Time_Z_Group,{'timevarname':'times','altname':'heights'})
+ 
+        dplc=frame_substruct.SubstructMerger('rs_inv',{
+            'rs_mean':hsrlnarsplitter.narrateSubstruct('rs_mean'),
+            'rs_raw':hsrlnarsplitter.narrateSubstruct('rs_raw'),
+            'rs_inv':hsrlnarsplitter.narrateSubstruct('rs_inv'),
+            'rs_mmcr':merge,
+            'rs_init':hsrlnarsplitter.narrateSubstruct('rs_init'),
+            'rs_static':hsrlnarsplitter.narrateSubstruct('rs_static'),
+            'profiles':hsrlnarsplitter.narrateSubstruct('profiles',sparse=True),
+            'rs_Cxx':hsrlnarsplitter.narrateSubstruct('rs_Cxx',sparse=True)
+            }
+        ,hau.Time_Z_Group)
+       #merge=picnicsession.PicnicProgressNarrator(dplc,getLastOf('start'), searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
+        #hasProgress=True
+
     if not os.access(picnicsession.sessionfile(session,'process_parameters.json'),os.R_OK):
-        picnicsession.storejson(session,dplobj.get_process_control(None).json_representation(),'process_parameters.json')
+        picnicsession.storejson(session,hsrlnar.get_process_control().json_representation(),'process_parameters.json')
     picnicsession.updateSessionComment(session,'processing with DPL')
-    return dplc    
+    if hasProgress:
+        return dplc
+    return picnicsession.PicnicProgressNarrator(dplc,getLastOf('times',['rs_inv','rs_mean','rs_raw']),
+        searchparms['start_time_datetime'],searchparms['end_time_datetime'],session)
+    #return dplc    
+
+def makeMultiNetCDFFromDPL(session,DPL,DPLParms,templatefilename):
+    picnicsession.updateSessionComment(session,'loading artist')
+    #import hsrl.data_stream.open_config as oc
+    import hsrl.dpl_experimental.dpl_artists as artists
+    ftpbase=os.getenv('FTPPATH','/var/ftp/data')
+    ftpurlbase=os.getenv('FTPURL','ftp://lidar.ssec.wisc.edu/data')
+    if len(session['username'])==0:
+        print 'bad username'
+        raise RuntimeError,'Bad username'
+    baseftpdir=picnicsession.safejoin(ftpbase,session['username'])
+    sessiondir=picnicsession.safejoin(baseftpdir,session['sessionid'])
+    try:
+        os.mkdir(baseftpdir)
+    except:
+        pass
+    try:
+        os.mkdir(sessiondir)
+    except:
+        pass
+    tarname=session['fileprefix'] + DPLParms['start_time_datetime'].strftime('_%Y%m%dT%H%M') + DPLParms['end_time_datetime'].strftime('_%Y%m%dT%H%M') + session['filesuffix'] + '_' + session['sessionid'] + '.tar.bz2'
+    tarcompoutputfilename=picnicsession.safejoin(baseftpdir,tarname)
+    session['ftpfolder']=ftpurlbase+'/'+session['username']+'/'+session['sessionid']
+    session['ftpfile']=ftpurlbase+'/'+session['username']+'/'+tarname
+    namer=artists.default_multi_netcdf_namer(sessiondir,session['fileprefix'],session['filesuffix']+'.nc')
+    times=artists.multi_netcdf_filewindow('start_time_datetime','end_time_datetime',
+        DPLParms['start_time_datetime'],DPLParms['end_time_datetime'],session['filemode'])
+
+    artist=artists.dpl_multi_netcdf_artist(DPL,DPLParms,template=templatefilename,filewindowgenerator=times,filename_maker=namer,selected_bindings=session['selected_fields'])
+  
+    picnicsession.updateSessionComment(session,'processing')
+ 
+    findTimes=['rs_raw','rs_mean','rs_inv']
+    for frame in artist:
+        timewindow='blank'
+        for f in findTimes:
+            if hasattr(frame,f) and hasattr(getattr(frame,f),'times') and len(getattr(frame,f).times)>0:
+                t=getattr(frame,f).times
+                timewindow=t[0].strftime('%Y.%m.%d %H:%M') + ' - ' + t[-1].strftime('%Y.%m.%d %H:%M')
+
+        picnicsession.updateSessionComment(session,'appended data %s' % (timewindow))
+  
+    del artist
+
+    pid=os.fork()
+    if pid==0:
+        os.execvp('tar',('tar','-jcvf',tarcompoutputfilename,'--directory='+baseftpdir,session['sessionid']))
+    if pid<0:
+        raise RuntimeError,"compression failed due to fork"
+    (pid,status)=os.waitpid(pid,0)
+    if os.WEXITSTATUS(status)!=0:
+        raise RuntimeError,"Compression failed on error %i" % os.WEXITSTATUS(status)
+
 
 def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
     picnicsession.updateSessionComment(session,'loading artist')
@@ -310,23 +565,35 @@ def makeImagesFromDPL(session,DPLgen):
     #print session
 
     #folder=picnicsession.sessionfolder(sessionid)#safejoin('.','sessions',sessionid);
-    
+    artistlist={}
     if True:
         picnicsession.updateSessionComment(session,'creating artist')    
         artist=artists.dpl_images_artist(framestream=DPLgen,instrument=session['dataset'],
             max_alt=session['altmax'],
             processing_defaults=params,
             display_defaults=disp)
+        artistlist['hsrl']=artist
+        if 'merge' in session['datastreams']:
+            artist=artists.dpl_radar_images_artist(framestream=artist,display_defaults=disp)
+            artistlist['merge']=artist
         picnicsession.updateSessionComment(session,'processing')
-        figs=artist()
+        artist()
         picnicsession.updateSessionComment(session,'rendering figures')
         fignum=0
 
-        alreadycaptured=[]
-        capturingfigs=session['figstocapture']
-        print capturingfigs
-        for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
-            if x in alreadycaptured:
+        capturingfigsgroups=session['figstocapture']
+        if capturingfigsgroups==None:
+            capturingfigsgroups={}
+            for k in artistlist.keys():
+                capturingfigsgroups[k]=[None]
+        #print capturingfigs
+        for inst,capturingfigs in capturingfigsgroups.items():
+          if not inst in artistlist:
+            continue
+          alreadycaptured=[]
+          figs=artistlist[inst].figs()
+          for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
+            if x in alreadycaptured or (x!=None and x.startswith('#')):
                 continue
             alreadycaptured.append(x)
             if x == None:
@@ -334,10 +601,10 @@ def makeImagesFromDPL(session,DPLgen):
                 tmp.sort()
                 capturingfigs.extend(tmp)
                 continue
-            figname=picnicsession.sessionfile(session,'figure%04i_%s.png' % (fignum,x))
+            figname=picnicsession.sessionfile(session,'figure%04i_%s_%s.png' % (fignum,inst,x))
             fignum = fignum + 1
         #      print 'updating  %d' % x.num
-            picnicsession.updateSessionComment(session,'capturing figure ' + x)
+            picnicsession.updateSessionComment(session,'capturing '+inst+' figure ' + x)
             if x not in figs:
                 f=file(figname,'w')
                 f.close()

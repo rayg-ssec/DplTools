@@ -9,14 +9,23 @@ name: the name of the dataset
 default: default imageset selected
 link: optional link for documenation
 enabled: set of datasources. if any are available in the platform, this set is available (optional)
+groupenum: group name for code sake
 required: set of datasources. all must be available in the platform for this set to be available (optional)
 sets: image sets dictionary. key is the name (form value)
+  setenum: set name for code sake
   enabled/required: same as above, but applies to the individual option for the selected time window. if omitted, will always be available for any time in the platform's valid window
   name: option name
   link: optional link for documenation
   figs: figure names as code names them  if null is included, it is a place holder for "everything else"
 order: order of sets on the webpage (since dictionaries don't maintain order)
 formname: name of the CGI form option
+options: array of dictionarys describing individual groups of fields
+  name: option name
+  link: optional link for documentation
+  included: fields for this option. these are runtime field names, matching the bindings in the CDL file
+  enabled/required: same as above
+  default: 1 or 0 for checked or unchecked (may expand to choices)
+  formname: form item name
 
 netcdf: for Netcdf field selection
 name: dataset name
@@ -24,6 +33,7 @@ enabled/required: same as above
 link: optional link for documentation
 sets: subsets of the instrument, for form and organizational purposes
   name: name of subset
+  setenum: set name for computer sake
   link: optional link for documentation
   included: fields required to be included if any part of this is included
   options: array of dictionarys describing individual groups of fields
@@ -33,3 +43,5 @@ sets: subsets of the instrument, for form and organizational purposes
   	enabled/required: same as above
   	default: 1 or 0 for checked or unchecked
   	formname: form item name
+
+These are subject to be ammended
