@@ -51,9 +51,19 @@ class GUIController(QtCore.QObject):
         self.limit_bindings = {}
 
     def apply_line_x(self, line_object, data_array):
+        data_array = data_array.squeeze()
+        # Get the last dimension
+        if data_array.ndim > 1:
+            # XXX: Only supports 2D
+            data_array = data_array[-1,:]
         line_object.set_xdata(data_array)
 
     def apply_line_y(self, line_object, data_array):
+        data_array = data_array.squeeze()
+        # Get the last dimension
+        if data_array.ndim > 1:
+            # XXX: Only supports 2D
+            data_array = data_array[-1,:]
         line_object.set_ydata(data_array)
 
     def apply_image_data(self, image_object, data_array):
