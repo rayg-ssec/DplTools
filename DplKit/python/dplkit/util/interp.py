@@ -134,7 +134,7 @@ class TimeSeriesPolyInterp(object):
             self.shape = data.shape
             self.dtype = data.dtype
         if self.shape != data.shape:
-            raise ValueError('shape does not match configured shape of %r' % self.shape)
+            raise ValueError('shape does not match configured shape of %s' % str(self.shape))
         self._pool.append(pool_data(when, data))
         self._times.append(when)  # used for bisect search
 

@@ -14,6 +14,7 @@ import os, sys
 import logging
 from exceptions import Exception
 from abc import ABCMeta, abstractmethod
+from dplkit.role.decorator import has_requires,has_provides
 
 LOG = logging.getLogger(__name__)
 
@@ -23,7 +24,8 @@ class AmbiguousQueryError(Exception):
     """
     pass
 
-
+@has_requires
+@has_provides
 class aLibrarian(object):
     """A Librarian returns sets of media asset URIs when given search expressions.
     """

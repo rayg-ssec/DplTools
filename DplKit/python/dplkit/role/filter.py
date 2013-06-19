@@ -12,11 +12,13 @@ dplkit.role.filter
 import os, sys
 import logging
 from abc import ABCMeta, abstractmethod
-from dplkit.role.decorator import exposes_attrs_of_field
+from dplkit.role.decorator import exposes_attrs_of_field, has_requires, has_provides
 
 LOG = logging.getLogger(__name__)
 
 @exposes_attrs_of_field('source')
+@has_requires
+@has_provides
 class aFilter(object):
     """
     Filters modify one or more input frame-streams to produce one or more output data-streams.

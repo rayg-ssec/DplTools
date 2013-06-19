@@ -18,6 +18,67 @@ from functools import wraps
 
 LOG = logging.getLogger(__name__)
 
+def meta(self):
+    return self.provides
+
+class thing(object):
+    def __init__(self,initval=None):
+        self.value=initval
+
+    def __get__(self, obj, type=None):
+        return self.value
+
+    def __set__(self, obj, value):
+        self.value=value
+
+    def __delete__(self, obj):
+        del self.value
+        self.value=None
+
+
+
+def has_providesPROP(cls):
+    cls.meta = property(meta)
+    if not hasattr(cls,'provides'):
+        cls.provides = thing()
+    else:
+        raise 'already have provides!'
+    return cls
+
+
+def has_requiresPROP(cls):
+    if not hasattr(cls,'requires'):
+        cls.requires = thing()
+    else:
+        raise 'already has requires!'
+    return cls
+
+def has_providesINST(cls):
+    oldinit=cls.__init__
+    def newinit(self,*args,**kwargs):
+        oldinit(self,*args,**kwargs)
+        if not hasattr(self,'provides') and not hasattr(cls,'provides'):#must check instance and class(property) to not overwrite it
+            try:
+                self.provides=None
+            except AttributeError:
+                pass
+    cls.__init__=newinit
+    cls.meta = property(meta)
+    return cls
+
+
+def has_requiresINST(cls):
+    oldinit=cls.__init__
+    def newinit(self,*args,**kwargs):
+        oldinit(self,*args,**kwargs)
+        if not hasattr(self,'requires') and not hasattr(cls,'requires'):
+            self.requires=None
+    cls.__init__=newinit
+    return cls
+
+has_requires=has_requiresINST
+has_provides=has_providesINST
+
 import threading
 
 class realprovides:
@@ -54,7 +115,9 @@ class realprovides:
 
     def __call__(realme,self):
         if not self._dp_ranprovides:
+            print 'locking',self,realme,realme.nestedclasses,realme.getattributes
             self._dp_provideslock.acquire()
+            print 'locked',self,realme,realme.nestedclasses,realme.getattributes
             if not self._dp_ranprovides:
                 try:
                     iterator=realme.orig_iter(self)#self.__iter__()
@@ -68,14 +131,17 @@ class realprovides:
                     self._dp_iterator=iterator
                 except StopIteration:
                     pass
+                #print 'got',self._dp_provides
                 self._dp_ranprovides=True
+            print 'unlocking',self,realme,realme.nestedclasses,realme.getattributes
             self._dp_provideslock.release()
+            print 'unlocked',self,realme,realme.nestedclasses,realme.getattributes
         return self._dp_provides
 
 def autoprovidenested(func=None,nestedclasses=[dict],getattributes={}):
     """
     decorator to autodiscover nested frame descriptions. MUST use 'frameclass=xxxx' notation on decriptor parameters if you change defaults
-    :param frameclass:  frame class to descend, or ordered list of classes, if non default.  default is 'dict'
+    :param nestedclasses:  frame class to descend, or ordered list of classes, if non default.  default is 'dict'
     :param getattributes: callable object to extract a dictionary from the frame class so it can explore it, or dictionary keyed to classes. default is to use 'vars()' if not specifed
     :return:
     """
@@ -85,16 +151,15 @@ def autoprovidenested(func=None,nestedclasses=[dict],getattributes={}):
         # make copy of original __init__, so we can call it without recursion
 
         def __init__(self, *args, **kws):
-            orig_init(self, *args, **kws) # call the original __init__
             self._dp_iterator=None
             self._dp_priorframes=None
             self._dp_provides=None
             self._dp_ranprovides=False
             self._dp_provideslock=threading.Lock()
+            orig_init(self, *args, **kws) # call the original __init__
 
         def __iter__(self):
-            if not self._dp_ranprovides:
-                dummy=self.provides
+            dummy=self.provides
             if self._dp_iterator!=None:
                 i=self._dp_iterator
                 pf=self._dp_priorframes
@@ -130,16 +195,15 @@ def autoprovide(func=None,frameclass=dict,getattributes=None):
         # make copy of original __init__, so we can call it without recursion
 
         def __init__(self, *args, **kws):
-            orig_init(self, *args, **kws) # call the original __init__
             self._dp_iterator=None
             self._dp_priorframes=None
             self._dp_provides=None
             self._dp_ranprovides=False
             self._dp_provideslock=threading.Lock()
+            orig_init(self, *args, **kws) # call the original __init__
 
         def __iter__(self):
-            if not self._dp_ranprovides:
-                dummy=self.provides
+            dummy=self.provides
             if self._dp_iterator!=None:
                 i=self._dp_iterator
                 pf=self._dp_priorframes
@@ -162,6 +226,15 @@ def autoprovide(func=None,frameclass=dict,getattributes=None):
         return doit
     return doit(func)
 
+def exposes_attrs_in_chain(exposed_attrs):
+    def decorator(cl):
+        def exposed(self): 
+            #print 'ex'
+            return exposed_attrs #get None for all, or what we deliberately expose
+
+        cl.___exposed_attrs = property(exposed)
+        return cl
+    return decorator
 
 def exposes_attrs_of_field(fieldname):
     """
@@ -171,17 +244,52 @@ def exposes_attrs_of_field(fieldname):
     :return:
     """
     def decorator(cl):
-        oldcget = getattr(cl, '__getattr__', None)
+        oldcget = getattr(cl, '__getattribute__', None)
+        if oldcget==None:
+            print cl,"isn't a new 'object' type class. FIX IT!"
+            raise RuntimeError
 
         def _getattr_(self, name):
-            if oldcget is not None:
+            #if oldcget is not None:
+            try:
+                return oldcget(self, name)
+            except AttributeError as e:
+                if name.startswith('_') or (self.___exposed_attrs_child!=None and name not in self.___exposed_attrs_child):
+                    raise
+                #print "getting",fieldname
                 try:
-                    return oldcget(self, name)
-                except AttributeError:
-                    pass
-            source = self.__getattribute__(fieldname)
-            return getattr(source, name)
+                    if not hasattr(self,fieldname):
+                        #print self,"doesn't have",fieldname
+                        raise e #don't let this have any chance to go recursive
+                    source = getattr(self, fieldname)
+                    #print 'getattr recursively returning',name,'of',fieldname,'(',source,')','from',self
+                    return getattr(source, name)
+                except:
+                    raise e
 
+ 
+        def exposed_deep(self):#returns exposed attributes for all lower exposed features, or None if someone doesn't, thus exposes all
+            source = self.__getattribute__(fieldname)
+            #print 'exd'
+            if not hasattr(source,'___exposed_attrs_all'):
+                return None#all are exposed below us
+            else:
+                return source.___exposed_attrs_all #return all of what the child exposes
+
+        def exposed_all(self):#union of deep and what this exposes (if defined), or None if this doesn't say
+            #print 'exa'
+            if not hasattr(self,'___exposed_attrs') or self.___exposed_attrs==None:
+                return None #at this level, all are exposed. lower, maybe not
+            r=self.___exposed_attrs_child
+            if r==None:
+                return None
+            if self.__exposed_attrs==None:
+                return None
+            r.extend(self.___exposed_attrs)
+            return r
+
+        cl.___exposed_attrs_all = property(exposed_all)
+        cl.___exposed_attrs_child = property(exposed_deep)
         cl.__getattr__ = _getattr_
         return cl
     return decorator

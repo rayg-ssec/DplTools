@@ -11,15 +11,17 @@ import copy
 import stat
 import traceback
 import logging
+import dplkit.role.decorator
 log = logging.getLogger(__name__)
 
 json_dateformat='%Y.%m.%dT%H:%M:%S'
 
-class PicnicProgressNarrator:
+@dplkit.role.decorator.exposes_attrs_of_field('framestream')
+class PicnicProgressNarrator(object):
     def __init__(self,framestream,getLastValue,firstval,lastval,session):
         self.framestream=framestream
-        if hasattr(framestream,'provides'):
-            self.provides=framestream.provides
+        #if hasattr(framestream,'provides'):
+        self.provides=framestream.provides
         self.getLastValue=getLastValue
         self.firstval=firstval
         self.lastval=lastval
