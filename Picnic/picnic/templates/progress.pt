@@ -49,18 +49,19 @@ setTimeout("self.location.replace('${progresspage}')",5000)
   <BR/>
   <div tal:omit-tag="" tal:condition="session.percentcomplete<=0" tal:content="'Started: %s UTC' % (session.task_started)"></div>
   <div tal:omit-tag="" tal:condition="session.percentcomplete>=99.0" tal:content="'Started: %s UTC  Progress: %.0f%% Finishing up...' % (session.task_started,session.percentcomplete)"></div>
-  <div tal:omit-tag="" tal:condition="session.percentcomplete>0 and session.percentcomplete<99.0">
-  <div tal:omit-tag="" tal:content="'Started: %s UTC  Progress: %.0f%%' % (session.task_started,session.percentcomplete)"></div>
-  <BR/>
-  <div tal:define="dtcomp timedelta(seconds=(session.percentupdated-session.task_started).total_seconds()*100.0/session.percentcomplete)" tal:omit-tag=""> 
-    <span tal:content="'Estimated time of completion: %s UTC' % (session.task_started+dtcomp)"></span>
-    <span tal:condition="(session.task_started+dtcomp)>datetime.utcnow()" tal:content="'(in %s)' % (str((session.task_started+dtcomp)-datetime.utcnow()))"></span>
+  <div tal:omit-tag="" tal:condition="session.percentcomplete>0 and session.percentcomplete<99.0"> 
+    <div tal:omit-tag="" tal:content="'Started: %s UTC  Progress: %.0f%%' % (session.task_started,session.percentcomplete)"></div>
+    <BR/>
+    <div tal:define="dtcomp timedelta(seconds=(session.percentupdated-session.task_started).total_seconds()*100.0/session.percentcomplete)" tal:omit-tag=""> 
+      <span tal:content="'Estimated time of completion: %s UTC' % (session.task_started+dtcomp)"></span>
+      <span tal:condition="(session.task_started+dtcomp)>datetime.utcnow()" tal:content="'(in %s)' % (str((session.task_started+dtcomp)-datetime.utcnow()))"></span>
+    </div>
   </div>
   <BR/>
   <FORM action="${destination}" METHOD="GET">
-  <INPUT TYPE="HIDDEN" NAME="skip" VALUE="on">
-  <INPUT TYPE="HIDDEN" NAME="clientid" VALUE="${sessionid}">
-  <INPUT TYPE="SUBMIT" VALUE="Skip/Abort">
+  <INPUT TYPE="HIDDEN" NAME="skip" VALUE="on"/>
+  <INPUT TYPE="HIDDEN" NAME="clientid" VALUE="${sessionid}"/>
+  <INPUT TYPE="SUBMIT" VALUE="Skip/Abort"/>
   </FORM>
 </div></center>
 <iframe tal:condition="request.client_addr=='127.0.0.1'" src="${session.logfileurl}" width="90%" id="logframe" name="logframe" frameborder="0" onload="if ( window.parent && window.parent.autoIframe) {window.parent.autoIframe('logframe');}"/>
