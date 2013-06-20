@@ -4,7 +4,8 @@
 dplkit.ui.stream
 ~~~~~~~~~~~~~~~~~~
 
-DPL UI module for stream objects
+DPL UI module for stream objects.
+Stream objects are GUI/Qt aware DPL frame streams.
 
 """
 __docformat__ = "restructuredtext en"
@@ -102,14 +103,10 @@ class Stream(QtCore.QObject):
     via a Qt Signal. This iteration happens in a separate Qt Thread to
     not block the GUI thread. A `Stream` expects the iterable to provide
     a DPL frame (as a python dictionary), although this object may work
-    with any object type.
+    with any object type, but other DPL UI components may not.
 
     A Qt Application must be initialized before using a `Stream` so that
     signals and thread communication operates properly.
-
-    FUTURE: Add a Stream subclass (or other) that can be configured by the
-            GUI (text boxes, buttons, checkboxes, etc.). Will probably need
-            a new type of controller or something.
     """
     # Classes used
     _stream_object_class = _StreamObject
@@ -123,7 +120,7 @@ class Stream(QtCore.QObject):
         callable can be provided and will be iterated over in the separate
         thread. If an iterable is provided it will be passed to the new
         thread and iterated over once the `start` method is called. If a
-        callable is provided it will be call with no arguments in the new
+        callable is provided it will be called with no arguments in the new
         thread's affinity once the `start` method is called.
 
         :keyword iterable: iterator or generator or other iterable object
@@ -174,10 +171,14 @@ class Stream(QtCore.QObject):
         self.frame_ready = self.worker.frame_ready
 
     def start(self):
+        """Start the separate thread for listening to the iterable.
+        """
         self.thread_handle.start()
 
     def stop(self):
         """Stop iteration and the background thread.
+        
+        Should be automatically called by the controller when the GUI is closed.
         """
         if not self._stopped:
             self._stopped = True

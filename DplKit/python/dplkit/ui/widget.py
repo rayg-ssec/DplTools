@@ -5,6 +5,7 @@ dplkit.ui.widgets
 ~~~~~~~~~~~~~~~~~~
 
 DPL UI module for holding pre-built widget classes
+Widgets are the objects placed into a PyQt4 GUI.
 
 """
 __docformat__ = "restructuredtext en"
@@ -21,7 +22,11 @@ LOG = logging.getLogger(__name__)
 class MplWidget(FigureCanvasQTAgg):
     """A Qt widget for matplotlib plotting.
 
-    Matplotlib widget that can handle blitting. A lot of the blitting logic
+    A user can add to the figure by either using the ``figure`` attribute
+    after instantiation or by subclassing and adding to the figure inside
+    the class's __init__ method after calling the parents method.
+
+    This matplotlib widget can handle blitting. A lot of the blitting logic
     was based off of matplotlib's Animate class, but it did not work properly
     for me during testing. The most significant change is that I save/copy the
     bbox of the entire figure instead of individual axes. A lot of the original
@@ -48,7 +53,7 @@ class MplWidget(FigureCanvasQTAgg):
         """Initialize blit drawing canvas.
         Clear everything off the axes that will need to be redrawn:
             - lines
-            - TODO
+            - images
         Then draw the 'empty' canvas, take a snapshot (copy bbox).
         """
         if not self._blit:
@@ -90,7 +95,8 @@ class MplWidget(FigureCanvasQTAgg):
     def draw(self):
         """Reimplement matplotlib's draw() method to allow blitting.
 
-        Similar approach to matplotlib's Animate class.
+        Similar approach to matplotlib's Animate class. Automatically
+        called by the DPL UI Controller.
         """
         if not self._blit:
             return self._draw()

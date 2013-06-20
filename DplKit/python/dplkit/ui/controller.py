@@ -6,6 +6,10 @@ dplkit.ui.controller
 
 DPL UI module for controller objects
 
+These objects act as the main bridge between the GUI/widget and the
+DPL stream. Once a stream exists, its data is "bound" to a component
+of a widget via the controller's "bind_*" methods.
+
 """
 __docformat__ = "restructuredtext en"
 
@@ -23,10 +27,6 @@ class GUIController(QtCore.QObject):
     """A mediator between a GUI QWidget and the Stream produced frames.
     Controls how the data from the frame gets entered into a widget.
 
-    FUTURE: Add more methods for different widget bindings
-    FUTURE: Add binding methods for controlling widgets (buttons, checkboxes)
-    FUTURE: Add logic to auto update axis limits (controller or mplwidget?)
-        FUTURE: Add logic to only update axis limits every X number of steps (subclass of mplwidget?)
     """
     _need_redraw = (MplWidget,)
 
@@ -50,7 +50,11 @@ class GUIController(QtCore.QObject):
         # The fifth is a callable that expects no arguments
         self.limit_bindings = {}
 
-    def apply_line_x(self, line_object, data_array):
+    def _apply_line_x(self, line_object, data_array):
+        """Bind method for updating the X data of a line.
+
+        Note: A user should not need to call this method.
+        """
         data_array = data_array.squeeze()
         # Get the last dimension
         if data_array.ndim > 1:
@@ -58,7 +62,11 @@ class GUIController(QtCore.QObject):
             data_array = data_array[-1,:]
         line_object.set_xdata(data_array)
 
-    def apply_line_y(self, line_object, data_array):
+    def _apply_line_y(self, line_object, data_array):
+        """Bind method for updating the Y data of a line.
+
+        Note: A user should not need to call this method.
+        """
         data_array = data_array.squeeze()
         # Get the last dimension
         if data_array.ndim > 1:
@@ -66,29 +74,77 @@ class GUIController(QtCore.QObject):
             data_array = data_array[-1,:]
         line_object.set_ydata(data_array)
 
-    def apply_image_data(self, image_object, data_array):
+    def _apply_line_data(self, line_object, *data_array):
+        """Bind method for updating the X and Y data of a line.
+        Accepts 1 2D array or 2 1D arrays.
+        """
+        if len(data_array) == 1:
+            data_array = data_array.squeeze()
+            if data_array.ndim > 2:
+                # XXX: Only supports 3D
+                data_array = data_array[-1,:]
+            line_object.set_data(data_array)
+        else:
+            x = data_array[0].squeeze()
+            y = data_array[1].squeeze()
+            line_object.set_data(x, y)
+
+    def _apply_image_data(self, image_object, data_array):
+        """Bind method for updating the 2D data of an image.
+
+        Note: A user should not need to call this method.
+        """
         image_object.set_data(data_array)
 
-    def apply_autolimit(self, ax, tight, scalex, scaley):
+    def _apply_autolimit(self, ax, tight, scalex, scaley):
+        """Bind method for updating the limits of an axis.
+
+        Note: A user should not need to call this method.
+        """
         ax.relim()
         ax.autoscale_view(tight=tight, scalex=scalex, scaley=scaley)
 
     def bind_line_x_to_channel(self, stream_channel_name, line_object=None):
+        """Bind a single stream channel to a line's X data.
+        """
         if line_object is None:
             raise ValueError("`line_object` is a required argument")
-        self.bindings.append( ((stream_channel_name,), partial(self.apply_line_x, line_object)) )
+        self.bindings.append( ((stream_channel_name,), partial(self._apply_line_x, line_object)) )
 
     def bind_line_y_to_channel(self, stream_channel_name, line_object=None):
+        """Bind a single stream channel to a line's Y data.
+        """
         if line_object is None:
             raise ValueError("`line_object` is a required argument")
-        self.bindings.append( ((stream_channel_name,), partial(self.apply_line_y, line_object)) )
+        self.bindings.append( ((stream_channel_name,), partial(self._apply_line_y, line_object)) )
+
+    def bind_line_data_to_channel(self, *stream_channel_name, **kwargs):
+        """Bind a one or two stream channels to a line's data. If one channel
+        is specified it must be a 2D array. If two are specified then they
+        should be 1 dimensional; ordered as X then Y.
+        """
+        line_object = kwargs.get("line_object", None)
+        if line_object is None:
+            if len(stream_channel_name) == 1:
+                raise ValueError("`line_object` is a required argument")
+            else:
+                line_object = stream_channel_name[-1]
+                stream_channel_name = stream_channel_name[:-1]
+        self.bindings.append( (stream_channel_name, partial(self._apply_line_data, line_object)) )
 
     def bind_image_to_channel(self, stream_channel_name, image_object=None):
+        """Bind a 2D image stream channel to an image's data.
+        """
         if image_object is None:
             raise ValueError("`image_object` is a required argument")
-        self.bindings.append( ((stream_channel_name,), partial(self.apply_image_data, image_object)) )
+        self.bindings.append( ((stream_channel_name,), partial(self._apply_image_data, image_object)) )
 
     def bind_axis_autoscale_x(self, axis, interval=1, padding=0.0):
+        """Bind autoscaling behavior to the X axis.
+
+        :keyword interval: number of frames between limit updates (default 1)
+        :keyword padding: fraction of data range to add to the minimum and maximum limits (default 0)
+        """
         count = interval
         scaley = False
         if axis in self.limit_bindings:
@@ -98,10 +154,15 @@ class GUIController(QtCore.QObject):
         axis.set_xmargin(padding)
 
         # Future: Actually use 'tight'
-        binding = (interval, count, True, scaley, partial(self.apply_autolimit, axis, False, True, scaley))
+        binding = (interval, count, True, scaley, partial(self._apply_autolimit, axis, False, True, scaley))
         self.limit_bindings[axis] = binding
 
     def bind_axis_autoscale_y(self, axis, interval=1, padding=0.0):
+        """Bind autoscaling behavior to the X axis.
+
+        :keyword interval: number of frames between limit updates (default 1)
+        :keyword padding: fraction of data range to add to the minimum and maximum limits (default 0)
+        """
         count = interval
         scalex = False
         if axis in self.limit_bindings:
@@ -111,10 +172,17 @@ class GUIController(QtCore.QObject):
         axis.set_ymargin(padding)
 
         # Future: Actually use 'tight'
-        binding = (interval, count, scalex, True, partial(self.apply_autolimit, axis, False, scalex, True))
+        binding = (interval, count, scalex, True, partial(self._apply_autolimit, axis, False, scalex, True))
         self.limit_bindings[axis] = binding
 
     def handle_new_frame(self, frame):
+        """Method called to handle every new frame from the Stream.
+        Only handle's compound dictionary frames or frames where each
+        dictionary value is a numpy array.
+
+        Note: Users shouldn't need to call this method themselves. It is
+        automatically called when the Stream produces a frame.
+        """
         # Put the proper frame data into the widget
         for channel_names,callable in self.bindings:
             channel_values = [ frame.get(channel_name, None) for channel_name in channel_names ]
