@@ -44,7 +44,7 @@ def has_provides(cls):
         cls.provides = thing('__p_provides')
     else:
         raise 'already have provides!'
-    return cls
+    return exposes_attrs_in_chain(['provides'])(cls)
 
 
 def has_requires(cls):
@@ -52,7 +52,7 @@ def has_requires(cls):
         cls.requires = thing('__p_requires')
     else:
         raise 'already has requires!'
-    return cls
+    return exposes_attrs_in_chain(['requires'])(cls)
 
 import threading
 
@@ -131,10 +131,13 @@ def autoprovidenested(func=None,nestedclasses=[dict],getattributes={}):
             self._dp_provides=None
             self._dp_ranprovides=False
             self._dp_provideslock=threading.Lock()
+            self._dp_randummy=False
             orig_init(self, *args, **kws) # call the original __init__
 
         def __iter__(self):
-            dummy=self.provides
+            if not self._dp_randummy:
+                self._dp_randummy=True
+                dummy=self.provides
             if self._dp_iterator!=None:
                 i=self._dp_iterator
                 pf=self._dp_priorframes
@@ -175,10 +178,13 @@ def autoprovide(func=None,frameclass=dict,getattributes=None):
             self._dp_provides=None
             self._dp_ranprovides=False
             self._dp_provideslock=threading.Lock()
+            self._dp_randummy=False
             orig_init(self, *args, **kws) # call the original __init__
 
         def __iter__(self):
-            dummy=self.provides
+            if not self._dp_randummy:
+                self._dp_randummy=True
+                dummy=self.provides
             if self._dp_iterator!=None:
                 i=self._dp_iterator
                 pf=self._dp_priorframes
@@ -201,13 +207,32 @@ def autoprovide(func=None,frameclass=dict,getattributes=None):
         return doit
     return doit(func)
 
+#these are exposed class wide, not per instance
 def exposes_attrs_in_chain(exposed_attrs):
-    def decorator(cl):
-        def exposed(self): 
-            #print 'ex'
-            return exposed_attrs #get None for all, or what we deliberately expose
+    class attribute_list(object):
+        def __init__(self,klass,fieldname,value):
+            self.originalval=value
+            self.superval=None
+            self.value=list(value)
+            if hasattr(klass,fieldname):
+                sv=getattr(klass,fieldname)
+                if isinstance(sv,tuple):
+                    self.superval=sv
+                elif isinstance(sv,self.__class__):
+                    self.superval=sv.value
+                else:
+                    raise RuntimeError('Field '+fieldname+' of class (or superclass thereto) '+repr(klass)+' already set to non attribute_list value. is a '+repr(type(sv)))
+                for f in self.superval:
+                    if f not in self.value:
+                        self.value.append(f)
+            self.value=tuple(self.value)
+            print 'class',klass,'exposes fields',self.value
 
-        cl.___exposed_attrs = property(exposed)
+        def __get__(self,otherself,type=None):
+            return self.value
+
+    def decorator(cl):
+        cl.___exposed_attrs = attribute_list(cl,'___exposed_attrs',exposed_attrs)
         return cl
     return decorator
 
