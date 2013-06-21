@@ -602,7 +602,7 @@ def makeImagesFromDPL(session,DPLgen):
           alreadycaptured=[]
           figs=artistlist[inst].figs
           for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
-            if x in alreadycaptured or (x!=None and (x.startswith('#' or x.startswith('-')))):
+            if x in alreadycaptured or (x!=None and (x.startswith('#') or x.startswith('-'))):
                 continue
             alreadycaptured.append(x)
             if x == None:
