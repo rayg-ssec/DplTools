@@ -448,7 +448,7 @@ def makeDPLFromSession(session,doSearch=True):
         elif session['dataset']=='mf2hsrl':
             pass #set up zoo and lib for mf2
         mmcrnar=mmcr.MMCRMergeCorrector(mmcrlib(start=searchparms['start_time_datetime'],end=searchparms['start_time_datetime']))
-        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(altitude_resampling.ResampleXd(time_slicing.TimeGinsu(mmcrnar,'times'),'heights',dplc.getAltitudeAxis()))
+        mmcrnar=mmcr.MMCRMergeBackscatterToReflectivity(altitude_resampling.ResampleXd(time_slicing.TimeGinsu(mmcrnar,'times'),'heights',dplc.altitudeAxis))
 
         hsrlnarsplitter=frame_substruct.SubstructBrancher(hsrlnar)
         hsrlinvnar=time_slicing.TimeGinsu(hsrlnarsplitter.narrateSubstruct('rs_inv'),'times')#,isEnd=True)
@@ -602,7 +602,7 @@ def makeImagesFromDPL(session,DPLgen):
           alreadycaptured=[]
           figs=artistlist[inst].figs
           for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
-            if x in alreadycaptured or (x!=None and x.startswith('#')):
+            if x in alreadycaptured or (x!=None and (x.startswith('#' or x.startswith('-')))):
                 continue
             alreadycaptured.append(x)
             if x == None:
