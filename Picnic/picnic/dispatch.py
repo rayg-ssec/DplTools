@@ -194,8 +194,7 @@ def parseImageParameters(request,session):
                                 getdatasets.append(dat)
                 if "options" in i and len(i["options"])>0:#checkboxes only currently, may extend to choicebox
                     for opt in i["options"]:
-                        if opt["formname"] in request.params:
-                            if request.params.getone(opt['formname']):
+                        if opt["formname"] in request.params and request.params.getone(opt['formname']):
                                 if 'enabled' in opt:
                                     for dat in opt['enabled']:
                                         if dat not in getdatasets:
@@ -205,7 +204,9 @@ def parseImageParameters(request,session):
                                         if dat not in getdatasets:
                                             getdatasets.append(dat)
                                 figstocapture[i['setenum']].extend(opt['included'])
-
+                        else:
+                            for f in opt['included']:
+                                figstocapture[i['setenum']].append('-'+f)
             except:
                 pass
         session['figstocapture']=figstocapture
@@ -244,7 +245,15 @@ def parseImageParametersBackground(request,session):
                         if not fi.endswith('_image') and inst=='hsrl':
                             data_req='images housekeeping'
                             lib_filetype=None
+                    elif ('-'+fi) in figset or ('-#'+fi) in figset:#if explicitly disabled, disable it
+                        disp.set_value(fi,'enable',0)
     else:
+        for inst,figset in session['figstocapture'].items():
+            for fi in disp.get_attrs(): # for each figure
+                if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled        
+                    if ('-'+fi) in figset or ('-#'+fi) in figset:#if explicitly disabled, disable it
+                        disp.set_value(fi,'enable',0)
+
         data_req= 'images housekeeping'
         lib_filetype=None
 
@@ -581,7 +590,7 @@ def makeImagesFromDPL(session,DPLgen):
         picnicsession.updateSessionComment(session,'rendering figures')
         fignum=0
 
-        capturingfigsgroups=session['figstocapture']
+        capturingfigsgroups=session['figstocapture'].copy()
         if capturingfigsgroups==None:
             capturingfigsgroups={}
             for k in artistlist.keys():
@@ -591,7 +600,7 @@ def makeImagesFromDPL(session,DPLgen):
           if not inst in artistlist:
             continue
           alreadycaptured=[]
-          figs=artistlist[inst].figs()
+          figs=artistlist[inst].figs
           for x in capturingfigs:#plt._pylab_helpers.Gcf.get_all_fig_managers():
             if x in alreadycaptured or (x!=None and x.startswith('#')):
                 continue
@@ -624,3 +633,25 @@ def makeDPLFromNetCDF(session,netcdffilename):
     import hsrl.dpl_experimental.dpl_read_templatenetcdf as dpl_rtnc
     ncfilename=picnicsession.sessionfile(session,netcdffilename)
     return dpl_rtnc.dpl_read_templatenetcdf(ncfilename)
+
+def main():
+    import sys
+    import os
+    import picnicsession
+    picnicsession.addDispatchers(getDispatchers())
+    loc=sys.argv[1]
+    sess=''
+    while len(sess)==0:
+        sess=os.path.basename(loc)
+        loc=os.path.dirname(loc)
+    sessions=loc
+    print sess
+    print sessions
+    os.environ['SESSIONFOLDER']=sessions
+    os.putenv('SESSIONFOLDER',sessions)
+    session=picnicsession.loadsession(sess)
+    picnicsession.taskdispatch('createimages',None,session)
+
+
+if __name__ == '__main__':
+    main()

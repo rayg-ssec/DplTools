@@ -39,79 +39,131 @@ class thing(object):
 
 
 def has_provides(cls):
+    if not issubclass(cls,object):
+        raise RuntimeError('class '+repr(cls)+" isn't an object")
     cls.meta = property(meta)
-    if not hasattr(cls,'provides'):
+    if not hasattr(cls,'provides') or isinstance(getattr(cls,'provides'),thing):
         cls.provides = thing('__p_provides')
     else:
-        raise 'already have provides!'
+        raise RuntimeError('class ' + repr(cls) + ' already has provides!')
     return exposes_attrs_in_chain(['provides'])(cls)
 
 
 def has_requires(cls):
-    if not hasattr(cls,'requires'):
+    if not issubclass(cls,object):
+        raise RuntimeError('class '+repr(cls)+" isn't an object")
+    if not hasattr(cls,'requires') or isinstance(getattr(cls,'requires'),thing):
         cls.requires = thing('__p_requires')
     else:
-        raise 'already has requires!'
+        raise RuntimeError('class ' + repr(cls) + ' already has requires!')
     return exposes_attrs_in_chain(['requires'])(cls)
 
 import threading
 
-class realprovides:
-    def __init__(self,n=[],g={},nesting=False,orig_iter=None):
-        self.orig_iter=orig_iter
-        self.nestedclasses=n if isinstance(n,list) else [n]
-        self.getattributes=(g if isinstance(n,list) and isinstance(g,dict) else {type(n):g}) if g!=None else {}
+class __autoprovidesbase(object):
+
+    class realprovides(object):
+        def __init__(self,n=[],g={},nesting=False,orig_iter=None):
+            self.orig_iter=orig_iter
+            self.nestedclasses=n if isinstance(n,list) else [n]
+            self.getattributes=(g if isinstance(n,list) and isinstance(g,dict) else {type(n):g}) if g!=None else {}
+            self.nesting=nesting
+
+        def __describe(self,frame):
+            d=frame
+            ret={}
+            if not isinstance(frame,dict):
+                d=None
+                for c in self.nestedclasses:
+                    if isinstance(frame,c):
+                        if c in self.getattributes:
+                            d=self.getattributes[c](frame)
+                        else:
+                            d=vars(frame)
+                        break
+            if d==None:
+                raise RuntimeError('Unknown frame scope (possibly nested)')
+            for k,v in d.items():
+                if k.startswith('_'):
+                    continue
+                ret[k]={'shortname':k,'type':type(v)}
+                if self.nesting:
+                    for c in self.nestedclasses:
+                        if isinstance(v,c):
+                           ret[k]=self.__describe(v)
+                           break
+            return ret
+
+        def __get__(realme,self,type=None):
+            if not self._dp_ranprovides:
+                #print 'locking',self,realme,realme.nestedclasses,realme.getattributes
+                if self._dp_provideslock.locked() and threading.currentThread()==self._dp_lockedthread:
+                    raise RuntimeError('Deadlock on auto provides for class '+repr(self.__class__)+' instance '+repr(self))
+                    return None
+                self._dp_provideslock.acquire()
+                self._dp_lockedthread=threading.currentThread()
+                #print 'locked',self,realme,realme.nestedclasses,realme.getattributes
+                if not self._dp_ranprovides:
+                    try:
+                        iterator=realme.orig_iter(self)#self.__iter__()
+                        frames=[]
+                        priorframe=None
+                        while priorframe==None:
+                            priorframe=iterator.next()
+                            frames.append(priorframe)
+                        self._dp_provides=realme.__describe(priorframe)
+                        self._dp_priorframes=frames
+                        self._dp_iterator=iterator
+                    except StopIteration:
+                        pass
+                    #print 'got',self._dp_provides
+                    self._dp_ranprovides=True
+                #print 'unlocking',self,realme,realme.nestedclasses,realme.getattributes
+                self._dp_provideslock.release()
+                #print 'unlocked',self,realme,realme.nestedclasses,realme.getattributes
+            return self._dp_provides
+
+
+    def __init__(self,nestedclasses,getattributes,nesting):
+        self.nestedclasses=nestedclasses
+        self.getattributes=getattributes
         self.nesting=nesting
 
-    def describe(self,frame):
-        d=frame
-        ret={}
-        if not isinstance(frame,dict):
-            d=None
-            for c in self.nestedclasses:
-                if isinstance(frame,c):
-                    if c in self.getattributes:
-                        d=self.getattributes[c](frame)
-                    else:
-                        d=vars(frame)
-                    break
-        if d==None:
-            raise 'Unknown frame scope (possibly nested)'
-        for k,v in d.items():
-            if k.startswith('_'):
-                continue
-            ret[k]={'shortname':k,'type':type(v)}
-            if self.nesting:
-                for c in self.nestedclasses:
-                    if isinstance(v,c):
-                       ret[k]=self.describe(v)
-                       break
-        return ret
+    def __call__(meself,original_class):
+        orig_init = original_class.__init__
+        orig_iter = original_class.__iter__
+        # make copy of original __init__, so we can call it without recursion
 
-    def __call__(realme,self):
-        if not self._dp_ranprovides:
-            print 'locking',self,realme,realme.nestedclasses,realme.getattributes
-            self._dp_provideslock.acquire()
-            print 'locked',self,realme,realme.nestedclasses,realme.getattributes
-            if not self._dp_ranprovides:
-                try:
-                    iterator=realme.orig_iter(self)#self.__iter__()
-                    frames=[]
-                    priorframe=None
-                    while priorframe==None:
-                        priorframe=iterator.next()
-                        frames.append(priorframe)
-                    self._dp_provides=realme.describe(priorframe)
-                    self._dp_priorframes=frames
-                    self._dp_iterator=iterator
-                except StopIteration:
-                    pass
-                #print 'got',self._dp_provides
-                self._dp_ranprovides=True
-            print 'unlocking',self,realme,realme.nestedclasses,realme.getattributes
-            self._dp_provideslock.release()
-            print 'unlocked',self,realme,realme.nestedclasses,realme.getattributes
-        return self._dp_provides
+        def __init__(self, *args, **kws):
+            self._dp_iterator=None
+            self._dp_priorframes=None
+            self._dp_provides=None
+            self._dp_ranprovides=False
+            self._dp_provideslock=threading.Lock()
+            self._dp_lockedthread=None
+            orig_init(self, *args, **kws) # call the original __init__
+
+        def __iter__(self):
+            dummy=self.provides
+            if self._dp_iterator!=None:
+                i=self._dp_iterator
+                pf=self._dp_priorframes
+                self._dp_iterator=None
+                self._dp_priorframe=None
+                if pf!=None:
+                    for f in pf:
+                        yield f
+                for f in i:
+                    yield f
+            else:
+                for f in orig_iter(self):
+                    yield f
+
+        original_class.__init__ = __init__ # set the class' __init__ to the new one
+        original_class.__iter__ = __iter__
+        original_class.provides=meself.realprovides(meself.nestedclasses,meself.getattributes,nesting=meself.nesting,orig_iter=orig_iter)
+        return original_class
+
 
 def autoprovidenested(func=None,nestedclasses=[dict],getattributes={}):
     """
@@ -120,45 +172,10 @@ def autoprovidenested(func=None,nestedclasses=[dict],getattributes={}):
     :param getattributes: callable object to extract a dictionary from the frame class so it can explore it, or dictionary keyed to classes. default is to use 'vars()' if not specifed
     :return:
     """
-    def doit(original_class):
-        orig_init = original_class.__init__
-        orig_iter = original_class.__iter__
-        # make copy of original __init__, so we can call it without recursion
-
-        def __init__(self, *args, **kws):
-            self._dp_iterator=None
-            self._dp_priorframes=None
-            self._dp_provides=None
-            self._dp_ranprovides=False
-            self._dp_provideslock=threading.Lock()
-            self._dp_randummy=False
-            orig_init(self, *args, **kws) # call the original __init__
-
-        def __iter__(self):
-            if not self._dp_randummy:
-                self._dp_randummy=True
-                dummy=self.provides
-            if self._dp_iterator!=None:
-                i=self._dp_iterator
-                pf=self._dp_priorframes
-                self._dp_iterator=None
-                self._dp_priorframe=None
-                if pf!=None:
-                    for f in pf:
-                        yield f
-                for f in i:
-                    yield f
-            else:
-                for f in orig_iter(self):
-                    yield f
-
-        original_class.__init__ = __init__ # set the class' __init__ to the new one
-        original_class.__iter__ = __iter__
-        original_class.provides=property(realprovides(nestedclasses,getattributes,nesting=True,orig_iter=orig_iter))
-        return original_class
+    obj=__autoprovidesbase(nestedclasses,getattributes,nesting=True)
     if(func==None):
-        return doit
-    return doit(func)
+        return obj
+    return obj(func)
 
 def autoprovide(func=None,frameclass=dict,getattributes=None):
     """
@@ -167,45 +184,10 @@ def autoprovide(func=None,frameclass=dict,getattributes=None):
     :param getattributes: callable object to extract a dictionary from the frame class so it can explore it. default is to use 'vars()' if not specifed
     :return:
     """
-    def doit(original_class):
-        orig_init = original_class.__init__
-        orig_iter = original_class.__iter__
-        # make copy of original __init__, so we can call it without recursion
-
-        def __init__(self, *args, **kws):
-            self._dp_iterator=None
-            self._dp_priorframes=None
-            self._dp_provides=None
-            self._dp_ranprovides=False
-            self._dp_provideslock=threading.Lock()
-            self._dp_randummy=False
-            orig_init(self, *args, **kws) # call the original __init__
-
-        def __iter__(self):
-            if not self._dp_randummy:
-                self._dp_randummy=True
-                dummy=self.provides
-            if self._dp_iterator!=None:
-                i=self._dp_iterator
-                pf=self._dp_priorframes
-                self._dp_iterator=None
-                self._dp_priorframe=None
-                if pf!=None:
-                    for f in pf:
-                        yield f
-                for f in i:
-                    yield f
-            else:
-                for f in orig_iter(self):
-                    yield f
-
-        original_class.__init__ = __init__ # set the class' __init__ to the new one
-        original_class.__iter__ = __iter__
-        original_class.provides=property(realprovides(frameclass,getattributes,nesting=False,orig_iter=orig_iter))
-        return original_class
+    obj=__autoprovidesbase(frameclass,getattributes,nesting=False)
     if(func==None):
-        return doit
-    return doit(func)
+        return obj
+    return obj(func)
 
 #these are exposed class wide, not per instance
 def exposes_attrs_in_chain(exposed_attrs):
@@ -226,7 +208,7 @@ def exposes_attrs_in_chain(exposed_attrs):
                     if f not in self.value:
                         self.value.append(f)
             self.value=tuple(self.value)
-            print 'class',klass,'exposes fields',self.value
+            #print 'class',klass,'exposes fields',self.value
 
         def __get__(self,otherself,type=None):
             return self.value
@@ -246,12 +228,13 @@ def exposes_attrs_of_field(fieldname):
     def decorator(cl):
         oldcget = getattr(cl, '__getattribute__', None)
         if oldcget==None:
-            print cl,"isn't a new 'object' type class. FIX IT!"
-            raise RuntimeError
+            raise RuntimeError(repr(cl)+" isn't a new 'object' type class. FIX IT!")
 
         def _getattr_(self, name):
             #if oldcget is not None:
             try:
+                #if not name.startswith('_'):
+                #    print 'Gettattr on',self,'field',name 
                 return oldcget(self, name)
             except AttributeError as e:
                 if name.startswith('_') or (self.___exposed_attrs_child!=None and name not in self.___exposed_attrs_child):

@@ -21,7 +21,7 @@ class PicnicProgressNarrator(object):
     def __init__(self,framestream,getLastValue,firstval,lastval,session):
         self.framestream=framestream
         #if hasattr(framestream,'provides'):
-        self.provides=framestream.provides
+        #self.provides=framestream.provides
         self.getLastValue=getLastValue
         self.firstval=firstval
         self.lastval=lastval
