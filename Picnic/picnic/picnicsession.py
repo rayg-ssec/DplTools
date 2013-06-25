@@ -292,16 +292,21 @@ def newSessionProcess(dispatch,request,session,*args,**kwargs):
             processDescription['parameterstructure']=json.dumps(session['process_control'],separators=(',', ':'))
         elif os.access(sessionfile(session,'process_parameters.json'),os.R_OK):
             processDescription['parameterstructure']=json.dumps(loadjson(session,'process_parameters.json'),separators=(',', ':'))
-        if 'process_control' in session or 'display_defaults' in session or 'selected_fields' in session or 'figstocapture' in session:
+        dropfields=['process_control' ,'display_defaults','logfileurl']
+        omitf=[ 'selected_fields' ,'figstocapture']
+        needcopy=False
+        for f in dropfields+omitf:
+            if f in session:
+                needcopy=True
+                break
+        if needcopy:
             tsess=copy.deepcopy(session)
-            if 'process_control' in session:
-                del tsess['process_control']
-            if 'display_defaults' in session:
-                del tsess['display_defaults']
-            if 'selected_fields' in session:
-                tsess['selected_fields']='omitted'
-            if 'figstocapture' in session:
-                tsess['figstocapture']='omitted'
+            for f in dropfields:
+                if f in session:
+                    del tsess[f]
+            for f in omitf:
+                if f in session:
+                    tsess[f]='omitted'
         else:
             tsess=session
         processDescription['commandline']=json.dumps(tsess,separators=(',', ':')),
