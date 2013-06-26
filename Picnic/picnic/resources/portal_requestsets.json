@@ -6,7 +6,7 @@
             "sets": [
                 {   "name": "Derived Quantities", 
                     "setenum": "hsrl",
-                    "included": ["rs_inv.times","rs_mean.times","rs_mean.msl_altitudes","rs_mean.lidar_altitude"],
+                    "included": ["rs_inv.times","rs_mean.times","rs_mean.msl_altitudes","rs_mean.lidar_altitude","rs_mean.latitude","rs_mean.longitude"],
                     "options" : [
                         {   "name": "Particulate Backscatter Cross Section",
                             "included": ["rs_inv.beta_a_backscat_par","rs_inv.beta_a_backscat_perp","rs_inv.beta_a_backscat","profiles.inv.beta_a_backscat_par","profiles.inv.beta_a_backscat_perp","profiles.inv.beta_a_backscat"],
@@ -37,7 +37,7 @@
                     ]
                 }, {"name": "Raw Data",
                     "setenum": "hsrlraw",
-                    "included": ["rs_raw.times","rs_mean.lidar_altitude"],
+                    "included": ["rs_raw.times","rs_mean.lidar_altitude","rs_mean.latitude","rs_mean.longitude"],
                     "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#rawdata",
                     "options": [
                         { "name": "Combined Channel Counts",
@@ -219,7 +219,8 @@
                             "included": ["#mask_image"],
                             "enabled" : ["lidar"],
                             "default" : 1,
-                            "formname": "hsrl_masking"
+                            "formname": "hsrl_masking",
+                            "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/enable_masking.html"
                         }
                     ],
             "order": ["none", "some", "few", "most", "all"],
@@ -242,7 +243,8 @@
                 "bscat": {
                     "enabled": ["merge"],
                     "name": "All, Bscat(1/(m sr))",
-                    "figs": ["radar_backscatter_image","radar_velocity_image","radar_spectralwidth_image"]
+                    "figs": ["radar_backscatter_image","radar_velocity_image","radar_spectralwidth_image"],
+                    "link":"http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#mmcrbsxs"
                     }
                 },
             "order": ["none", "ref", "bscat"],

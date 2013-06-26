@@ -296,7 +296,7 @@ Max Distance From Site:<INPUT TYPE="TEXT" NAME="sat_maxdist" value="50" size="5"
 
 <BR/><BR/>
 <DIV ALIGN="CENTER">
-	Processing Parameters: ${structure: make_archived_widget(req,'PROC','custom_processing',onchange='updateVisibilities();checkDataAvailability();',formfilename='process_parameters_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Parameters:',customizeurl=req.route_path('imagecustom')+'?file=process_control.json&json_type_token=PROC&subpath=process_defaults,corr_adjusts')}	
+	<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processing_parameters.htm" target="lidarwebdoc">Processing Parameters</a>: ${structure: make_archived_widget(req,'PROC','custom_processing',onchange='updateVisibilities();checkDataAvailability();',formfilename='process_parameters_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Parameters:',customizeurl=req.route_path('imagecustom')+'?file=process_control.json&json_type_token=PROC&subpath=process_defaults,corr_adjusts')}	
 </DIV>
 <BR/><BR/>
 <DIV ALIGN="CENTER">

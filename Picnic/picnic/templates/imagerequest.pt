@@ -71,11 +71,13 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 			<TR tal:repeat="setname imset.order"><TD tal:condition="'disabled' not in imset.sets[setname] or imset.sets[setname].disabled==0">
   				<INPUT type="radio" tal:attributes="name imset.formname;value setname;checked setname==imset.default" />
 	  			<span class="radiolink"><a href="javascript: setRadio('${imset.formname}','${setname}')">${imset.sets[setname].name}</a></span>
+  				<a tal:condition="'link' in imset.sets[setname]" tal:attributes="href imset.sets[setname].link" target="lidarwebdoc"><img src="http://lidar.ssec.wisc.edu/q.png" alt="(help)"/></a>
 			</TD></TR>
 			<div tal:condition="'options' in imset" tal:omit-tag="">
 				<TR tal:repeat="opt imset.options"><TD tal:condition="'disabled' not in opt or opt.disabled==0">
   					<INPUT type="checkbox" tal:attributes="name opt.formname;checked opt.default!=0" />
 	  				<span class="radiolink"><a href="javascript: toggleCheckbox('${opt.formname}')">${opt.name}</a></span>
+     				<a tal:condition="'link' in opt" tal:attributes="href opt.link" target="lidarwebdoc"><img src="http://lidar.ssec.wisc.edu/q.png" alt="(help)"/></a>
 				</TD></TR>
 			</div>
 		</TABLE>
@@ -83,12 +85,12 @@ minute<select NAME="emn" SIZE="1" onchange="freshenbottom();checkDataAvailabilit
 </div>
 </TR>
 <TR><TD colspan="${len(imagesets)}" align="center">
-		Customize Image Set: ${structure: make_archived_widget(req,'IMG','custom_display',onchange='updateVisibilities();checkDataAvailability();',formfilename='display_defaults_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Display:',customizeurl=req.route_path('imagecustom')+'?subpath=display_defaults&json_type_token=IMG',defaultname="disabled")}	
+		<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/customize_image_set.htm" target="lidarwebdoc">Customize Image Set</a>: ${structure: make_archived_widget(req,'IMG','custom_display',onchange='updateVisibilities();checkDataAvailability();',formfilename='display_defaults_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Display:',customizeurl=req.route_path('imagecustom')+'?subpath=display_defaults&json_type_token=IMG',defaultname="disabled")}	
 </TD></TR>
 </TABLE>
 <BR/>
 <DIV ALIGN="CENTER">
-	Processing Parameters: ${structure: make_archived_widget(req,'PROC','custom_processing',onchange='updateVisibilities();checkDataAvailability();',formfilename='process_parameters_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Parameters:',customizeurl=req.route_path('imagecustom')+'?file=process_control.json&json_type_token=PROC&subpath=process_defaults,corr_adjusts')}	
+	<a href="http://lidar.ssec.wisc.edu/syst/ahsrl/processing_parameters.htm" target="lidarwebdoc">Processing Parameters</a>: ${structure: make_archived_widget(req,'PROC','custom_processing',onchange='updateVisibilities();checkDataAvailability();',formfilename='process_parameters_content',formhost='reqform',formfileonchange='checkDataAvailability()',formfilefielddesc='Custom Parameters:',customizeurl=req.route_path('imagecustom')+'?file=process_control.json&json_type_token=PROC&subpath=process_defaults,corr_adjusts')}	
 </DIV>
 <div align="center">
 <span tal:omit-tag="True" tal:condition="userTracking">
