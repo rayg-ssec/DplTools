@@ -33,9 +33,9 @@ ${session.name} NetCDF Creation<BR/>Requested: ${'' if ('starttime' not in sessi
 			<div tal:omit-tag="" tal:condition="nc!=None">
 				<a tal:attributes="href request.route_path('session_resource',session=session.sessionid,filename=session.filename)" tal:content="session.filename" tal:condition="nc!=None"/>
 				<BR/>
-				<div tal:omit-tag="" tal:condition="('base_time' in nc.variables) and ('time' in nc.variables) and (len(nc.variables['time'])>0)">
-					<div tal:omit-tag="" tal:define="base_time datetime(1970,1,1,0,0,0)+timedelta(seconds=int(nc.variables['base_time'][0]))">
-						${(base_time + timedelta(seconds=nc.variables['time'][0])).strftime(dateformat)} - ${(base_time + timedelta(seconds=nc.variables['time'][-1])).strftime(dateformat)} (${len(nc.variables['time'])} records, ${printNumber(info[2],'%.1f',1024,['bytes','KB','MB','GB'])})
+				<div tal:omit-tag="" tal:condition="('base_time' in nc.variables) and ('time' in nc.variables) and (len(nc.variables['time'])>0 and numpy.isfinite(nc.variables['time'][0]) and numpy.isfinite(nc.variables['time'][-1]))">
+					<div tal:omit-tag="" tal:define="base_time datetime(1970,1,1,0,0,0)+timedelta(seconds=float(nc.variables['base_time'][0]))">
+						${(base_time + timedelta(seconds=float(nc.variables['time'][0]))).strftime(dateformat)} - ${(base_time + timedelta(seconds=float(nc.variables['time'][-1]))).strftime(dateformat)} (${len(nc.variables['time'])} records, ${printNumber(info[2],'%.1f',1024,['bytes','KB','MB','GB'])})
 						<div tal:omit-tag="" tal:condition="(session.endtime-(base_time + timedelta(seconds=nc.variables['time'][-1]))).total_seconds()>(2*session.timeres)">
 							<font color="#cc0000">NetCDF file is incomplete. <div tal:omit-tag="" tal:condition="'logfileurl' in session">Check the <a href="${session.logfileurl}">logfile</a>. Terminated at state "${session.comment}"</div></font>
 						</div>

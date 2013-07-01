@@ -336,7 +336,7 @@ def session_resource(request):
         m='image/jpeg'
     if fn.endswith('.png'):
         m='image/png'
-    if fn=='logfile':
+    if fn=='logfile' or fn.endswith('.txt'):
         m='text/plain'
     if fn.endswith('.json'):
         m='application/json'
