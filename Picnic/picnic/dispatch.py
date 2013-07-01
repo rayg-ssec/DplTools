@@ -2,7 +2,7 @@ import picnicsession
 from datetime import datetime,timedelta
 import jsgen
 import json
-import os
+import os,sys
 from pyramid.httpexceptions import HTTPBadRequest
 import traceback
 import server_archive
@@ -533,6 +533,21 @@ def makeMultiNetCDFFromDPL(session,DPL,DPLParms,templatefilename):
     if os.WEXITSTATUS(status)!=0:
         raise RuntimeError,"Compression failed on error %i" % os.WEXITSTATUS(status)
 
+def ncdump(f,outp):
+    parms=['/usr/bin/ncdump','-h',f]
+    f=file(outp,'w')
+
+    os.dup2(f.fileno(),sys.stdout.fileno())
+    os.dup2(f.fileno(),sys.stderr.fileno())
+
+    os.execv(parms[0],parms)
+    sys.exit(-1)
+
+def doNcDumpToFile(filename,outfile):
+    import multiprocessing
+    p=multiprocessing.Process(target=ncdump, args=(filename,outfile))
+    p.start()
+    p.join()
 
 def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
     picnicsession.updateSessionComment(session,'loading artist')
@@ -558,6 +573,8 @@ def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
 
         picnicsession.updateSessionComment(session,'appended data %s' % (timewindow))
   
+    doNcDumpToFile(ncfilename,ncfilename+'.txt')
+
     del artist
 
 def makeImagesFromDPL(session,DPLgen):
@@ -632,6 +649,8 @@ def makeImagesFromDPL(session,DPLgen):
 def makeDPLFromNetCDF(session,netcdffilename):
     import hsrl.dpl_experimental.dpl_read_templatenetcdf as dpl_rtnc
     ncfilename=picnicsession.sessionfile(session,netcdffilename)
+  
+    doNcDumpToFile(ncfilename,ncfilename+'.txt')
     return dpl_rtnc.dpl_read_templatenetcdf(ncfilename)
 
 def main():

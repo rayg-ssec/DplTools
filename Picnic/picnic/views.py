@@ -8,6 +8,7 @@ import picnicsession
 import jsgen
 from multiprocessing import Process,Queue
 import json
+import numpy
 import time
 import traceback
 import logging
@@ -79,8 +80,8 @@ def netcdfresult(request):
         print err
     #print file(safejoin(folder,'logfile')).read()
     #send to template
-    return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')), 'plainurls':sessionUrls(request,sessionid,('.json','.cdl')), 'session':session,
-        'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber}
+    return { 'imageurls':sessionUrls(request,sessionid,('.png','.jpg')), 'plainurls':sessionUrls(request,sessionid,('.json','.cdl','.txt')), 'session':session,
+        'datetime':datetime, 'timedelta':timedelta, 'nc':nc ,'info':inf, 'printNumber':picnicsession.printNumber,'numpy':numpy}
 
 @view_config(route_name='multinetcdfresult',renderer='templates/multinetcdfresult.pt')
 def multinetcdfresult(request):
