@@ -46,7 +46,7 @@
                             "default" : 1,
                             "formname": "hsrl_raw_ccc"
                         }, {"name": "Molecular Channel Counts",
-                            "included": ["rs_raw.molecular_counts","rs_raw.molecular_i2a_counts","profiles.molecular_counts","profiles.molecular_i2a_counts"],
+                            "included": ["rs_raw.molecular_counts","rs_raw.molecular_i2a_counts","rs_raw.molecular_wfov_counts","profiles.molecular_counts","profiles.molecular_i2a_counts","profiles.molecular_wfov_counts"],
                             "enabled" : ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_raw_mcc"
