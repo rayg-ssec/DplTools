@@ -336,12 +336,12 @@ def session_resource(request):
         m='image/jpeg'
     if fn.endswith('.png'):
         m='image/png'
-    if fn=='logfile' or fn.endswith('.txt'):
+    if fn=='logfile' or fn.endswith('.txt') or fn.endswith('.cdl'):
         m='text/plain'
     if fn.endswith('.json'):
         m='application/json'
-    if fn.endswith('.cdl'):
-        m='application/x-netcdf'
+    #if fn.endswith('.cdl'):
+    #    m='application/x-netcdf'
     if fn.endswith('.nc') or fn.endswith('.cdf'):
         m='application/x-netcdf'
 

@@ -533,21 +533,55 @@ def makeMultiNetCDFFromDPL(session,DPL,DPLParms,templatefilename):
     if os.WEXITSTATUS(status)!=0:
         raise RuntimeError,"Compression failed on error %i" % os.WEXITSTATUS(status)
 
-def ncdump(f,outp):
-    parms=['/usr/bin/ncdump','-h',f]
-    f=file(outp,'w')
-
-    os.dup2(f.fileno(),sys.stdout.fileno())
-    os.dup2(f.fileno(),sys.stderr.fileno())
-
-    os.execv(parms[0],parms)
-    sys.exit(-1)
-
 def doNcDumpToFile(filename,outfile):
+    def ncdump(f,outp):
+        parms=['/usr/bin/ncdump','-h',f]
+        f=file(outp,'w')
+
+        os.dup2(f.fileno(),sys.stdout.fileno())
+        os.dup2(f.fileno(),sys.stderr.fileno())
+
+        os.execv(parms[0],parms)
+        sys.exit(-1)
+
     import multiprocessing
     p=multiprocessing.Process(target=ncdump, args=(filename,outfile))
     p.start()
     p.join()
+
+def doFrameDumpToFile(provides,frame,outfile):
+    def subframe(fr,k):
+        if isinstance(fr,dict):
+            return fr[k]
+        if hasattr(fr,k):
+            return getattr(fr,k)
+        return None
+
+    def desc(fr):
+        ret='' #repr(type(fr)) + ' - '
+        try:
+            ret=ret+repr(fr.shape)
+        except AttributeError:
+            try:
+                ret=ret+repr([len(fr)])
+            except (AttributeError,TypeError):
+                ret=ret+'scalar'
+        return ret
+
+    def trimjson(d,frame):
+        for k in d.keys():
+            v=d[k]
+            if isinstance(v,dict):
+                if 'type' in v:
+                    d[k]=repr(d[k]['type']) + ' - ' + desc(subframe(frame,k))
+                else:
+                    trimjson(v,subframe(frame,k))
+
+    import json
+    import copy
+    d=copy.deepcopy(provides)
+    trimjson(d,frame)
+    json.dump(d,file(outfile,'w'),indent=4,separators=(',', ': '))
 
 def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
     picnicsession.updateSessionComment(session,'loading artist')
@@ -564,8 +598,14 @@ def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
     picnicsession.updateSessionComment(session,'processing')
  
     findTimes=['rs_raw','rs_mean','rs_inv']
+    
+    dumped=False
+
     for frame in artist:
         timewindow='blank'
+        if not dumped and frame!=None:
+            doFrameDumpToFile(artist.provides,frame,picnicsession.sessionfile(session,'frame.json'))
+            dumped=True
         for f in findTimes:
             if hasattr(frame,f) and hasattr(getattr(frame,f),'times') and len(getattr(frame,f).times)>0:
                 t=getattr(frame,f).times
@@ -573,7 +613,7 @@ def makeNetCDFFromDPL(session,DPLgen,templatefilename,netcdffilename):
 
         picnicsession.updateSessionComment(session,'appended data %s' % (timewindow))
   
-    doNcDumpToFile(ncfilename,ncfilename+'.txt')
+    doNcDumpToFile(ncfilename,picnicsession.sessionfile(session,'output.cdl'))
 
     del artist
 
@@ -650,7 +690,7 @@ def makeDPLFromNetCDF(session,netcdffilename):
     import hsrl.dpl_experimental.dpl_read_templatenetcdf as dpl_rtnc
     ncfilename=picnicsession.sessionfile(session,netcdffilename)
   
-    doNcDumpToFile(ncfilename,ncfilename+'.txt')
+    #doNcDumpToFile(ncfilename,picnicsession.sessionfile(session,'output.cdl'))
     return dpl_rtnc.dpl_read_templatenetcdf(ncfilename)
 
 def main():
