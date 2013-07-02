@@ -70,7 +70,10 @@
                             "formname": "hsrl_raw_sonde"
                         }, {"name": "Calibration/System Measurements",
                             "included": ["rs_inv.beta_r_backscat","rs_Cxx.beta_r" ,"rs_Cxx.Cam","rs_Cxx.Cam_i2a","rs_Cxx.Cmc","rs_Cxx.Cmm","rs_Cxx.Cmm_i2a",
-                                "rs_init.rs_constants.combined_channel_merge_threshhold","rs_init.rs_constants.hi_to_low_combined_channel_gain_ratio","rs_inv.mol_norm_index","rs_inv.od_norm_index"],
+                                "rs_init.rs_constants.combined_channel_merge_threshhold","rs_init.rs_constants.hi_to_low_combined_channel_gain_ratio",
+                                "rs_init.rs_constants.combined_to_cross_pol_gain_ratio","rs_init.rs_constants.molecular_to_wfov_gain_ratio",
+                                "rs_init.rs_constants.polarization_cross_talk","rs_init.rs_constants.wfov_to_combined_gain_ratio",
+                                "rs_inv.mol_norm_index","rs_inv.od_norm_index"],
                             "enabled": ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_raw_cal"
