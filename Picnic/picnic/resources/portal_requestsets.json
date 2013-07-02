@@ -9,32 +9,36 @@
                     "included": ["rs_inv.times","rs_mean.times","rs_mean.msl_altitudes","rs_mean.lidar_altitude","rs_mean.latitude","rs_mean.longitude"],
                     "options" : [
                         {   "name": "Particulate Backscatter Cross Section",
-                            "included": ["rs_inv.beta_a_backscat_par","rs_inv.beta_a_backscat_perp","rs_inv.beta_a_backscat","profiles.inv.beta_a_backscat_par",
-                                "profiles.inv.beta_a_backscat_perp","profiles.inv.beta_a_backscat","rs_inv.qc_mask"],
+                            "included": ["rs_inv.beta_a_backscat_par","rs_inv.beta_a_backscat_perp","rs_inv.beta_a_backscat","rs_inv.qc_mask"],
                             "enabled" : ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_pbcs"
                         }, {"name": "Particulate Optical Depth",
-                            "included": ["rs_inv.optical_depth","profiles.inv.optical_depth","rs_inv.qc_mask"],
+                            "included": ["rs_inv.optical_depth","rs_inv.qc_mask"],
                             "enabled": ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_pod"
                         }, {"name": "Particulate Depolarization",
-                            "included": ["rs_inv.circular_depol","rs_inv.linear_depol","profiles.inv.circular_depol","profiles.inv.linear_depol",
-                                "profiles.inv.linear_depol_i2a","rs_inv.linear_depol_i2a","rs_inv.qc_mask"],
+                            "included": ["rs_inv.circular_depol","rs_inv.linear_depol","rs_inv.linear_depol_i2a","rs_inv.qc_mask"],
                             "enabled": ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_pd"
                         }, {"name": "Particulate Extinction Cross Section",
-                            "included": ["rs_inv.extinction","profiles.inv.extinction","rs_inv.qc_mask"],
+                            "included": ["rs_inv.extinction","rs_inv.qc_mask"],
                             "enabled": ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_pecs"
                         }, {"name": "Attenuated Molecular Backscatter",
-                            "included": ["rs_inv.atten_beta_a_backscat","profiles.inv.atten_beta_a_backscat","rs_inv.qc_mask"],
+                            "included": ["rs_inv.atten_beta_a_backscat","rs_inv.qc_mask"],
                             "enabled": ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_amb"
+                        }, {"name": "Derived Profiles",
+                            "included": ["profiles.inv.beta_a_backscat_par","profiles.inv.beta_a_backscat_perp","profiles.inv.beta_a_backscat","profiles.inv.optical_depth"
+                                ,"profiles.inv.circular_depol","profiles.inv.linear_depol","profiles.inv.linear_depol_i2a","profiles.inv.extinction","profiles.inv.atten_beta_a_backscat"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_profiles"
                         }
                     ]
                 }, {"name": "Raw Data",
@@ -43,16 +47,13 @@
                     "link": "http://lidar.ssec.wisc.edu/syst/ahsrl/netcdfwebdoc.html#rawdata",
                     "options": [
                         { "name": "Corrected Channel Counts",
-                            "included": ["rs_raw.combined_lo_counts","rs_raw.combined_hi_counts","rs_raw.combined_counts","profiles.combined_lo_counts",
-                                "profiles.combined_hi_counts","profiles.combined_counts","rs_raw.molecular_counts",
-                                "rs_raw.molecular_i2a_counts","profiles.molecular_counts","profiles.molecular_i2a_counts","profiles.molecular_wfov_counts",
-                                "profiles.raw_molecular_counts","profiles.raw_molecular_i2a_counts","profiles.raw_molecular_wfov_counts","rs_raw.cross_pol_counts","profiles.cross_pol_counts","rs_raw.molecular_wfov_counts"
-],
+                            "included": ["rs_raw.combined_lo_counts","rs_raw.combined_hi_counts","rs_raw.combined_counts","rs_raw.molecular_counts",
+                                "rs_raw.molecular_i2a_counts","rs_raw.cross_pol_counts","rs_raw.molecular_wfov_counts"],
                             "enabled" : ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_raw_ccc"
                         }, {"name": "Inverted Counts",
-                            "included": ["profiles.inv.Na","profiles.inv.Na_i2a","profiles.inv.Ncp","profiles.inv.Ncp_i2a","profiles.inv.Nm","profiles.inv.Nm_i2a",
+                            "included": [
                                 "rs_inv.Na","rs_inv.Na_i2a","rs_inv.Ncp","rs_inv.Ncp_i2a","rs_inv.Nm","rs_inv.Nm_i2a"],
                             "enabled" : ["lidar"],
                             "default" : 1,
@@ -63,8 +64,16 @@
                             "enabled": ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_raw_calval"
+                        }, {"name": "Raw/Inverted Profiles",
+                            "included": ["profiles.combined_lo_counts","profiles.combined_hi_counts","profiles.combined_counts","profiles.molecular_counts","profiles.molecular_i2a_counts","profiles.molecular_wfov_counts",
+                                "profiles.raw_molecular_counts","profiles.raw_molecular_i2a_counts","profiles.raw_molecular_wfov_counts","profiles.inv.Na","profiles.inv.Na_i2a","profiles.inv.Ncp","profiles.inv.Ncp_i2a",
+                                "profiles.inv.Nm","profiles.inv.Nm_i2a","profiles.cross_pol_counts"],
+                            "enabled": ["lidar"],
+                            "default" : 1,
+                            "formname": "hsrl_raw_profiles"
                         }, {"name": "Radiosonde Profiles",
-                            "included": ["rs_init.sounding.dew_points","rs_init.sounding.pressures","rs_init.sounding.sounding_id" ,"rs_init.sounding.temps","rs_init.sounding.times","rs_init.sounding.top","rs_init.sounding.wind_dir","rs_init.sounding.wind_spd"],
+                            "included": ["rs_init.sounding.dew_points","rs_init.sounding.pressures","rs_init.sounding.sounding_id" ,"rs_init.sounding.temps","rs_init.sounding.times",
+                                "rs_init.sounding.top","rs_init.sounding.wind_dir","rs_init.sounding.wind_spd"],
                             "enabled": ["lidar"],
                             "default" : 1,
                             "formname": "hsrl_raw_sonde"
