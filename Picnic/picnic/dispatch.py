@@ -248,7 +248,8 @@ def parseImageParametersBackground(request,session):
                     elif ('-'+fi) in figset or ('-#'+fi) in figset:#if explicitly disabled, disable it
                         disp.set_value(fi,'enable',0)
     else:
-        for inst,figset in session['figstocapture'].items():
+        if session['figstocapture']!=None:
+          for inst,figset in session['figstocapture'].items():
             for fi in disp.get_attrs(): # for each figure
                 if 'enable' in disp.get_labels(fi): # if it can be enabled/disabled        
                     if ('-'+fi) in figset or ('-#'+fi) in figset:#if explicitly disabled, disable it
